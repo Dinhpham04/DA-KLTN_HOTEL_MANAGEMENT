@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Staff (Authentication) ─────────────────────────
+
+model Staff {
+  staffId          Int       @id @default(autoincrement()) @map("staff_id")
+  dataStatus       Int       @default(1) @map("data_status")
+  staffType        Int?      @map("staff_type")
+  staffName        String    @map("staff_name") @db.VarChar(255)
+  staffNameEn      String?   @map("staff_name_en") @db.VarChar(255)
+  staffNameShort   String?   @map("staff_name_short") @db.VarChar(50)
+  sex              Int?
+  zipCode          String?   @map("zip_code") @db.VarChar(20)
+  address          String?   @db.VarChar(500)
+  mail             String?   @unique @db.VarChar(255)
+  loginPassword    String?   @map("login_password") @db.VarChar(255)
+  tel              String?   @db.VarChar(20)
+  businessTel      String?   @map("business_tel") @db.VarChar(20)
+  emergencyTel     String?   @map("emergency_tel") @db.VarChar(20)
+  orderNum         Int?      @map("order_num")
+  displayInAttendance Int?   @map("display_in_attendance")
+
+  createdStaffId   Int?      @map("created_staff_id")
+  updatedStaffId   Int?      @map("updated_staff_id")
+  deletedStaffId   Int?      @map("deleted_staff_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  @@map("staffs")
+}

@@ -1,0 +1,160 @@
+{
+  "common": {
+    "appName": "Hotel Management",
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "success": "Thành công",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "export": "Xuất",
+    "import": "Nhập",
+    "refresh": "Làm mới",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "confirm": "Xác nhận",
+    "close": "Đóng",
+    "view": "Xem",
+    "detail": "Chi tiết",
+    "all": "Tất cả",
+    "noData": "Không có dữ liệu",
+    "total": "Tổng",
+    "actions": "Thao tác",
+    "status": "Trạng thái",
+    "name": "Tên",
+    "email": "Email",
+    "phone": "Số điện thoại",
+    "address": "Địa chỉ",
+    "note": "Ghi chú",
+    "date": "Ngày",
+    "createdAt": "Ngày tạo",
+    "updatedAt": "Ngày cập nhật"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "loginButton": "Đăng nhập",
+    "loginError": "Email hoặc mật khẩu không đúng",
+    "loginSuccess": "Đăng nhập thành công",
+    "welcomeBack": "Chào mừng trở lại",
+    "loginDescription": "Nhập thông tin đăng nhập để tiếp tục"
+  },
+  "nav": {
+    "dashboard": "Tổng quan",
+    "reservations": "Đặt phòng",
+    "rooms": "Phòng",
+    "clients": "Khách hàng",
+    "billing": "Thanh toán",
+    "cleaning": "Dọn phòng",
+    "staff": "Nhân viên",
+    "reports": "Báo cáo",
+    "settings": "Cài đặt"
+  },
+  "dashboard": {
+    "title": "Tổng quan",
+    "totalRooms": "Tổng số phòng",
+    "occupiedRooms": "Phòng đang có khách",
+    "availableRooms": "Phòng trống",
+    "todayCheckIns": "Check-in hôm nay",
+    "todayCheckOuts": "Check-out hôm nay",
+    "pendingCleanings": "Chờ dọn phòng",
+    "monthlyRevenue": "Doanh thu tháng",
+    "occupancyRate": "Tỷ lệ lấp đầy"
+  },
+  "reservation": {
+    "title": "Quản lý đặt phòng",
+    "new": "Đặt phòng mới",
+    "reservationNumber": "Mã đặt phòng",
+    "clientName": "Tên khách",
+    "checkIn": "Ngày nhận phòng",
+    "checkOut": "Ngày trả phòng",
+    "adults": "Người lớn",
+    "children": "Trẻ em",
+    "room": "Phòng",
+    "status": {
+      "pending": "Chờ xác nhận",
+      "confirmed": "Đã xác nhận",
+      "checked_in": "Đã nhận phòng",
+      "checked_out": "Đã trả phòng",
+      "cancelled": "Đã hủy"
+    },
+    "totalAmount": "Tổng tiền",
+    "notes": "Ghi chú"
+  },
+  "room": {
+    "title": "Quản lý phòng",
+    "roomNumber": "Số phòng",
+    "roomClass": "Hạng phòng",
+    "floor": "Tầng",
+    "maxOccupancy": "Sức chứa tối đa",
+    "basePrice": "Giá cơ bản",
+    "status": {
+      "available": "Trống",
+      "occupied": "Có khách",
+      "cleaning": "Đang dọn",
+      "maintenance": "Bảo trì",
+      "reserved": "Đã đặt"
+    }
+  },
+  "client": {
+    "title": "Quản lý khách hàng",
+    "nationality": "Quốc tịch",
+    "identityNumber": "CMND/CCCD/Hộ chiếu"
+  },
+  "billing": {
+    "title": "Quản lý thanh toán",
+    "totalAmount": "Tổng tiền",
+    "paidAmount": "Đã thanh toán",
+    "remainingAmount": "Còn lại",
+    "paymentStatus": {
+      "unpaid": "Chưa thanh toán",
+      "partial": "Thanh toán một phần",
+      "paid": "Đã thanh toán",
+      "refunded": "Đã hoàn tiền"
+    },
+    "paymentMethod": {
+      "cash": "Tiền mặt",
+      "card": "Thẻ",
+      "transfer": "Chuyển khoản",
+      "other": "Khác"
+    }
+  },
+  "cleaning": {
+    "title": "Quản lý dọn phòng",
+    "assignedStaff": "Nhân viên phụ trách",
+    "scheduledDate": "Ngày dọn",
+    "completedAt": "Hoàn thành lúc",
+    "status": {
+      "pending": "Chờ dọn",
+      "in_progress": "Đang dọn",
+      "completed": "Hoàn thành",
+      "skipped": "Bỏ qua"
+    }
+  },
+  "staff": {
+    "title": "Quản lý nhân viên",
+    "staffName": "Tên nhân viên",
+    "role": {
+      "admin": "Quản trị",
+      "manager": "Quản lý",
+      "staff": "Nhân viên",
+      "cleaning": "Dọn phòng"
+    }
+  },
+  "error": {
+    "pageNotFound": "Không tìm thấy trang",
+    "pageNotFoundDesc": "Trang bạn tìm kiếm không tồn tại",
+    "unauthorized": "Không có quyền truy cập",
+    "serverError": "Lỗi máy chủ",
+    "networkError": "Lỗi kết nối mạng",
+    "goHome": "Về trang chủ"
+  }
+}

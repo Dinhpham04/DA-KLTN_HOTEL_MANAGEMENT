@@ -1,0 +1,47 @@
+services:
+  # ─── PostgreSQL ──────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: hotel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hotel_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+#   # ─── Application ─────────────────────────────────
+#   api:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: hotel-api
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       APP_NAME: hotel-management-be
+#       APP_PORT: 3000
+#       APP_ENV: production
+#       APP_TIMEZONE: Asia/Ho_Chi_Minh
+#       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hotel_management?schema=public
+#       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+#       JWT_EXPIRES_IN: 1d
+#       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh-in-production}
+#       JWT_REFRESH_EXPIRES_IN: 7d
+#       THROTTLE_TTL: 60000
+#       THROTTLE_LIMIT: 60
+#     ports:
+#       - '3000:3000'
+
+volumes:
+  postgres_data:
