@@ -1,0 +1,96 @@
+/* ===========================================
+   Button component styles
+   Using Tailwind @apply + plain CSS
+   =========================================== */
+
+@layer components {
+
+  /* Primary action button */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md font-bold transition-colors;
+    font-size: 1.6rem;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    padding: 1rem 2.4rem;
+  }
+
+  .btn:hover {
+    opacity: 0.9;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .btn-primary:hover {
+    @apply bg-primary/90;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-secondary/80;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground;
+  }
+
+  .btn-destructive:hover {
+    @apply bg-destructive/90;
+  }
+
+  .btn-outline {
+    @apply border border-input bg-background;
+  }
+
+  .btn-outline:hover {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent;
+  }
+
+  .btn-ghost:hover {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  /* Small button */
+  .btn-sm {
+    font-size: 1.4rem;
+    padding: 0.6rem 1.6rem;
+  }
+
+  /* Large button */
+  .btn-lg {
+    font-size: 1.8rem;
+    padding: 1.2rem 3.2rem;
+  }
+
+  /* Icon-only button */
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-md transition-colors;
+    width: 4rem;
+    height: 4rem;
+    padding: 0;
+  }
+
+  /* Show more / detail link style */
+  .btn-link {
+    @apply bg-transparent underline-offset-4;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: hsl(var(--primary));
+  }
+
+  .btn-link:hover {
+    @apply underline;
+  }
+}
