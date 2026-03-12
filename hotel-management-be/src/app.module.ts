@@ -10,6 +10,7 @@ import { validate, appConfig, databaseConfig, jwtConfig, throttleConfig } from '
 import { DatabaseModule } from '@database/index';
 import { AuthModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
+import { StaffModule } from '@modules/staff/staff.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -64,6 +65,7 @@ import { AppService } from './app.service';
     // ─── Feature Modules ───────────────────────────
     AuthModule,
     HealthModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [

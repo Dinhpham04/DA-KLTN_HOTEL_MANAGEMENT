@@ -70,12 +70,12 @@ export class AuthService {
   private async generateTokens(staff: {
     staffId: number;
     staffName: string;
-    mail: string | null;
-    staffType: number | null;
+    mail: string;
+    staffType: number;
   }): Promise<TokenResponseDto> {
     const payload: JwtPayload = {
       sub: staff.staffId,
-      mail: staff.mail ?? '',
+      mail: staff.mail,
       staffType: staff.staffType,
     };
 

@@ -14,7 +14,7 @@ export class TokenResponseDto {
   staff!: {
     staffId: number;
     staffName: string;
-    mail: string | null;
-    staffType: number | null;
+    mail: string;
+    staffType: number;
   };
 }

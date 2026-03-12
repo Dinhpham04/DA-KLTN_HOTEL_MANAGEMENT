@@ -7,7 +7,7 @@ import { PrismaService } from '@database/prisma.service';
 export interface JwtPayload {
   sub: number;
   mail: string;
-  staffType: number | null;
+  staffType: number;
 }
 
 @Injectable()

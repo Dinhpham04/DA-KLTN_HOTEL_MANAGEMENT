@@ -4,7 +4,7 @@ import type { Request } from 'express';
 export interface CurrentStaff {
   staffId: number;
   mail: string;
-  staffType: number | null;
+  staffType: number;
   staffName: string;
 }
 
