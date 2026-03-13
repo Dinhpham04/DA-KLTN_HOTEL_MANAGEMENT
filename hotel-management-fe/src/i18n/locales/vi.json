@@ -42,7 +42,10 @@
     "password": "Mật khẩu",
     "forgotPassword": "Quên mật khẩu?",
     "loginButton": "Đăng nhập",
-    "loginError": "Email hoặc mật khẩu không đúng",
+    "loginError": "Đăng nhập thất bại",
+    "invalidCredentials": "Tài khoản hoặc mật khẩu không đúng",
+    "accountLocked": "Tài khoản đã bị khóa, vui lòng liên hệ quản trị viên",
+    "tooManyAttempts": "Đăng nhập quá nhiều lần, vui lòng thử lại sau",
     "loginSuccess": "Đăng nhập thành công",
     "welcomeBack": "Chào mừng trở lại",
     "loginDescription": "Nhập thông tin đăng nhập để tiếp tục"

@@ -1,14 +1,22 @@
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
+import { cn, getApiErrorMessage } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { Hotel, Loader2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'react-toastify'
 import { z } from 'zod'
 
 const loginSchema = z.object({
@@ -32,14 +40,11 @@ function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { login, isAuthenticated } = useAuth()
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
+  const loginFormHook = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: { mail: '', password: '' },
   })
 
   useEffect(() => {
@@ -48,84 +53,146 @@ function LoginPage() {
     }
   }, [isAuthenticated, navigate])
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      await login.mutateAsync({ mail: data.mail, password: data.password })
-      navigate({ to: '/dashboard' })
-    } catch {
-      setError('root', { message: t('auth.loginError') })
-    }
+  const handleLoginSubmit = (data: LoginFormData) => {
+    login.mutate(
+      { mail: data.mail, password: data.password },
+      {
+        onSuccess: () => {
+          navigate({ to: '/dashboard' })
+        },
+        onError: (error) => {
+          toast.error(
+            getApiErrorMessage(error, t('auth.loginError'), {
+              401: t('auth.invalidCredentials'),
+              403: t('auth.accountLocked'),
+              429: t('auth.tooManyAttempts'),
+            }),
+          )
+        },
+      }
+    )
   }
 
+  const togglePasswordVisibility = () => setIsPasswordVisible((prev) => !prev)
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Hotel size={24} className="text-primary-foreground" />
+    <main
+      className={cn(
+        "flex justify-center items-center bg-[url('/images/background-content.jpg')] bg-cover bg-center bg-no-repeat h-screen"
+      )}
+    >
+      <article className="bg-neutral bg-white shadow-xl p-[4rem] rounded-[.8rem] font-bold text-[1.6rem] card card-side">
+        <section className="card-body">
+          <div className={cn('mx-auto px-4 max-w-[36.5rem] font-semibold text-[1.5rem]')}>
+            <Form {...loginFormHook}>
+              <form onSubmit={loginFormHook.handleSubmit(handleLoginSubmit)}>
+                <legend className="mb-10 font-bold text-[2.3rem] text-center">
+                  {t('common.appName')}
+                </legend>
+                <p className="mb-10 text-center text-[1.4rem] font-normal text-muted-foreground">
+                  {t('auth.loginDescription')}
+                </p>
+
+                {/* Email */}
+                <FormField
+                  control={loginFormHook.control}
+                  name="mail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[#111827] text-[1.5rem]">
+                        {t('auth.email')}
+                      </FormLabel>
+                      <FormControl>
+                        <div
+                          className={cn(
+                            'flex items-center border border-[#D1D5DB] rounded-[.6rem] w-[35rem] overflow-hidden'
+                          )}
+                        >
+                          <Input
+                            type="email"
+                            placeholder="admin@hotel.com"
+                            autoComplete="email"
+                            className="bg-[#fff] py-0 border-none rounded-[.6rem] h-14 text-[1.25rem] focus-visible:ring-0 focus-visible:ring-offset-0"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e)
+                              loginFormHook.clearErrors('mail')
+                            }}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-red-500 text-[1.25rem]" />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Password */}
+                <FormField
+                  control={loginFormHook.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="relative mt-[1.6rem]">
+                      <FormLabel className="font-bold text-[#111827] text-[1.5rem]">
+                        {t('auth.password')}
+                      </FormLabel>
+                      <FormControl>
+                        <div
+                          className={cn(
+                            'flex items-center border border-[#D1D5DB] rounded-[.6rem] w-[35rem] overflow-hidden'
+                          )}
+                        >
+                          <Input
+                            type={isPasswordVisible ? 'text' : 'password'}
+                            autoComplete="current-password"
+                            className="[&::-ms-reveal]:hidden py-0 border-none h-14 text-[1.25rem] focus-visible:ring-0 focus-visible:ring-offset-0"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e)
+                              loginFormHook.clearErrors('password')
+                            }}
+                          />
+                          <div
+                            onClick={togglePasswordVisibility}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') togglePasswordVisibility()
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            className={cn(
+                              'flex justify-center items-center mx-5 w-6 h-6 cursor-pointer'
+                            )}
+                          >
+                            {isPasswordVisible ? (
+                              <Eye className="w-12 h-12" />
+                            ) : (
+                              <EyeOff className="w-12 h-12" />
+                            )}
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-red-500 text-[1.25rem]" />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Submit */}
+                <Button
+                  type="submit"
+                  disabled={login.isPending}
+                  className="flex justify-center items-center bg-[#4F46E5] hover:bg-[#3d35a8] mt-10 rounded-[.6rem] w-[35rem] h-14"
+                >
+                  {login.isPending && (
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  )}
+                  <span className="font-bold text-white text-[1.5rem]">
+                    {t('auth.loginButton')}
+                  </span>
+                </Button>
+              </form>
+            </Form>
           </div>
-          <h1 className="text-2xl font-bold">{t('common.appName')}</h1>
-          <p className="text-sm text-muted-foreground">Hệ thống quản lý khách sạn</p>
-        </div>
-
-        {/* Login Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('auth.welcomeBack')}</CardTitle>
-            <CardDescription>{t('auth.loginDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-              {/* Root error */}
-              {errors.root && (
-                <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {errors.root.message}
-                </div>
-              )}
-
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="mail">{t('auth.email')}</Label>
-                <Input
-                  id="mail"
-                  type="email"
-                  placeholder="admin@hotel.com"
-                  autoComplete="email"
-                  {...register('mail')}
-                  className={errors.mail ? 'border-destructive' : ''}
-                />
-                {errors.mail && (
-                  <p className="text-xs text-destructive">{errors.mail.message}</p>
-                )}
-              </div>
-
-              {/* Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  {...register('password')}
-                  className={errors.password ? 'border-destructive' : ''}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password.message}</p>
-                )}
-              </div>
-
-              {/* Submit */}
-              <Button type="submit" className="w-full" disabled={isSubmitting || login.isPending}>
-                {(isSubmitting || login.isPending) && (
-                  <Loader2 size={16} className="animate-spin" />
-                )}
-                {t('auth.loginButton')}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        </section>
+      </article>
+    </main>
   )
 }
