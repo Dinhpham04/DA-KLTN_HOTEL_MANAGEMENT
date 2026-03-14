@@ -9,7 +9,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── Staff ──────────────────────────────────────────
+// ─── Staff (Authentication) ─────────────────────────
 
 model Staff {
   staffId             Int       @id @default(autoincrement()) @map("staff_id")
@@ -26,10 +26,10 @@ model Staff {
   tel                 String?   @db.VarChar(18)
   businessTel         String?   @map("business_tel") @db.VarChar(18)
   emergencyTel        String?   @map("emergency_tel") @db.VarChar(18)
-  orderNum            Int?      @default(1) @map("order_num") @db.SmallInt
   displayInAttendance Boolean   @default(true) @map("display_in_attendance")
+  orderNum            Int?      @default(1) @map("order_num") @db.SmallInt
 
-  // ─── Audit ──────────────────────
+  // Audit fields
   createdStaffId      Int?      @map("created_staff_id")
   updatedStaffId      Int?      @map("updated_staff_id")
   deletedStaffId      Int?      @map("deleted_staff_id")
@@ -37,20 +37,253 @@ model Staff {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   deletedAt           DateTime? @map("deleted_at")
 
-  // ─── Self-relations (audit trail) ──────────────────────
+  // Self-relations for audit trail
   createdBy           Staff?    @relation("StaffCreatedBy", fields: [createdStaffId], references: [staffId])
   updatedBy           Staff?    @relation("StaffUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy           Staff?    @relation("StaffDeletedBy", fields: [deletedStaffId], references: [staffId])
-
   staffsCreated       Staff[]   @relation("StaffCreatedBy")
   staffsUpdated       Staff[]   @relation("StaffUpdatedBy")
   staffsDeleted       Staff[]   @relation("StaffDeletedBy")
 
-  // ─── Indexes ──────────────────────
+  // Reverse audit relations from other models
+  facilitiesCreated   Facility[]  @relation("FacilityCreatedBy")
+  facilitiesUpdated   Facility[]  @relation("FacilityUpdatedBy")
+  facilitiesDeleted   Facility[]  @relation("FacilityDeletedBy")
+  roomClassesCreated  RoomClass[] @relation("RoomClassCreatedBy")
+  roomClassesUpdated  RoomClass[] @relation("RoomClassUpdatedBy")
+  roomClassesDeleted  RoomClass[] @relation("RoomClassDeletedBy")
+  roomTypesCreated    RoomType[]  @relation("RoomTypeCreatedBy")
+  roomTypesUpdated    RoomType[]  @relation("RoomTypeUpdatedBy")
+  roomTypesDeleted    RoomType[]  @relation("RoomTypeDeletedBy")
+  roomsCreated        Room[]      @relation("RoomCreatedBy")
+  roomsUpdated        Room[]      @relation("RoomUpdatedBy")
+  roomsDeleted        Room[]      @relation("RoomDeletedBy")
+  stayTypesCreated    StayType[]  @relation("StayTypeCreatedBy")
+  stayTypesUpdated    StayType[]  @relation("StayTypeUpdatedBy")
+  stayTypesDeleted    StayType[]  @relation("StayTypeDeletedBy")
+  countriesCreated    Country[]   @relation("CountryCreatedBy")
+  countriesUpdated    Country[]   @relation("CountryUpdatedBy")
+  countriesDeleted    Country[]   @relation("CountryDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
   @@index([dataStatus], map: "staffs_data_status_idx")
 
   @@map("staffs")
+}
+
+// ─── Country (Master Data) ──────────────────────────
+
+model Country {
+  countryId       Int       @id @default(autoincrement()) @map("country_id")
+  countryName     String    @map("country_name") @db.VarChar(128)
+  countryNameEn   String    @map("country_name_en") @db.VarChar(128)
+  code            String?   @db.VarChar(255)
+  orderNum        Int       @default(196) @map("order_num") @db.SmallInt
+  active          Boolean   @default(true)
+
+  // Audit
+  createdStaffId  Int       @map("created_staff_id")
+  updatedStaffId  Int?      @map("updated_staff_id")
+  deletedStaffId  Int?      @map("deleted_staff_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  createdBy       Staff     @relation("CountryCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy       Staff?    @relation("CountryUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy       Staff?    @relation("CountryDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([createdStaffId], map: "countries_created_staff_id_idx")
+  @@index([updatedStaffId], map: "countries_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "countries_deleted_staff_id_idx")
+
+  @@map("countries")
+}
+
+// ─── Facility (Property/Building) ───────────────────
+
+model Facility {
+  facilityId          Int       @id @default(autoincrement()) @map("facility_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  facilityType        Int       @default(1) @map("facility_type") @db.SmallInt
+  facilityNo          String    @map("facility_no") @db.VarChar(3)
+  facilityName        String    @map("facility_name") @db.VarChar(256)
+  facilityNameEn      String    @map("facility_name_en") @db.VarChar(256)
+  zipCode             String    @map("zip_code") @db.VarChar(9)
+  address             String    @db.VarChar(256)
+  addressEn           String    @map("address_en") @db.VarChar(512)
+  keyFunction         Boolean   @default(false) @map("key_function")
+  sharePlaceFlag      Boolean   @default(false) @map("share_place_flag")
+  parkingFlag         Boolean   @default(false) @map("parking_flag")
+  parkingImg          String    @default("") @map("parking_img") @db.VarChar(512)
+  bicycleParkingFlag  Boolean   @default(false) @map("bicycle_parking_flag")
+  bicycleParkingImg   String    @default("") @map("bicycle_parking_img") @db.VarChar(512)
+  deliveryboxFlag     Boolean   @default(false) @map("deliverybox_flag")
+  memo                String?   @db.VarChar(1024)
+  orderNum            Int       @default(1) @map("order_num") @db.SmallInt
+  colorOption         String?   @map("color_option") @db.VarChar(128)
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  createdBy           Staff     @relation("FacilityCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("FacilityUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("FacilityDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  rooms               Room[]
+
+  @@index([facilityNo], map: "facilities_facility_no_idx")
+  @@index([createdStaffId], map: "facilities_created_staff_id_idx")
+  @@index([updatedStaffId], map: "facilities_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "facilities_deleted_staff_id_idx")
+  @@index([dataStatus], map: "facilities_data_status_idx")
+
+  @@map("facilities")
+}
+
+// ─── Room Class (Standard, Deluxe...) ───────────────
+
+model RoomClass {
+  roomClassId     Int       @id @default(autoincrement()) @map("room_class_id")
+  dataStatus      Int       @default(1) @map("data_status") @db.SmallInt
+  roomClassName   String    @map("room_class_name") @db.VarChar(256)
+  orderNum        Int       @default(1) @map("order_num") @db.SmallInt
+
+  // Audit
+  createdStaffId  Int       @map("created_staff_id")
+  updatedStaffId  Int?      @map("updated_staff_id")
+  deletedStaffId  Int?      @map("deleted_staff_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  createdBy       Staff     @relation("RoomClassCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy       Staff?    @relation("RoomClassUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy       Staff?    @relation("RoomClassDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  roomTypes       RoomType[]
+
+  @@index([createdStaffId], map: "room_classes_created_staff_id_idx")
+  @@index([updatedStaffId], map: "room_classes_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "room_classes_deleted_staff_id_idx")
+  @@index([dataStatus], map: "room_classes_data_status_idx")
+
+  @@map("room_classes")
+}
+
+// ─── Room Type (Single, Double...) ──────────────────
+
+model RoomType {
+  roomTypeId        Int       @id @default(autoincrement()) @map("room_type_id")
+  dataStatus        Int       @default(1) @map("data_status") @db.SmallInt
+  roomClassId       Int       @map("room_class_id")
+  roomTypeName      String    @map("room_type_name") @db.VarChar(32)
+  roomTypeNameShort String    @map("room_type_name_short") @db.VarChar(32)
+  acreage           Int?
+  orderNum          Int       @default(1) @map("order_num") @db.SmallInt
+  orderNumDeposit   Int?      @map("order_num_deposit") @db.SmallInt
+
+  // Audit
+  createdStaffId    Int       @map("created_staff_id")
+  updatedStaffId    Int?      @map("updated_staff_id")
+  deletedStaffId    Int?      @map("deleted_staff_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  roomClass         RoomClass @relation(fields: [roomClassId], references: [roomClassId])
+  createdBy         Staff     @relation("RoomTypeCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy         Staff?    @relation("RoomTypeUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy         Staff?    @relation("RoomTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  rooms             Room[]
+
+  @@index([roomClassId], map: "room_types_room_class_id_idx")
+  @@index([createdStaffId], map: "room_types_created_staff_id_idx")
+  @@index([updatedStaffId], map: "room_types_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "room_types_deleted_staff_id_idx")
+  @@index([dataStatus], map: "room_types_data_status_idx")
+
+  @@map("room_types")
+}
+
+// ─── Room ───────────────────────────────────────────
+
+model Room {
+  roomId              Int       @id @default(autoincrement()) @map("room_id")
+  facilityId          Int       @map("facility_id")
+  roomTypeId          Int       @map("room_type_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  roomNumber          String    @map("room_number") @db.VarChar(32)
+  keyType             Int?      @map("key_type")
+  roomStatus          Int       @map("room_status") @db.SmallInt
+  reservedCleanDay    Int       @default(0) @map("reserved_clean_day") @db.SmallInt
+  deliveryboxFlag     Boolean   @default(false) @map("deliverybox_flag")
+  petFlag             Boolean   @default(false) @map("pet_flag")
+  mailboxPassword     String    @map("mailbox_password") @db.VarChar(64)
+  orderNum            Int       @default(1) @map("order_num") @db.SmallInt
+  externalFlag        Boolean   @default(false) @map("external_flag")
+  externalDateFrom    DateTime? @map("external_date_from") @db.Date
+  externalDateTo      DateTime? @map("external_date_to") @db.Date
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  facility            Facility  @relation(fields: [facilityId], references: [facilityId])
+  roomType            RoomType  @relation(fields: [roomTypeId], references: [roomTypeId])
+  createdBy           Staff     @relation("RoomCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("RoomUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("RoomDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([facilityId], map: "rooms_facility_id_idx")
+  @@index([roomTypeId], map: "rooms_room_type_id_idx")
+  @@index([createdStaffId], map: "rooms_created_staff_id_idx")
+  @@index([updatedStaffId], map: "rooms_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "rooms_deleted_staff_id_idx")
+  @@index([dataStatus], map: "rooms_data_status_idx")
+  @@index([roomStatus], map: "rooms_room_status_idx")
+
+  @@map("rooms")
+}
+
+// ─── Stay Type (Daily/Weekly/Monthly) ───────────────
+
+model StayType {
+  stayTypeId          Int       @id @default(autoincrement()) @map("stay_type_id")
+  stayContractTypeId  Int       @default(1) @map("stay_contract_type_id") @db.SmallInt
+  stayTypeName        String    @map("stay_type_name") @db.VarChar(64)
+  stayTypeNameEn      String    @map("stay_type_name_en") @db.VarChar(128)
+  stayTypeNameShort   String    @map("stay_type_name_short") @db.VarChar(4)
+  orderNum            Int       @default(99) @map("order_num") @db.SmallInt
+  active              Boolean   @default(true)
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  createdBy           Staff     @relation("StayTypeCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("StayTypeUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("StayTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([createdStaffId], map: "stay_types_created_staff_id_idx")
+  @@index([updatedStaffId], map: "stay_types_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "stay_types_deleted_staff_id_idx")
+
+  @@map("stay_types")
 }

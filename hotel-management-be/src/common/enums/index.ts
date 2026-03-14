@@ -33,3 +33,19 @@ export enum SexType {
   FEMALE = 2,
   OTHER = 3,
 }
+
+export enum RoomStatus {
+  FULL_CLEANING = 1,
+  PARTIAL_CLEANING = 2,
+  FINISHING = 3,
+}
+
+export enum FacilityType {
+  HOTEL = 1,
+  TRUNK_ROOM = 2,
+}
+
+export enum StayContractType {
+  WEEKLY = 1,
+  MONTHLY = 2,
+}

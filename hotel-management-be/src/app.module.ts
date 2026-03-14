@@ -11,6 +11,10 @@ import { DatabaseModule } from '@database/index';
 import { AuthModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
 import { StaffModule } from '@modules/staff/staff.module';
+import { FacilityModule } from '@modules/facility/facility.module';
+import { RoomClassModule } from '@modules/room-class/room-class.module';
+import { RoomTypeModule } from '@modules/room-type/room-type.module';
+import { RoomModule } from '@modules/room/room.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -66,6 +70,10 @@ import { AppService } from './app.service';
     AuthModule,
     HealthModule,
     StaffModule,
+    FacilityModule,
+    RoomClassModule,
+    RoomTypeModule,
+    RoomModule,
   ],
   controllers: [AppController],
   providers: [
