@@ -1,22 +1,17 @@
 import { Header } from './Header'
-import { Sidebar } from './Sidebar'
-import * as React from 'react'
+import { Footer } from './Footer'
+import type * as React from 'react'
 
 interface AppLayoutProps {
   children: React.ReactNode
-  title?: string
 }
 
-export function AppLayout({ children, title }: AppLayoutProps) {
-  const [collapsed, setCollapsed] = React.useState(false)
-
+export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((p) => !p)} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header title={title} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
+    <div className="flex min-h-screen flex-col bg-background">
+      <Header />
+      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <Footer />
     </div>
   )
 }

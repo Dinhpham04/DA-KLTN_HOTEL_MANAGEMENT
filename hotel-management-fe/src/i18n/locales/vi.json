@@ -50,6 +50,10 @@
     "welcomeBack": "Chào mừng trở lại",
     "loginDescription": "Nhập thông tin đăng nhập để tiếp tục"
   },
+  "header": {
+    "loggedInAs": "{{name}} đang đăng nhập",
+    "menu": "Menu"
+  },
   "nav": {
     "dashboard": "Tổng quan",
     "reservations": "Đặt phòng",

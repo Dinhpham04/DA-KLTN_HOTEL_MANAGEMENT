@@ -55,6 +55,11 @@ html {
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-ring: 221.2 83.2% 53.3%;
+
+    /* Header */
+    --header-bg: 216 51% 44%;
+    --header-button-bg: 214 55% 29%;
+    --header-button-active: 0 0% 40%;
   }
 
   .dark {
