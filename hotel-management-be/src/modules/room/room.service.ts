@@ -22,7 +22,7 @@ export class RoomService {
     const { data, total } = await this.roomRepository.findAll(filter);
 
     return {
-      data: data.map(RoomResponseDto.fromEntity),
+      items: data.map(RoomResponseDto.fromEntity),
       meta: {
         total,
         page: filter.page,

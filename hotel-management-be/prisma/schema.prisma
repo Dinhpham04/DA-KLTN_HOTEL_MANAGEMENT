@@ -65,6 +65,21 @@ model Staff {
   countriesUpdated    Country[]   @relation("CountryUpdatedBy")
   countriesDeleted    Country[]   @relation("CountryDeletedBy")
 
+  // Phase 2: Client & Reservation
+  clientsCreated          Client[]          @relation("ClientCreatedBy")
+  clientsUpdated          Client[]          @relation("ClientUpdatedBy")
+  clientsDeleted          Client[]          @relation("ClientDeletedBy")
+  reservesCreated         Reserve[]         @relation("ReserveCreatedBy")
+  reservesUpdated         Reserve[]         @relation("ReserveUpdatedBy")
+  reservesDeleted         Reserve[]         @relation("ReserveDeletedBy")
+  reservesCharge          Reserve[]         @relation("ReserveChargeStaff")
+  reservesCheckinRecep    Reserve[]         @relation("ReserveCheckinReceptionist")
+  reservesCheckoutRecep   Reserve[]         @relation("ReserveCheckoutReceptionist")
+  reservesConfirmStaff    Reserve[]         @relation("ReserveConfirmStaff")
+  reserveOccupiersCreated ReserveOccupier[] @relation("ReserveOccupierCreatedBy")
+  reserveOccupiersUpdated ReserveOccupier[] @relation("ReserveOccupierUpdatedBy")
+  reserveOccupiersDeleted ReserveOccupier[] @relation("ReserveOccupierDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -94,6 +109,8 @@ model Country {
   createdBy       Staff     @relation("CountryCreatedBy", fields: [createdStaffId], references: [staffId])
   updatedBy       Staff?    @relation("CountryUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy       Staff?    @relation("CountryDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  clients         Client[]
 
   @@index([createdStaffId], map: "countries_created_staff_id_idx")
   @@index([updatedStaffId], map: "countries_updated_staff_id_idx")
@@ -138,6 +155,7 @@ model Facility {
   deletedBy           Staff?    @relation("FacilityDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   rooms               Room[]
+  reserves            Reserve[]
 
   @@index([facilityNo], map: "facilities_facility_no_idx")
   @@index([createdStaffId], map: "facilities_created_staff_id_idx")
@@ -247,6 +265,8 @@ model Room {
   updatedBy           Staff?    @relation("RoomUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy           Staff?    @relation("RoomDeletedBy", fields: [deletedStaffId], references: [staffId])
 
+  reserves            Reserve[]
+
   @@index([facilityId], map: "rooms_facility_id_idx")
   @@index([roomTypeId], map: "rooms_room_type_id_idx")
   @@index([createdStaffId], map: "rooms_created_staff_id_idx")
@@ -281,9 +301,182 @@ model StayType {
   updatedBy           Staff?    @relation("StayTypeUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy           Staff?    @relation("StayTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
 
+  reserves            Reserve[]
+
   @@index([createdStaffId], map: "stay_types_created_staff_id_idx")
   @@index([updatedStaffId], map: "stay_types_updated_staff_id_idx")
   @@index([deletedStaffId], map: "stay_types_deleted_staff_id_idx")
 
   @@map("stay_types")
+}
+
+// ─── Client (Customer) ──────────────────────────────
+
+model Client {
+  clientId            Int       @id @default(autoincrement()) @map("client_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  dataType            Int       @map("data_type") @db.SmallInt
+  clientName          String    @map("client_name") @db.VarChar(256)
+  clientNameEn        String?   @map("client_name_en") @db.VarChar(256)
+  birthday            DateTime? @db.Date
+  sex                 Int       @default(9) @db.SmallInt
+  contactName         String?   @map("contact_name") @db.VarChar(256)
+  contactNameEn       String?   @map("contact_name_en") @db.VarChar(256)
+  companyName         String?   @map("company_name") @db.VarChar(256)
+  companyNameEn       String?   @map("company_name_en") @db.VarChar(256)
+  email               String?   @db.VarChar(256)
+  zipCode             String?   @map("zip_code") @db.VarChar(9)
+  companyZipCode      String?   @map("company_zip_code") @db.VarChar(9)
+  countryId           Int?      @map("country_id")
+  address1            String?   @db.VarChar(256)
+  address2            String?   @db.VarChar(256)
+  companyAddress1     String?   @map("company_address1") @db.VarChar(256)
+  companyAddress2     String?   @map("company_address2") @db.VarChar(256)
+  tel                 String?   @db.VarChar(18)
+  telPhone            String?   @map("tel_phone") @db.VarChar(18)
+  telEmergency        String?   @map("tel_emergency") @db.VarChar(18)
+  companyTel          String?   @map("company_tel") @db.VarChar(16)
+  emergencyRelation   String?   @map("emargency_relation") @db.VarChar(256)
+  fax                 String?   @db.VarChar(18)
+  postpaidFlag        Boolean   @default(false) @map("postpaid_flag")
+  advertisingType     Int?      @map("advertising_type") @db.SmallInt
+  memo                String?   @db.Text
+  useCount            Int       @default(0) @map("use_count") @db.SmallInt
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  country             Country?  @relation(fields: [countryId], references: [countryId])
+  createdBy           Staff     @relation("ClientCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("ClientUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("ClientDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  reserves            Reserve[]
+  reserveOccupiers    ReserveOccupier[]
+
+  @@index([countryId], map: "clients_country_id_idx")
+  @@index([createdStaffId], map: "clients_created_staff_id_idx")
+  @@index([updatedStaffId], map: "clients_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "clients_deleted_staff_id_idx")
+  @@index([dataStatus], map: "clients_data_status_idx")
+  @@index([dataType], map: "clients_data_type_idx")
+
+  @@map("clients")
+}
+
+// ─── Reserve (Reservation) ──────────────────────────
+
+model Reserve {
+  reserveId               Int       @id @default(autoincrement()) @map("reserve_id")
+  clientId                Int?      @map("client_id")
+  facilityId              Int?      @map("facility_id")
+  roomId                  Int?      @map("room_id")
+  stayTypeId              Int?      @map("stay_type_id")
+  dataStatus              Int       @default(1) @map("data_status") @db.SmallInt
+  reserveStatus           Int       @default(1) @map("reserve_status") @db.SmallInt
+  reserveType             Int?      @map("reserve_type") @db.SmallInt
+  deleteStatus            Int?      @map("delete_status") @db.SmallInt
+  periodFrom              DateTime? @map("period_from")
+  periodTo                DateTime? @map("period_to")
+  confirmFlag             Boolean   @default(false) @map("confirm_flag")
+  checkinFlag             Boolean   @default(false) @map("checkin_flag")
+  checkedInAt             DateTime? @map("checked_in_at")
+  checkoutAt              DateTime? @map("checkout_at")
+  bookingUnitPrice        Int?      @map("booking_unit_price")
+  adjustmentUnitPrice     Int?      @map("adjustment_unit_price")
+  deposit                 Int?
+  note                    String?   @db.VarChar(256)
+  memo                    String?   @db.Text
+  advertisingType         Int?      @map("advertising_type") @db.SmallInt
+  cancelReason            String?   @map("cancel_reason") @db.VarChar(512)
+  cancelledAt             DateTime? @map("cancelled_at")
+  petFlag                 Boolean   @default(false) @map("pet_flag")
+
+  // Staff references
+  chargeStaffId           Int?      @map("charge_staff_id")
+  checkinReceptionistId   Int?      @map("checkin_receptionist_id")
+  checkoutReceptionistId  Int?      @map("checkout_receptionist_id")
+  confirmStaffId          Int?      @map("confirm_staff_id")
+
+  // Audit
+  createdStaffId          Int       @map("created_staff_id")
+  updatedStaffId          Int?      @map("updated_staff_id")
+  deletedStaffId          Int?      @map("deleted_staff_id")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  deletedAt               DateTime? @map("deleted_at")
+
+  // Relations
+  client                  Client?   @relation(fields: [clientId], references: [clientId])
+  facility                Facility? @relation(fields: [facilityId], references: [facilityId])
+  room                    Room?     @relation(fields: [roomId], references: [roomId])
+  stayType                StayType? @relation(fields: [stayTypeId], references: [stayTypeId])
+  chargeStaff             Staff?    @relation("ReserveChargeStaff", fields: [chargeStaffId], references: [staffId])
+  checkinReceptionist     Staff?    @relation("ReserveCheckinReceptionist", fields: [checkinReceptionistId], references: [staffId])
+  checkoutReceptionist    Staff?    @relation("ReserveCheckoutReceptionist", fields: [checkoutReceptionistId], references: [staffId])
+  confirmStaff            Staff?    @relation("ReserveConfirmStaff", fields: [confirmStaffId], references: [staffId])
+  createdBy               Staff     @relation("ReserveCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy               Staff?    @relation("ReserveUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy               Staff?    @relation("ReserveDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  reserveOccupiers        ReserveOccupier[]
+
+  @@index([clientId], map: "reserves_client_id_idx")
+  @@index([facilityId], map: "reserves_facility_id_idx")
+  @@index([roomId], map: "reserves_room_id_idx")
+  @@index([stayTypeId], map: "reserves_stay_type_id_idx")
+  @@index([reserveStatus], map: "reserves_reserve_status_idx")
+  @@index([periodFrom], map: "reserves_period_from_idx")
+  @@index([periodTo], map: "reserves_period_to_idx")
+  @@index([chargeStaffId], map: "reserves_charge_staff_id_idx")
+  @@index([checkinReceptionistId], map: "reserves_checkin_receptionist_id_idx")
+  @@index([checkoutReceptionistId], map: "reserves_checkout_receptionist_id_idx")
+  @@index([confirmStaffId], map: "reserves_confirm_staff_id_idx")
+  @@index([createdStaffId], map: "reserves_created_staff_id_idx")
+  @@index([updatedStaffId], map: "reserves_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "reserves_deleted_staff_id_idx")
+  @@index([dataStatus], map: "reserves_data_status_idx")
+
+  @@map("reserves")
+}
+
+// ─── ReserveOccupier (Co-guest) ─────────────────────
+
+model ReserveOccupier {
+  reserveOccupierId   Int       @id @default(autoincrement()) @map("reserve_occupier_id")
+  reserveId           Int       @map("reserve_id")
+  clientId            Int       @map("client_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  occupierName        String    @map("occupier_name") @db.VarChar(256)
+  occupierNameEn      String?   @map("occupier_name_en") @db.VarChar(256)
+  sex                 Int       @default(9) @db.SmallInt
+  tel                 String?   @db.VarChar(18)
+  orderNum            Int?      @map("order_num")
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  reserve             Reserve   @relation(fields: [reserveId], references: [reserveId])
+  client              Client    @relation(fields: [clientId], references: [clientId])
+  createdBy           Staff     @relation("ReserveOccupierCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("ReserveOccupierUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("ReserveOccupierDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([reserveId], map: "reserve_occupiers_reserve_id_idx")
+  @@index([clientId], map: "reserve_occupiers_client_id_idx")
+  @@index([createdStaffId], map: "reserve_occupiers_created_staff_id_idx")
+  @@index([updatedStaffId], map: "reserve_occupiers_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "reserve_occupiers_deleted_staff_id_idx")
+
+  @@map("reserve_occupiers")
 }

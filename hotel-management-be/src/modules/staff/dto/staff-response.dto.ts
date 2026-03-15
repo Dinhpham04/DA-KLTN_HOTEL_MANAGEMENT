@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { Staff } from '@prisma/client';
+import type { StaffWithUpdater } from '../staff.repository';
 
 export class StaffResponseDto {
   @ApiProperty()
@@ -53,7 +54,10 @@ export class StaffResponseDto {
   @ApiProperty()
   readonly updatedAt!: Date;
 
-  static fromEntity(staff: Staff): StaffResponseDto {
+  @ApiPropertyOptional()
+  readonly updatedByName!: string | null;
+
+  static fromEntity(staff: Staff | StaffWithUpdater): StaffResponseDto {
     return Object.assign(new StaffResponseDto(), {
       staffId: staff.staffId,
       dataStatus: staff.dataStatus,
@@ -72,6 +76,7 @@ export class StaffResponseDto {
       displayInAttendance: staff.displayInAttendance,
       createdAt: staff.createdAt,
       updatedAt: staff.updatedAt,
+      updatedByName: (staff as StaffWithUpdater).updatedBy?.staffName ?? null,
     } satisfies Record<keyof Omit<StaffResponseDto, 'fromEntity'>, unknown>);
   }
 }

@@ -4,6 +4,8 @@ import { PrismaService } from '@database/prisma.service';
 import type { IPaginated } from '@common/interfaces/repository.interface';
 import type { StaffFilterDto } from './dto/staff-filter.dto';
 
+export type StaffWithUpdater = Prisma.StaffGetPayload<{ include: { updatedBy: true } }>;
+
 @Injectable()
 export class StaffRepository {
   constructor(private readonly prisma: PrismaService) { }
@@ -20,7 +22,7 @@ export class StaffRepository {
     });
   }
 
-  async findAll(filter: StaffFilterDto): Promise<IPaginated<Staff>> {
+  async findAll(filter: StaffFilterDto): Promise<IPaginated<StaffWithUpdater>> {
     const where: Prisma.StaffWhereInput = {
       deletedAt: null,
     };
@@ -51,12 +53,13 @@ export class StaffRepository {
         orderBy,
         skip: filter.skip,
         take: filter.limit,
+        include: { updatedBy: true },
       }),
       this.prisma.staff.count({ where }),
     ]);
 
     return {
-      data,
+      items: data,
       meta: {
         total,
         page: filter.page,

@@ -20,7 +20,7 @@ export class FacilityService {
     const { data, total } = await this.facilityRepository.findAll(filter);
 
     return {
-      data: data.map(FacilityResponseDto.fromEntity),
+      items: data.map(FacilityResponseDto.fromEntity),
       meta: {
         total,
         page: filter.page,

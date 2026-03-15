@@ -77,7 +77,7 @@ const CustomDialog: React.FC<DialogType> = ({
         >
           <div
             className={cn(
-              'bg-white w-full py-16 relative rounded-[0.8rem] max-h-[calc(100dvh-17rem)] mt-24',
+              'bg-white w-full py-16 relative rounded-[0.8rem] max-h-[calc(100dvh-17rem)]',
               customClass,
             )}
           >

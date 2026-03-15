@@ -16,7 +16,7 @@ export class StaffService {
   async findAll(filter: StaffFilterDto): Promise<IPaginated<StaffResponseDto>> {
     const result = await this.staffRepository.findAll(filter);
     return {
-      data: result.data.map((s) => StaffResponseDto.fromEntity(s)),
+      items: result.items.map((s) => StaffResponseDto.fromEntity(s)),
       meta: result.meta,
     };
   }

@@ -166,7 +166,7 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
               </FormItem>
             )}
           />
-          <div className="flex-1 mt-[.6rem] mb-[.6rem] ml-[-1rem] border-black border-t border-dashed w-[calc(100%_+_2rem)]" />
+          <div className="flex-1 mt-[.6rem] mb-[.6rem] ml-[-.5rem] border-black border-t border-dashed w-[calc(100%_+_2rem)]" />
           <FormField
             control={methods.control}
             name="staffNameShort"
@@ -310,7 +310,7 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
         <TableCell className="bg-white p-[.6rem] min-w-[15rem] text-left" />
 
         {/* Thao tác */}
-        <TableCell className="bg-white p-[.6rem] min-w-[15rem] text-left">
+        <TableCell className="bg-white p-[.6rem] min-w-[15rem] text-center">
           <form onSubmit={methods.handleSubmit(onSubmit)}>
             <NButton className="bg-gray w-auto min-w-fit h-auto" type="submit">
               <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
@@ -579,7 +579,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
               </form>
 
               <CustomDialog
-                customClass="text-center [&_svg]:hidden"
+                customClass="text-center [&_svg]:hidden z-[99999]"
                 size="medium"
                 customClassContent="max-w-[50rem]"
                 trigger={
@@ -611,7 +611,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
               />
 
               <CustomDialog
-                customClass="text-center [&_svg]:hidden"
+                customClass="text-center [&_svg]:hidden z-[99999]"
                 size="medium"
                 customClassContent="max-w-[52rem]"
                 trigger={
@@ -625,12 +625,12 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                 content={
                   <div className="flex justify-center p-5">
                     <DialogClose onClick={() => onDelete(staff.staffId)}>
-                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#8bd08e] mx-4 w-[14.4rem] btn btn-default border-[1px] border-black">
                         <span>{t('staff.dialogs.confirm')}</span>
                       </div>
                     </DialogClose>
                     <DialogClose>
-                      <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#eee] mx-4 w-[14.4rem] btn btn-default border-[1px] border-black">
                         <span>{t('staff.dialogs.cancel')}</span>
                       </div>
                     </DialogClose>
@@ -640,7 +640,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
             </>
           ) : (
             <CustomDialog
-              customClass="text-center [&_svg]:hidden"
+              customClass="text-center [&_svg]:hidden z-[99999]"
               size="medium"
               customClassContent="max-w-[50rem]"
               trigger={
@@ -658,12 +658,12 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                       onUpdate({ ...methods.getValues(), dataStatus: 1 }, 2)
                     }
                   >
-                    <div className="bg-[#8bd08e] mx-4 w-[12.4rem] btn btn-default">
+                    <div className="bg-[#8bd08e] mx-4 w-[14.4rem] btn btn-default border-[1px] border-black">
                       <span>{t('staff.dialogs.confirm')}</span>
                     </div>
                   </DialogClose>
                   <DialogClose>
-                    <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
+                    <div className="bg-[#eee] mx-4 w-[14.4rem] btn btn-default border-[1px] border-black">
                       <span>{t('staff.dialogs.cancel')}</span>
                     </div>
                   </DialogClose>
@@ -693,7 +693,7 @@ function StaffMasterPage() {
   const { isLoading, refetch } = useGetStaffs({
     staffType,
     onSuccess(data) {
-      replace(data)
+      replace([...data].sort((a, b) => (b.dataStatus === 1 ? 1 : 0) - (a.dataStatus === 1 ? 1 : 0)))
     },
     onError(error) {
       toast.error(extractErrorMessage(error))

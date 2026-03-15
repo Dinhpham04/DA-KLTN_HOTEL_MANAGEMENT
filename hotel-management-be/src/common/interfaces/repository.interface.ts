@@ -11,7 +11,7 @@ export interface IFindOptions {
 }
 
 export interface IPaginated<T> {
-  data: T[];
+  items: T[];
   meta: {
     total: number;
     page: number;

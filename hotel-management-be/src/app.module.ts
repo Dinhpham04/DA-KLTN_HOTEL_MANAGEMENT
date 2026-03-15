@@ -15,6 +15,8 @@ import { FacilityModule } from '@modules/facility/facility.module';
 import { RoomClassModule } from '@modules/room-class/room-class.module';
 import { RoomTypeModule } from '@modules/room-type/room-type.module';
 import { RoomModule } from '@modules/room/room.module';
+import { ClientModule } from '@modules/client/client.module';
+import { ReservationModule } from '@modules/reservation/reservation.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -74,6 +76,8 @@ import { AppService } from './app.service';
     RoomClassModule,
     RoomTypeModule,
     RoomModule,
+    ClientModule,
+    ReservationModule,
   ],
   controllers: [AppController],
   providers: [

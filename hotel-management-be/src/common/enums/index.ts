@@ -11,6 +11,27 @@ export enum StaffType {
   PART_TIME = 4,
 }
 
+export enum ClientType {
+  NOT_SPECIFIED = 0,
+  INDIVIDUAL = 1,
+  CORPORATION = 2,
+  SPECIAL_CORPORATION = 3,
+}
+
+export enum ReserveStatus {
+  PENDING = 1,
+  CONFIRMED = 2,
+  CHECKED_IN = 3,
+  CHECKED_OUT = 4,
+  CANCELLED = 5,
+}
+
+export enum DeleteStatus {
+  DELETED = 1,
+  CANCELLED = 2,
+  NO_SHOW = 3,
+}
+
 export enum ReserveType {
   NORMAL = 1,
   DRAFT = 2,
@@ -48,4 +69,13 @@ export enum FacilityType {
 export enum StayContractType {
   WEEKLY = 1,
   MONTHLY = 2,
+}
+
+export enum AdvertisingType {
+  REPEAT = 1,
+  WALK_IN = 2,
+  HOMEPAGE = 3,
+  RAKUTEN = 4,
+  ENGLISH_SITE = 5,
+  OTHER = 9,
 }

@@ -20,7 +20,7 @@ export class RoomClassService {
     const { data, total } = await this.roomClassRepository.findAll(filter);
 
     return {
-      data: data.map(RoomClassResponseDto.fromEntity),
+      items: data.map(RoomClassResponseDto.fromEntity),
       meta: {
         total,
         page: filter.page,
