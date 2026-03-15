@@ -57,6 +57,13 @@ export function Header() {
     { id: 4, item: t('nav.clients'), url: '/clients' },
     { id: 5, item: t('nav.billing'), url: '/billing' },
     { id: 6, item: t('nav.cleaning'), url: '/cleaning' },
+    {
+      id: 7,
+      item: t('nav.master'),
+      children: [
+        { id: 71, url: '/staff-master', menu_children: t('nav.staffMaster') },
+      ],
+    },
     { id: 12, item: t('auth.logout'), onClick: handleLogout },
   ]
 

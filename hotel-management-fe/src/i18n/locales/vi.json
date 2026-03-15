@@ -62,6 +62,8 @@
     "billing": "Thanh toán",
     "cleaning": "Dọn phòng",
     "staff": "Nhân viên",
+    "master": "Quản lý",
+    "staffMaster": "Quản lý nhân viên",
     "reports": "Báo cáo",
     "settings": "Cài đặt"
   },
@@ -154,7 +156,55 @@
       "manager": "Quản lý",
       "staff": "Nhân viên",
       "cleaning": "Dọn phòng"
-    }
+    },
+    "filterByRole": "Lọc theo vai trò",
+    "addRowTop": "Thêm",
+    "addRow": "Thêm hàng",
+    "columns": {
+      "no": "STT",
+      "name": "Họ tên",
+      "nameEn": "Tên (Tiếng Anh)",
+      "shortName": "Tên viết tắt",
+      "role": "Vai trò",
+      "password": "Mật khẩu",
+      "attendance": "Chấm công",
+      "email": "Email",
+      "updatedAt": "Ngày cập nhật",
+      "updatedBy": "Người cập nhật",
+      "actions": "Thao tác",
+      "otherActions": "Khác"
+    },
+    "actions": {
+      "save": "Lưu",
+      "update": "Cập nhật",
+      "suspend": "Tạm ngưng",
+      "delete": "Xóa",
+      "reactivate": "Kích hoạt lại"
+    },
+    "dialogs": {
+      "suspendTitle": "Bạn có muốn tạm ngưng nhân viên này?",
+      "deleteTitle": "Bạn có chắc muốn xóa nhân viên này?",
+      "reactivateTitle": "Bạn có muốn kích hoạt lại nhân viên này?",
+      "confirm": "Xác nhận",
+      "cancel": "Hủy"
+    },
+    "messages": {
+      "createSuccess": "Tạo nhân viên thành công",
+      "updateSuccess": "Cập nhật nhân viên thành công",
+      "deleteSuccess": "Xóa nhân viên thành công",
+      "suspendSuccess": "Đã tạm ngưng nhân viên",
+      "reactivateSuccess": "Đã kích hoạt lại nhân viên"
+    },
+    "deleted": "Đã xóa",
+    "noData": "Không có dữ liệu nhân viên"
+  },
+  "validation": {
+    "required": "{{field}} là bắt buộc",
+    "maxLength": "{{field}} không được vượt quá {{max}} ký tự",
+    "minLength": "{{field}} phải có ít nhất {{min}} ký tự",
+    "email": "{{field}} không đúng định dạng email",
+    "numeric": "{{field}} phải là số",
+    "passwordLength": "Mật khẩu phải từ 8-16 ký tự"
   },
   "error": {
     "pageNotFound": "Không tìm thấy trang",

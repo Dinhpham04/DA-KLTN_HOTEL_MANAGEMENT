@@ -78,7 +78,7 @@ function LoginPage() {
   return (
     <main
       className={cn(
-        "flex justify-center items-center bg-[url('/images/background-content.jpg')] bg-cover bg-center bg-no-repeat h-screen"
+        "flex justify-center items-center bg-[url('/hotel-bg.jpg')] bg-cover bg-center bg-no-repeat h-screen"
       )}
     >
       <article className="bg-neutral bg-white shadow-xl p-[4rem] rounded-[.8rem] font-bold text-[1.6rem] card card-side">

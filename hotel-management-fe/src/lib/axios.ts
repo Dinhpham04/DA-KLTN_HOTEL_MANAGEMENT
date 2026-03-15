@@ -10,7 +10,8 @@ interface ApiEnvelope<T> {
   statusCode: number
   message: string
   data: T
-  timestamp: string
+  meta?: { total: number; page: number; limit: number; totalPages: number }
+  timestamp?: string
 }
 
 interface RetryRequestConfig extends InternalAxiosRequestConfig {
@@ -21,10 +22,8 @@ function isApiEnvelope<T>(data: unknown): data is ApiEnvelope<T> {
   return (
     typeof data === 'object' &&
     data !== null &&
-    'statusCode' in data &&
-    'message' in data &&
     'data' in data &&
-    'timestamp' in data
+    ('statusCode' in data || 'status' in data)
   )
 }
 
@@ -52,9 +51,15 @@ apiClient.interceptors.request.use(
 // Response interceptor - handle errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Backend wraps success responses in { statusCode, message, data, timestamp }.
+    // Backend wraps success responses in { statusCode, message, data, meta?, timestamp }.
     if (isApiEnvelope(response.data)) {
-      response.data = response.data.data
+      const envelope = response.data as ApiEnvelope<unknown>
+      if (envelope.meta) {
+        // Paginated response — preserve { data, meta } shape
+        response.data = { data: envelope.data, meta: envelope.meta }
+      } else {
+        response.data = envelope.data
+      }
     }
     return response
   },

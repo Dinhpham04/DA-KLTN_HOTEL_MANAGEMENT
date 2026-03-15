@@ -252,6 +252,20 @@ html {
   scrollbar-width: none !important;
 }
 
+/* Loading spinner */
+.gradient-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(to right, #22c55e, #a855f7, #3b82f6);
+  -webkit-mask: radial-gradient(
+    circle 40px at center,
+    transparent 25px,
+    black 26px
+  );
+  mask: radial-gradient(circle 40px at center, transparent 25px, black 26px);
+}
+
 /* Custom ellipsis (3 lines) */
 .custom-ellipsis {
   display: -webkit-box;
@@ -261,24 +275,6 @@ html {
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: break-word;
-}
-
-/* Scrollbar styles */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
 }
 
 /* Remove number input spinners */
