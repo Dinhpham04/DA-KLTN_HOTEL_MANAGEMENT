@@ -134,6 +134,54 @@ hotel-management-be/
 | `pnpm test` | Chạy unit tests |
 | `pnpm test:e2e` | Chạy e2e tests |
 
+## Deploy Render
+
+### 1. Tạo PostgreSQL trên Render
+
+- Tạo service loại `PostgreSQL` trên Render.
+- Lấy `Internal Database URL` hoặc `External Database URL` để gán cho biến `DATABASE_URL`.
+
+### 2. Tạo Web Service cho Backend
+
+- Runtime: `Node`
+- Root Directory: `hotel-management-be` (nếu bạn deploy từ monorepo root)
+- Build Command:
+
+```bash
+pnpm install --frozen-lockfile && pnpm build
+```
+
+- Start Command:
+
+```bash
+pnpm start:prod
+```
+
+### 3. Cấu hình biến môi trường trên Render
+
+Thiết lập các biến sau trong dashboard Render:
+
+- `APP_NAME=hotel-management-be`
+- `APP_ENV=production`
+- `APP_TIMEZONE=Asia/Ho_Chi_Minh`
+- `DATABASE_URL=<Render Postgres URL>`
+- `JWT_SECRET=<strong-secret>`
+- `JWT_EXPIRES_IN=1d`
+- `JWT_REFRESH_SECRET=<strong-refresh-secret>`
+- `JWT_REFRESH_EXPIRES_IN=7d`
+- `THROTTLE_TTL=60000`
+- `THROTTLE_LIMIT=60`
+
+> Render tự cấp biến `PORT`. Dự án đã hỗ trợ tự map `PORT` cho app port khi deploy.
+
+### 4. Health Check
+
+Do app dùng global prefix + versioning, health endpoint là:
+
+```text
+/api/v1/health
+```
+
 ## Quy trình setup nhanh (TL;DR)
 
 ```bash

@@ -3,6 +3,11 @@ import { validateSync } from 'class-validator';
 import { EnvironmentVariables } from './env.validation';
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {
+  // Render injects PORT, while this project reads APP_PORT.
+  if (!config['APP_PORT'] && config['PORT']) {
+    config['APP_PORT'] = config['PORT'];
+  }
+
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
