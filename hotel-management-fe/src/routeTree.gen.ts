@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
@@ -19,6 +21,10 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCleaningRouteImport } from './routes/_authenticated/cleaning'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
+
+const AuthenticatedStoreMasterLazyRouteImport = createFileRoute(
+  '/_authenticated/store-master',
+)()
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,6 +40,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStoreMasterLazyRoute =
+  AuthenticatedStoreMasterLazyRouteImport.update({
+    id: '/store-master',
+    path: '/store-master',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store-master.lazy').then((d) => d.Route),
+  )
 const AuthenticatedStaffMasterRoute =
   AuthenticatedStaffMasterRouteImport.update({
     id: '/staff-master',
@@ -82,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -93,6 +108,7 @@ export interface FileRoutesByTo {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/_authenticated/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,6 +136,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/store-master'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -130,6 +148,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/store-master'
   id:
     | '__root__'
     | '/'
@@ -142,6 +161,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reservations'
     | '/_authenticated/rooms'
     | '/_authenticated/staff-master'
+    | '/_authenticated/store-master'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -172,6 +192,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/store-master': {
+      id: '/_authenticated/store-master'
+      path: '/store-master'
+      fullPath: '/store-master'
+      preLoaderRoute: typeof AuthenticatedStoreMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/staff-master': {
       id: '/_authenticated/staff-master'
@@ -233,6 +260,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
+  AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -243,6 +271,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedStaffMasterRoute: AuthenticatedStaffMasterRoute,
+  AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

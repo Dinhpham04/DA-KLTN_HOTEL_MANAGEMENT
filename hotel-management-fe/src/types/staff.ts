@@ -64,7 +64,7 @@ export interface UpdateStaffBody {
 }
 
 export interface StaffErrorResponse {
-  message: string
+  message: string | string[]
   errors?: Record<string, string[]>
 }
 
