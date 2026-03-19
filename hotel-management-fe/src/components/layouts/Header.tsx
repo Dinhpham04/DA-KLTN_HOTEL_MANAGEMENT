@@ -62,6 +62,7 @@ export function Header() {
       item: t('nav.master'),
       children: [
         { id: 71, url: '/staff-master', menu_children: t('nav.staffMaster') },
+        { id: 72, url: '/store-master', menu_children: t('nav.storeMaster') },
       ],
     },
     { id: 12, item: t('auth.logout'), onClick: handleLogout },

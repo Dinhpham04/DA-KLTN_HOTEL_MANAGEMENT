@@ -597,12 +597,12 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                         onUpdate({ ...methods.getValues(), dataStatus: 0 }, 1)
                       }
                     >
-                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#8bd08e] mx-4 w-[14.4rem] border border-black btn btn-default">
                         <span>{t('staff.dialogs.confirm')}</span>
                       </div>
                     </DialogClose>
                     <DialogClose>
-                      <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#eee] mx-4 w-[14.4rem] border border-black btn btn-default">
                         <span>{t('staff.dialogs.cancel')}</span>
                       </div>
                     </DialogClose>
@@ -740,7 +740,11 @@ function StaffMasterPage() {
   }
 
   const handleCreate = (data: CreateStaffBody) => {
-    createStaff(data)
+    const { dataStatus, ...rest } = data
+    createStaff({
+      ...rest,
+      staffType: Number(data.staffType),
+    })
   }
 
   const handleUpdate = (data: UpdateStaffBody, type: number) => {
@@ -859,7 +863,9 @@ function StaffMasterPage() {
 function extractErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as { response?: { data?: StaffErrorResponse } }
-    return axiosError.response?.data?.message || 'Đã xảy ra lỗi'
+    const message = axiosError.response?.data?.message
+    if (Array.isArray(message)) return message.join(', ')
+    return message || 'Đã xảy ra lỗi'
   }
   return 'Đã xảy ra lỗi'
 }
@@ -878,7 +884,7 @@ function showFieldErrors(error: unknown) {
         }
       }
     } else {
-      toast.error(data?.message || 'Đã xảy ra lỗi')
+      toast.error(extractErrorMessage(error))
     }
   }
 }
