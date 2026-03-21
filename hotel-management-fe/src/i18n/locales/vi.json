@@ -214,5 +214,80 @@
     "serverError": "Lỗi máy chủ",
     "networkError": "Lỗi kết nối mạng",
     "goHome": "Về trang chủ"
+  },
+  "facility": {
+    "title": "Quản lý cơ sở",
+    "addRow": "Thêm",
+    "columns": {
+      "no": "Mã",
+      "name": "Tên cửa hàng",
+      "nameEn": "Tên cửa hàng (Tiếng Anh)",
+      "address": "Địa chỉ",
+      "addressEn": "Địa chỉ (Tiếng Anh)",
+      "memo": "Ghi chú",
+      "keyFunction": "Khóa dọn phòng",
+      "color": "Màu nền",
+      "sharePlace": "Cho thú cưng",
+      "deliverybox": "Hộp chứa đồ",
+      "parking": "Bãi xe ô tô",
+      "bicycleParking": "Bãi xe đạp",
+      "actions": "Thao tác dòng"
+    },
+    "options": {
+      "notUsed": "Không sử dụng",
+      "used": "Sử dụng",
+      "yes": "Có",
+      "no": "Không"
+    },
+    "actions": {
+      "save": "Lưu",
+      "update": "Cập nhật",
+      "suspend": "Tạm ngưng",
+      "reactivate": "Kích hoạt lại"
+    },
+    "dialogs": {
+      "suspendTitle": "Bạn có muốn tạm ngưng sử dụng?",
+      "reactivateTitle": "Bạn có muốn kích hoạt lại?",
+      "confirm": "Xác nhận",
+      "cancel": "Hủy"
+    },
+    "messages": {
+      "createSuccess": "Thành công.",
+      "updateSuccess": "Cập nhật thành công.",
+      "suspendSuccess": "Đã tạm ngưng cửa hàng.",
+      "reactivateSuccess": "Đã kích hoạt lại cửa hàng."
+    },
+    "placeholders": {
+      "no": "NO",
+      "name": "Tên cửa hàng",
+      "nameEn": "Tên cửa hàng (Tiếng Anh)",
+      "zipCode": "ZIP CODE",
+      "address": "Địa chỉ",
+      "addressEn": "Địa chỉ (Tiếng Anh)",
+      "memo": "Ghi chú"
+    },
+    "validation": {
+      "facilityNoMax": "Mã số chỉ được tối đa 3 ký tự.",
+      "facilityNoRequired": "Mã số là bắt buộc.",
+      "facilityNameMax": "Tên cửa hàng tối đa 256 ký tự.",
+      "facilityNameRequired": "Tên cửa hàng là bắt buộc.",
+      "facilityNameEnMax": "Tên cửa hàng (Tiếng Anh) tối đa 256 ký tự.",
+      "facilityNameEnRequired": "Tên cửa hàng (Tiếng Anh) là bắt buộc.",
+      "zipCodeRequired": "ZIP CODE là bắt buộc.",
+      "zipCodeInvalid": "Định dạng ZIP CODE không hợp lệ.",
+      "zipCodeMax": "ZIP CODE tối đa 9 ký tự.",
+      "addressMax": "Địa chỉ tối đa 256 ký tự.",
+      "addressRequired": "Địa chỉ là bắt buộc.",
+      "addressEnMax": "Địa chỉ (Tiếng Anh) tối đa 512 ký tự.",
+      "addressEnRequired": "Địa chỉ (Tiếng Anh) là bắt buộc.",
+      "memoMax": "Ghi chú tối đa 1024 ký tự.",
+      "orderNumRequired": "Thứ tự là bắt buộc.",
+      "orderNumMin": "Thứ tự phải lớn hơn hoặc bằng 1.",
+      "orderNumMax": "Thứ tự phải nhỏ hơn hoặc bằng 999999.",
+      "parkingImgInvalid": "Định dạng ảnh bãi đỗ xe không hợp lệ.",
+      "parkingImgSize": "Dung lượng ảnh bãi đỗ xe phải nhỏ hơn hoặc bằng 10MB.",
+      "bicycleParkingImgInvalid": "Định dạng ảnh bãi đỗ xe đạp không hợp lệ.",
+      "bicycleParkingImgSize": "Dung lượng ảnh bãi đỗ xe đạp phải nhỏ hơn hoặc bằng 10MB."
+    }
   }
 }

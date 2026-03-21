@@ -76,7 +76,7 @@ const CustomFileInput = React.forwardRef<HTMLInputElement, CustomFileInputProps>
           />
         </label>
         <label className={cn('flex flex-col items-start', labelClassName)}>
-          {fileName ? truncateFileName(fileName, 20) : 'ファイル未選択'}
+          {fileName ? truncateFileName(fileName, 20) : 'Chưa chọn tệp'}
         </label>
       </div>
     )

@@ -1,17 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createLazyFileRoute } from '@tanstack/react-router'
-import { format } from 'date-fns'
 import { HttpStatusCode } from 'axios'
 import { Fragment, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
+
+import i18n from '@/i18n'
 
 import CustomDialog from '@/components/common/CustomDialog'
 import CustomFileInput from '@/components/common/CustomFileInput'
 import { CustomInput } from '@/components/common/CustomInput'
 import { CustomRadio, CustomRadioItems } from '@/components/common/CustomRadio'
-import CustomSelectClean from '@/components/common/CustomSelectClean'
+import CustomSelect from '@/components/common/CustomSelect'
 import {
   Table,
   TableBody,
@@ -37,7 +39,6 @@ import { cn } from '@/lib/utils'
 
 import { useCreateFacility } from '@/hooks/mutations/useCreateFacility'
 import { useUpdateFacility } from '@/hooks/mutations/useUpdateFacility'
-import { useUpdateFacilityOrder } from '@/hooks/mutations/useUpdateFacilityOrder'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import type {
   CreateFacilityBody,
@@ -46,14 +47,13 @@ import type {
   UpdateFacilityBody,
 } from '@/types/facility'
 
-interface Option {
-  value: '0' | '1'
-  label: string
-}
+import type { CustomSelectOption } from '@/components/common/CustomSelect'
 
-const KEY_FUNCTION_OPTIONS: Option[] = [
-  { label: 'Không sử dụng', value: '0' },
-  { label: 'Sử dụng', value: '1' },
+const t = i18n.t.bind(i18n)
+
+const KEY_FUNCTION_OPTIONS: CustomSelectOption[] = [
+  { label: t('facility.options.notUsed'), value: '0' },
+  { label: t('facility.options.used'), value: '1' },
 ]
 
 const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp']
@@ -64,38 +64,34 @@ const BaseSchema = z.object({
   facilityType: z.number(),
   facilityNo: z
     .string()
-    .max(3, { message: 'Mã số chỉ được tối đa 3 ký tự.' })
-    .nonempty({ message: 'Mã số là bắt buộc.' }),
+    .max(3, { message: t('facility.validation.facilityNoMax') })
+    .nonempty({ message: t('facility.validation.facilityNoRequired') }),
   facilityName: z
     .string()
-    .max(256, { message: 'Tên cửa hàng tối đa 256 ký tự.' })
-    .nonempty({ message: 'Tên cửa hàng là bắt buộc.' }),
+    .max(256, { message: t('facility.validation.facilityNameMax') })
+    .nonempty({ message: t('facility.validation.facilityNameRequired') }),
   facilityNameEn: z
     .string()
-    .max(256, { message: 'Tên cửa hàng (Tiếng Anh) tối đa 256 ký tự.' })
-    .nonempty({ message: 'Tên cửa hàng (Tiếng Anh) là bắt buộc.' }),
+    .max(256, { message: t('facility.validation.facilityNameEnMax') })
+    .nonempty({ message: t('facility.validation.facilityNameEnRequired') }),
   zipCode: z
     .string()
-    .nonempty({ message: 'ZIP CODE là bắt buộc.' })
-    .regex(/^([0-9]{3}-?[0-9]{4})$/, { message: 'Định dạng ZIP CODE không hợp lệ.' })
-    .max(9, { message: 'ZIP CODE tối đa 9 ký tự.' }),
+    .nonempty({ message: t('facility.validation.zipCodeRequired') })
+    .regex(/^([0-9]{3}-?[0-9]{4})$/, { message: t('facility.validation.zipCodeInvalid') })
+    .max(9, { message: t('facility.validation.zipCodeMax') }),
   address: z
     .string()
-    .max(256, { message: 'Địa chỉ tối đa 256 ký tự.' })
-    .nonempty({ message: 'Địa chỉ là bắt buộc.' }),
+    .max(256, { message: t('facility.validation.addressMax') })
+    .nonempty({ message: t('facility.validation.addressRequired') }),
   addressEn: z
     .string()
-    .max(512, { message: 'Địa chỉ (Tiếng Anh) tối đa 512 ký tự.' })
-    .nonempty({ message: 'Địa chỉ (Tiếng Anh) là bắt buộc.' }),
+    .max(512, { message: t('facility.validation.addressEnMax') })
+    .nonempty({ message: t('facility.validation.addressEnRequired') }),
   memo: z
     .string()
-    .max(1024, { message: 'Ghi chú tối đa 1024 ký tự.' })
+    .max(1024, { message: t('facility.validation.memoMax') })
     .optional(),
-  keyFunction: z
-    .object({
-      value: z.enum(['0', '1']),
-      label: z.string(),
-    }),
+  keyFunction: z.enum(['0', '1']),
   colorOption: z.string().optional(),
   sharePlaceFlag: z.enum(['0', '1']),
   deliveryboxFlag: z.enum(['0', '1']),
@@ -105,9 +101,9 @@ const BaseSchema = z.object({
   bicycleParkingImg: z.union([z.instanceof(File), z.string(), z.null()]).optional(),
   orderNum: z
     .number()
-    .nonnegative({ message: 'Thứ tự là bắt buộc.' })
-    .min(1, { message: 'Thứ tự phải lớn hơn hoặc bằng 1.' })
-    .max(999999, { message: 'Thứ tự phải nhỏ hơn hoặc bằng 999999.' }),
+    .nonnegative({ message: t('facility.validation.orderNumRequired') })
+    .min(1, { message: t('facility.validation.orderNumMin') })
+    .max(999999, { message: t('facility.validation.orderNumMax') }),
 })
 
 const CreateSchema = BaseSchema.refine(
@@ -118,9 +114,7 @@ const CreateSchema = BaseSchema.refine(
     return true
   },
   {
-    message: `Định dạng ảnh bãi đỗ xe không hợp lệ. (${validMimeTypes
-      .map((type) => type.split('/')[1])
-      .join(', ')})`,
+    message: t('facility.validation.parkingImgInvalid'),
     path: ['parkingImg'],
   },
 )
@@ -132,7 +126,7 @@ const CreateSchema = BaseSchema.refine(
       return true
     },
     {
-      message: `Dung lượng ảnh bãi đỗ xe phải nhỏ hơn hoặc bằng ${maxSize / (1024 * 1024)}MB.`,
+      message: t('facility.validation.parkingImgSize'),
       path: ['parkingImg'],
     },
   )
@@ -144,9 +138,7 @@ const CreateSchema = BaseSchema.refine(
       return true
     },
     {
-      message: `Định dạng ảnh bãi đỗ xe đạp không hợp lệ. (${validMimeTypes
-        .map((type) => type.split('/')[1])
-        .join(', ')})`,
+      message: t('facility.validation.bicycleParkingImgInvalid'),
       path: ['bicycleParkingImg'],
     },
   )
@@ -158,7 +150,7 @@ const CreateSchema = BaseSchema.refine(
       return true
     },
     {
-      message: `Dung lượng ảnh bãi đỗ xe đạp phải nhỏ hơn hoặc bằng ${maxSize / (1024 * 1024)}MB.`,
+      message: t('facility.validation.bicycleParkingImgSize'),
       path: ['bicycleParkingImg'],
     },
   )
@@ -173,9 +165,7 @@ const UpdateSchema = BaseSchema.extend({
     return true
   },
   {
-    message: `Định dạng ảnh bãi đỗ xe không hợp lệ. (${validMimeTypes
-      .map((type) => type.split('/')[1])
-      .join(', ')})`,
+    message: t('facility.validation.parkingImgInvalid'),
     path: ['parkingImg'],
   },
 )
@@ -187,7 +177,7 @@ const UpdateSchema = BaseSchema.extend({
       return true
     },
     {
-      message: `Dung lượng ảnh bãi đỗ xe phải nhỏ hơn hoặc bằng ${maxSize / (1024 * 1024)}MB.`,
+      message: t('facility.validation.parkingImgSize'),
       path: ['parkingImg'],
     },
   )
@@ -199,9 +189,7 @@ const UpdateSchema = BaseSchema.extend({
       return true
     },
     {
-      message: `Định dạng ảnh bãi đỗ xe đạp không hợp lệ. (${validMimeTypes
-        .map((type) => type.split('/')[1])
-        .join(', ')})`,
+      message: t('facility.validation.bicycleParkingImgInvalid'),
       path: ['bicycleParkingImg'],
     },
   )
@@ -213,7 +201,7 @@ const UpdateSchema = BaseSchema.extend({
       return true
     },
     {
-      message: `Dung lượng ảnh bãi đỗ xe đạp phải nhỏ hơn hoặc bằng ${maxSize / (1024 * 1024)}MB.`,
+      message: t('facility.validation.bicycleParkingImgSize'),
       path: ['bicycleParkingImg'],
     },
   )
@@ -230,7 +218,6 @@ interface UpdateFacilityRowProps {
   facility: Facility
   index: number
   handleUpdate: (data: FormUpdateValues, type: number) => void
-  addFacilityAtIndex: (index: number) => void
 }
 
 function getFileNameFromValue(value: FormCreateValues['parkingImg'] | FormUpdateValues['parkingImg']) {
@@ -241,6 +228,10 @@ function getFileNameFromValue(value: FormCreateValues['parkingImg'] | FormUpdate
 
 function boolToRadio(value: boolean): '0' | '1' {
   return value ? '1' : '0'
+}
+
+function getKeyFunctionValue(value: boolean): '0' | '1' {
+  return boolToRadio(value)
 }
 
 function radioToBool(value: '0' | '1'): boolean {
@@ -270,6 +261,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
+  const { t } = useTranslation()
   const methods = useForm<FormCreateValues>({
     resolver: zodResolver(CreateSchema),
     defaultValues: {
@@ -283,7 +275,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
       address: '',
       addressEn: '',
       memo: '',
-      keyFunction: { value: '0', label: 'Không sử dụng' },
+      keyFunction: '0',
       colorOption: '#3764A8',
       sharePlaceFlag: '0',
       deliveryboxFlag: '0',
@@ -500,10 +492,13 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
         <FormField
           control={methods.control}
           name="keyFunction"
-          render={({ field: { value, onChange } }) => (
+          render={({ field }) => (
             <FormItem>
               <FormControl>
-                <CustomSelectClean
+                <CustomSelect
+                  change={(option) => field.onChange(option.value)}
+                  option={KEY_FUNCTION_OPTIONS}
+                  selected={field.value}
                   customClassMain={cn(
                     'h-14 border hover:bg-white disabled:bg-gray',
                     {
@@ -511,9 +506,9 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                         errors.keyFunction,
                     },
                   )}
-                  option={KEY_FUNCTION_OPTIONS}
-                  selected={value}
-                  change={onChange}
+                  ref={field.ref}
+                  hideWhenDetached
+                  collisionBoundary={document.getElementById('store-table') ?? undefined}
                 />
               </FormControl>
               <FormMessage className="text-left text-xl text-red-500 whitespace-nowrap" />
@@ -553,13 +548,13 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="0" id="share_place_flag1-create" />
                     <Label htmlFor="share_place_flag1-create" className="text-[1.4rem]">
-                      Không
+                      {t('facility.options.no')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="1" id="share_place_flag2-create" />
                     <Label htmlFor="share_place_flag2-create" className="text-[1.4rem]">
-                      Có
+                      {t('facility.options.yes')}
                     </Label>
                   </div>
                 </CustomRadio>
@@ -582,13 +577,13 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="0" id="deliverybox_flag1-create" />
                     <Label htmlFor="deliverybox_flag1-create" className="text-[1.4rem]">
-                      Không
+                      {t('facility.options.no')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="1" id="deliverybox_flag2-create" />
                     <Label htmlFor="deliverybox_flag2-create" className="text-[1.4rem]">
-                      Có
+                      {t('facility.options.yes')}
                     </Label>
                   </div>
                 </CustomRadio>
@@ -611,13 +606,13 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="0" id="parking_flag1-create" />
                     <Label htmlFor="parking_flag1-create" className="text-[1.4rem]">
-                      Không
+                      {t('facility.options.no')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="1" id="parking_flag2-create" />
                     <Label htmlFor="parking_flag2-create" className="text-[1.4rem]">
-                      Có
+                      {t('facility.options.yes')}
                     </Label>
                   </div>
                 </CustomRadio>
@@ -634,7 +629,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
               <FormItem>
                 <FormControl>
                   <CustomFileInput
-                    label="Chọn"
+                    label="File"
                     onFileChange={(file) => field.onChange(file)}
                     initialFileName={getFileNameFromValue(field.value)}
                     accept="image/*"
@@ -663,13 +658,13 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="0" id="bicycle_parking_flag1-create" />
                     <Label htmlFor="bicycle_parking_flag1-create" className="text-[1.4rem]">
-                      Không
+                      {t('facility.options.no')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-4 w-[6rem]">
                     <CustomRadioItems value="1" id="bicycle_parking_flag2-create" />
                     <Label htmlFor="bicycle_parking_flag2-create" className="text-[1.4rem]">
-                      Có
+                      {t('facility.options.yes')}
                     </Label>
                   </div>
                 </CustomRadio>
@@ -686,7 +681,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
               <FormItem>
                 <FormControl>
                   <CustomFileInput
-                    label="Chọn"
+                    label="File"
                     onFileChange={(file) => field.onChange(file)}
                     initialFileName={getFileNameFromValue(field.value)}
                     accept="image/*"
@@ -704,12 +699,9 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
         )}
       </TableCell>
 
-      <TableCell className="text-left" />
-      <TableCell className="text-left" />
-
-      <TableCell className="text-left">
+      <TableCell className="text-center">
         <NButton className="bg-gray w-auto min-w-fit h-auto" type="submit">
-          <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Lưu</span>
+          <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.save')}</span>
         </NButton>
       </TableCell>
     </TableFormRow>
@@ -720,8 +712,8 @@ function UpdateFacilityRow({
   facility,
   index,
   handleUpdate,
-  addFacilityAtIndex,
 }: UpdateFacilityRowProps) {
+  const { t } = useTranslation()
   const methods = useForm<FormUpdateValues>({
     resolver: zodResolver(UpdateSchema),
     defaultValues: {
@@ -736,10 +728,7 @@ function UpdateFacilityRow({
       address: facility.address,
       addressEn: facility.addressEn,
       memo: facility.memo ?? '',
-      keyFunction: {
-        value: boolToRadio(facility.keyFunction),
-        label: boolToRadio(facility.keyFunction),
-      },
+      keyFunction: getKeyFunctionValue(facility.keyFunction),
       colorOption: facility.colorOption ?? '#3764A8',
       sharePlaceFlag: boolToRadio(facility.sharePlaceFlag),
       deliveryboxFlag: boolToRadio(facility.deliveryboxFlag),
@@ -770,10 +759,7 @@ function UpdateFacilityRow({
       address: facility.address,
       addressEn: facility.addressEn,
       memo: facility.memo ?? '',
-      keyFunction: {
-        value: boolToRadio(facility.keyFunction),
-        label: boolToRadio(facility.keyFunction),
-      },
+      keyFunction: getKeyFunctionValue(facility.keyFunction),
       colorOption: facility.colorOption ?? '#3764A8',
       sharePlaceFlag: boolToRadio(facility.sharePlaceFlag),
       deliveryboxFlag: boolToRadio(facility.deliveryboxFlag),
@@ -997,21 +983,28 @@ function UpdateFacilityRow({
         <FormField
           control={methods.control}
           name="keyFunction"
-          render={({ field: { value, onChange } }) => (
+          render={({ field }) => (
             <FormItem>
               <FormControl>
-                <CustomSelectClean
+                <CustomSelect
+                  change={(option) => field.onChange(option.value)}
+                  option={KEY_FUNCTION_OPTIONS}
+                  selected={field.value}
                   customClassMain={cn(
-                    'h-14 border hover:bg-white disabled:bg-gray',
+                    'disabled:opacity-100 h-14 border hover:bg-white disabled:bg-gray',
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.keyFunction,
                     },
+                    isSuspended && '!bg-gray-400',
                   )}
-                  option={KEY_FUNCTION_OPTIONS}
-                  selected={value}
-                  change={onChange}
-                  disabledSelect={isSuspended}
+                  customClassArrow={cn('', {
+                    '!bg-gray-400': isSuspended,
+                  })}
+                  ref={field.ref}
+                  disable={isSuspended}
+                  hideWhenDetached
+                  collisionBoundary={document.getElementById('store-table') ?? undefined}
                 />
               </FormControl>
               <FormMessage className="text-left text-xl text-red-500 whitespace-nowrap" />
@@ -1169,7 +1162,7 @@ function UpdateFacilityRow({
               <FormItem>
                 <FormControl>
                   <CustomFileInput
-                    label="Chọn"
+                    label="File"
                     onFileChange={(file) => {
                       field.onChange(file)
                     }}
@@ -1242,7 +1235,7 @@ function UpdateFacilityRow({
               <FormItem>
                 <FormControl>
                   <CustomFileInput
-                    label="Chọn"
+                    label="File"
                     onFileChange={(file) => {
                       field.onChange(file)
                     }}
@@ -1263,30 +1256,26 @@ function UpdateFacilityRow({
         )}
       </TableCell>
 
-      <TableCell className="text-left">{format(new Date(facility.updatedAt), 'yyyy/MM/dd')}</TableCell>
-      <TableCell className="text-left">{facility.updatedByName ?? (facility as Facility & { updatedBy?: string | null }).updatedBy ?? ''}</TableCell>
-
-      <TableCell className="text-left">
-        <div className="flex flex-wrap justify-between gap-[.5rem] min-w-[18rem]">
-          <div className="flex flex-wrap gap-[.5rem]">
+      <TableCell className="text-center">
+        <div className="flex flex-wrap justify-center gap-[.5rem] min-w-[18rem]">
+          <div className="flex flex-col flex-wrap gap-[.5rem]">
             {facility.dataStatus !== 0 ? (
               <>
                 <NButton className="bg-gray w-auto min-w-fit h-auto" type="submit">
-                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Cập nhật</span>
+                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.update')}</span>
                 </NButton>
                 <CustomDialog
                   customClass="text-center [&_svg]:hidden z-[99999]"
                   size="medium"
                   customClassContent="max-w-[50rem]"
                   trigger={
-                    <Button
-                      variant="outline"
-                      className="bg-gray px-0 w-auto min-w-fit h-auto btn btn-default"
+                    <NButton
+                      className="bg-gray px-4 w-auto min-w-fit h-auto btn btn-default"
                     >
-                      <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Tạm ngưng</span>
-                    </Button>
+                      <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.suspend')}</span>
+                    </NButton>
                   }
-                  title="Bạn có muốn tạm ngưng sử dụng?"
+                  title={t('facility.dialogs.suspendTitle')}
                   content={
                     <div className="flex justify-center p-5">
                       <DialogClose
@@ -1300,13 +1289,13 @@ function UpdateFacilityRow({
                           )
                         }
                       >
-                        <div className="mx-4 w-[12.4rem] bg-[#8bd08e] btn btn-default">
-                          <span>Xác nhận</span>
+                        <div className="bg-[#8bd08e] mx-4 w-[14.4rem] border border-black btn btn-default">
+                          <span>{t('facility.dialogs.confirm')}</span>
                         </div>
                       </DialogClose>
                       <DialogClose>
-                        <div className="mx-4 w-[12.4rem] bg-[#eee] btn btn-default">
-                          <span>Hủy</span>
+                        <div className="bg-[#eee] mx-4 w-[14.4rem] border border-black btn btn-default">
+                          <span>{t('facility.dialogs.cancel')}</span>
                         </div>
                       </DialogClose>
                     </div>
@@ -1319,14 +1308,11 @@ function UpdateFacilityRow({
                 size="medium"
                 customClassContent="max-w-[50rem]"
                 trigger={
-                  <Button
-                    variant="outline"
-                    className="bg-gray px-0 w-auto min-w-fit h-auto btn btn-default"
-                  >
-                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Kích hoạt lại</span>
-                  </Button>
+                  <NButton className="bg-gray px-2 w-auto min-w-fit h-auto btn btn-default" variant="default">
+                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.reactivate')}</span>
+                  </NButton>
                 }
-                title="Bạn có muốn kích hoạt lại?"
+                title={t('facility.dialogs.reactivateTitle')}
                 content={
                   <div className="flex justify-center p-5">
                     <DialogClose
@@ -1340,25 +1326,19 @@ function UpdateFacilityRow({
                         )
                       }
                     >
-                      <div className="mx-4 w-[12.4rem] bg-[#8bd08e] btn btn-default">
-                        <span>Xác nhận</span>
+                      <div className="bg-[#8bd08e] mx-4 w-[14.4rem] border border-black btn btn-default">
+                        <span>{t('facility.dialogs.confirm')}</span>
                       </div>
                     </DialogClose>
                     <DialogClose>
-                      <div className="mx-4 w-[12.4rem] bg-[#eee] btn btn-default">
-                        <span>Hủy</span>
+                      <div className="bg-[#eee] mx-4 w-[14.4rem] border border-black btn btn-default">
+                        <span>{t('facility.dialogs.cancel')}</span>
                       </div>
                     </DialogClose>
                   </div>
                 }
               />
             )}
-          </div>
-
-          <div className="flex gap-[.5rem]">
-            <NButton className="bg-gray w-auto h-auto" type="button" onClick={() => addFacilityAtIndex(index + 1)}>
-              <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Thêm dòng</span>
-            </NButton>
           </div>
         </div>
       </TableCell>
@@ -1371,6 +1351,7 @@ export const Route = createLazyFileRoute('/_authenticated/store-master')({
 })
 
 function StoreMasterPage() {
+  const { t } = useTranslation()
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [isAddFacility, setIsAddFacility] = useState(false)
   const [indexAddFacility, setIndexAddFacility] = useState(0)
@@ -1392,8 +1373,7 @@ function StoreMasterPage() {
     onSuccess() {
       refetch()
       setIsAddFacility(false)
-      toast.success('Thành công.')
-      toast.success('Thành công.')
+      toast.success(t('facility.messages.createSuccess'))
     },
     onError(error) {
       toast.error(getErrorMessage(error))
@@ -1404,24 +1384,12 @@ function StoreMasterPage() {
     onSuccess() {
       refetch()
       if (currentOperationType === 0) {
-        toast.success('Cập nhật thành công.')
-        toast.success('Cập nhật thành công.')
+        toast.success(t('facility.messages.updateSuccess'))
       } else if (currentOperationType === 1) {
-        toast.success('Đã tạm ngưng cửa hàng.')
+        toast.success(t('facility.messages.suspendSuccess'))
       } else if (currentOperationType === 2) {
-        toast.success('Đã kích hoạt lại cửa hàng.')
+        toast.success(t('facility.messages.reactivateSuccess'))
       }
-    },
-    onError(error) {
-      toast.error(getErrorMessage(error))
-    },
-  })
-
-  const { mutate: updateFacilityOrder, isPending: isPendingUpdateOrder } = useUpdateFacilityOrder({
-    onSuccess() {
-      refetch()
-      toast.success('Đã cập nhật thứ tự.')
-      toast.success('Đã cập nhật thứ tự.')
     },
     onError(error) {
       toast.error(getErrorMessage(error))
@@ -1442,7 +1410,7 @@ function StoreMasterPage() {
       address: data.address,
       addressEn: data.addressEn,
       facilityType: data.facilityType,
-      keyFunction: radioToBool(data.keyFunction.value),
+      keyFunction: radioToBool(data.keyFunction),
       sharePlaceFlag: radioToBool(data.sharePlaceFlag),
       deliveryboxFlag: radioToBool(data.deliveryboxFlag),
       parkingFlag: radioToBool(data.parkingFlag),
@@ -1480,7 +1448,7 @@ function StoreMasterPage() {
       zipCode: data.zipCode,
       address: data.address,
       addressEn: data.addressEn,
-      keyFunction: radioToBool(data.keyFunction.value),
+      keyFunction: radioToBool(data.keyFunction),
       sharePlaceFlag: radioToBool(data.sharePlaceFlag),
       deliveryboxFlag: radioToBool(data.deliveryboxFlag),
       parkingFlag: radioToBool(data.parkingFlag),
@@ -1505,16 +1473,8 @@ function StoreMasterPage() {
     updateFacility(payload)
   }
 
-  const handleUpdateOrderNum = () => {
-    const payload = facilities.map((facility, index) => ({
-      facilityId: facility.facilityId,
-      orderNum: index + 1,
-    }))
-    updateFacilityOrder(payload)
-  }
-
   const isPageLoading =
-    isLoading || isPendingUpdate || isPendingCreate || isPendingUpdateOrder
+    isLoading || isPendingUpdate || isPendingCreate
 
   return (
     <>
@@ -1522,16 +1482,13 @@ function StoreMasterPage() {
 
       <div className="pt-[2.6rem] pb-[12rem] areas-setting-page common-container">
         <div className="flex items-center h-[4.7rem] bg-white font-bold text-[2.3rem] before:content-[''] before:bg-primary before:w-[.4rem] before:h-full">
-          <span className="ml-[1.5rem]">Quản lý cơ sở</span>
+          <span className="ml-[1.5rem]">{t('facility.title')}</span>
         </div>
 
         <div className="flex justify-end mt-[2.4rem]">
           <div className="flex flex-wrap gap-[2.4rem] group-button">
             <NButton className="bg-gray w-[16rem] h-[4rem]" onClick={() => addFacilityAtIndex(0)}>
-              <span className="text-[1.4rem] leading-[1.4rem]">Thêm</span>
-            </NButton>
-            <NButton className="bg-gray w-[16rem] h-[4rem]" onClick={handleUpdateOrderNum}>
-              <span className="text-[1.4rem] leading-[1.4rem]">Cập nhật thứ tự</span>
+              <span className="text-[1.4rem] leading-[1.4rem]">{t('facility.addRow')}</span>
             </NButton>
           </div>
         </div>
@@ -1550,21 +1507,19 @@ function StoreMasterPage() {
           >
             <TableHeader className="sticky top-0 z-[9]">
               <TableRow className="bg-gray-eee data-[state=selected]:bg-gray-eee hover:bg-gray-eee">
-                <TableHead className="min-w-[6.5rem] h-[5.6rem]  text-[1.6rem] text-center">Mã</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">Tên cửa hàng</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">Tên cửa hàng (Tiếng Anh)</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">Địa chỉ</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">Địa chỉ (Tiếng Anh)</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">Ghi chú</TableHead>
-                <TableHead className="min-w-[13rem] h-[5.6rem] text-[1.6rem] text-center">Khóa dọn phòng</TableHead>
-                <TableHead className="min-w-[8rem] h-[5.6rem] text-[1.6rem] text-center">Màu nền</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">Cho thú cưng</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">Hộp thư</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">Bãi xe ô tô</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">Bãi xe đạp</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">Ngày cập nhật</TableHead>
-                <TableHead className="min-w-[13rem] h-[5.6rem] text-[1.6rem] text-center">Người cập nhật</TableHead>
-                <TableHead className="min-w-[24rem] h-[5.6rem] text-[1.6rem] text-center">Thao tác dòng</TableHead>
+                <TableHead className="min-w-[6.5rem] h-[5.6rem]  text-[1.6rem] text-center">{t('facility.columns.no')}</TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.name')}</TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.nameEn')}</TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.address')}</TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.addressEn')}</TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.memo')}</TableHead>
+                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.keyFunction')}</TableHead>
+                <TableHead className="min-w-[8rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.color')}</TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.sharePlace')}</TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.deliverybox')}</TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.parking')}</TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.bicycleParking')}</TableHead>
+                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.actions')}</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -1579,7 +1534,6 @@ function StoreMasterPage() {
                     facility={facility}
                     index={index}
                     handleUpdate={handleUpdate}
-                    addFacilityAtIndex={addFacilityAtIndex}
                   />
                 </Fragment>
               ))}
