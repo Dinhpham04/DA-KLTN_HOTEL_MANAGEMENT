@@ -15,12 +15,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <ToastContainer
-        position="top-right"
-        newestOnTop
-        autoClose={2000}
-        hideProgressBar={false}
-      />
+      <ToastContainer position="top-right" newestOnTop autoClose={2000} hideProgressBar={false} />
       {import.meta.env.DEV && (
         <>
           <TanStackRouterDevtools position="bottom-right" />

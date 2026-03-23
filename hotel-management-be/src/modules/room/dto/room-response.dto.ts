@@ -4,6 +4,7 @@ import type { Room, RoomType, Facility, RoomClass } from '@prisma/client';
 type RoomWithRelations = Room & {
   roomType?: RoomType & { roomClass?: RoomClass };
   facility?: Facility;
+  updatedBy?: { staffId: number; staffName: string } | null;
 };
 
 export class RoomResponseDto {
@@ -29,6 +30,7 @@ export class RoomResponseDto {
   @ApiPropertyOptional() readonly facilityNo?: string;
   @ApiPropertyOptional() readonly roomTypeName?: string;
   @ApiPropertyOptional() readonly roomClassName?: string;
+  @ApiPropertyOptional() readonly updatedByName?: string;
 
   static fromEntity(room: RoomWithRelations): RoomResponseDto {
     return Object.assign(new RoomResponseDto(), {
@@ -53,6 +55,7 @@ export class RoomResponseDto {
       facilityNo: room.facility?.facilityNo,
       roomTypeName: room.roomType?.roomTypeName,
       roomClassName: room.roomType?.roomClass?.roomClassName,
+      updatedByName: room.updatedBy?.staffName,
     } satisfies Record<keyof RoomResponseDto, unknown>);
   }
 }

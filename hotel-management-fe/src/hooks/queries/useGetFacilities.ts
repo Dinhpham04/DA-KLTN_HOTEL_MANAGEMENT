@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { facilityApi } from '@/api/facility.api'
 import type {
   Facility,
@@ -6,6 +5,7 @@ import type {
   FacilityPaginationMeta,
   PaginatedFacilityResponse,
 } from '@/types/facility'
+import { useQuery } from '@tanstack/react-query'
 
 interface UseGetFacilitiesParams {
   params?: FacilityFilterParams

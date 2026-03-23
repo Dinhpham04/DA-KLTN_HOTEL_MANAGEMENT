@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils'
 import * as React from 'react'
 
-interface CustomFileInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+interface CustomFileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string
   inputClassName?: string
   labelClassName?: string
@@ -21,7 +20,7 @@ const CustomFileInput = React.forwardRef<HTMLInputElement, CustomFileInputProps>
       onFileChange,
       ...props
     },
-    ref,
+    ref
   ) => {
     const getFileNameFromUrl = (url: string) => {
       try {
@@ -47,9 +46,7 @@ const CustomFileInput = React.forwardRef<HTMLInputElement, CustomFileInputProps>
       return fileName
     }
 
-    const [fileName, setFileName] = React.useState<string>(
-      getFileNameFromUrl(initialFileName),
-    )
+    const [fileName, setFileName] = React.useState<string>(getFileNameFromUrl(initialFileName))
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0] || null
@@ -63,24 +60,18 @@ const CustomFileInput = React.forwardRef<HTMLInputElement, CustomFileInputProps>
           className={cn(
             'btn btn-default cursor-pointer whitespace-nowrap px-4 py-2',
             inputClassName,
-            props.disabled && 'cursor-not-allowed hover:!bg-gray hover:!text-black',
+            props.disabled && 'cursor-not-allowed hover:!bg-gray hover:!text-black'
           )}
         >
           {label}
-          <input
-            type="file"
-            className="hidden"
-            onChange={handleFileChange}
-            ref={ref}
-            {...props}
-          />
+          <input type="file" className="hidden" onChange={handleFileChange} ref={ref} {...props} />
         </label>
         <label className={cn('flex flex-col items-start', labelClassName)}>
           {fileName ? truncateFileName(fileName, 20) : 'Chưa chọn tệp'}
         </label>
       </div>
     )
-  },
+  }
 )
 
 CustomFileInput.displayName = 'CustomFileInput'

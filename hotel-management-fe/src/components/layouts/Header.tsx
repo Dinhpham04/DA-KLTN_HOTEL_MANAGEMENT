@@ -1,22 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-import { Hotel, LogOut } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
+import { CloseIcon } from '@/components/svgs/CloseIcon'
+import { DashboardIcon } from '@/components/svgs/DashboardIcon'
+import { MenuIcon } from '@/components/svgs/MenuIcon'
+import { ReservationIcon } from '@/components/svgs/ReservationIcon'
+import { RoomIcon } from '@/components/svgs/RoomIcon'
+import { SearchIconSvg } from '@/components/svgs/SearchIconSvg'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { DashboardIcon } from '@/components/svgs/DashboardIcon'
-import { ReservationIcon } from '@/components/svgs/ReservationIcon'
-import { RoomIcon } from '@/components/svgs/RoomIcon'
-import { SearchIconSvg } from '@/components/svgs/SearchIconSvg'
-import { MenuIcon } from '@/components/svgs/MenuIcon'
-import { CloseIcon } from '@/components/svgs/CloseIcon'
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
+import { useAuth } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { Hotel, LogOut } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface MenuChild {
   id: number
@@ -63,6 +63,7 @@ export function Header() {
       children: [
         { id: 71, url: '/staff-master', menu_children: t('nav.staffMaster') },
         { id: 72, url: '/store-master', menu_children: t('nav.storeMaster') },
+        { id: 73, url: '/room-master', menu_children: t('nav.roomMaster') },
       ],
     },
     { id: 12, item: t('auth.logout'), onClick: handleLogout },
@@ -130,26 +131,19 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/dashboard'
-                  ? 'bg-[#666666]'
-                  : 'bg-[#204172]'
-                  }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/dashboard' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/dashboard' })}
               >
                 <DashboardIcon
-                  className={
-                    location.pathname === '/dashboard'
-                      ? 'text-[#666666]'
-                      : 'text-white'
-                  }
+                  className={location.pathname === '/dashboard' ? 'text-[#666666]' : 'text-white'}
                 />
               </div>
               <div
                 className={cn(
                   'font-bold text-[1.2rem]',
-                  location.pathname === '/dashboard'
-                    ? 'text-gray-400'
-                    : 'text-white',
+                  location.pathname === '/dashboard' ? 'text-gray-400' : 'text-white'
                 )}
               >
                 {t('nav.dashboard')}
@@ -161,26 +155,21 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/reservations'
-                  ? 'bg-[#666666]'
-                  : 'bg-[#204172]'
-                  }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/reservations' })}
               >
                 <ReservationIcon
                   className={
-                    location.pathname === '/reservations'
-                      ? 'text-[#666666]'
-                      : 'text-white'
+                    location.pathname === '/reservations' ? 'text-[#666666]' : 'text-white'
                   }
                 />
               </div>
               <div
                 className={cn(
                   'font-bold text-[1.2rem]',
-                  location.pathname === '/reservations'
-                    ? 'text-gray-400'
-                    : 'text-white',
+                  location.pathname === '/reservations' ? 'text-gray-400' : 'text-white'
                 )}
               >
                 {t('nav.reservations')}
@@ -192,26 +181,19 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/rooms'
-                  ? 'bg-[#666666]'
-                  : 'bg-[#204172]'
-                  }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/rooms' })}
               >
                 <RoomIcon
-                  className={
-                    location.pathname === '/rooms'
-                      ? 'text-[#666666]'
-                      : 'text-white'
-                  }
+                  className={location.pathname === '/rooms' ? 'text-[#666666]' : 'text-white'}
                 />
               </div>
               <div
                 className={cn(
                   'font-bold text-[1.2rem]',
-                  location.pathname === '/rooms'
-                    ? 'text-gray-400'
-                    : 'text-white',
+                  location.pathname === '/rooms' ? 'text-gray-400' : 'text-white'
                 )}
               >
                 {t('nav.rooms')}
@@ -223,26 +205,19 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/clients'
-                  ? 'bg-[#666666]'
-                  : 'bg-[#204172]'
-                  }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/clients' })}
               >
                 <SearchIconSvg
-                  className={
-                    location.pathname === '/clients'
-                      ? 'text-[#666666]'
-                      : 'text-white'
-                  }
+                  className={location.pathname === '/clients' ? 'text-[#666666]' : 'text-white'}
                 />
               </div>
               <div
                 className={cn(
                   'font-bold text-[1.2rem]',
-                  location.pathname === '/clients'
-                    ? 'text-gray-400'
-                    : 'text-white',
+                  location.pathname === '/clients' ? 'text-gray-400' : 'text-white'
                 )}
               >
                 {t('nav.clients')}
@@ -255,27 +230,20 @@ export function Header() {
             <div className="flex flex-col justify-center items-center gap-2">
               <DrawerTrigger className="flex justify-center items-start h-full">
                 <div
-                  className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
-                    }`}
+                  className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                    activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                   id="open-side-bar-trigger"
                   onClick={() => handleClick('menu')}
                 >
-                  {activeId === 'menu' ? (
-                    <CloseIcon className="text-white" />
-                  ) : (
-                    <MenuIcon />
-                  )}
+                  {activeId === 'menu' ? <CloseIcon className="text-white" /> : <MenuIcon />}
                 </div>
               </DrawerTrigger>
               <DrawerContent
                 className="top-32 right-0 bottom-[unset] left-[unset] bg-[#3764A8] mt-0 pt-[3.2rem] pr-[1.5rem] pb-[3.2rem] pl-[2.9rem] border-none rounded-none w-full max-w-[27.9rem] h-[calc(100vh_-_8rem)] overflow-x-hidden overflow-y-auto"
                 style={drawerStyles}
               >
-                <Accordion
-                  type="single"
-                  collapsible
-                  className="max-w-[27.9rem]"
-                >
+                <Accordion type="single" collapsible className="max-w-[27.9rem]">
                   {menuList.map((item) => (
                     <AccordionItem
                       value={`item-${item.id}`}
@@ -312,9 +280,7 @@ export function Header() {
                         >
                           <AccordionTrigger className="group relative w-[23.2rem] h-[3.6rem] font-bold text-[1.4rem] text-white [&>svg]:hover:text-white hover:no-underline leading-[3.6rem]">
                             <span className="z-20 ml-2 flex items-center gap-2">
-                              {item.id === 12 && (
-                                <LogOut size={16} className="shrink-0" />
-                              )}
+                              {item.id === 12 && <LogOut size={16} className="shrink-0" />}
                               {item.item}
                             </span>
                             <span className="z-10 absolute inset-0 bg-[#204172] w-0 group-hover:w-full h-full transition-all duration-[10ms] ease-in-out" />
@@ -334,9 +300,7 @@ export function Header() {
                   ))}
                 </Accordion>
               </DrawerContent>
-              <div className="font-bold text-[1.2rem] text-white">
-                {t('header.menu')}
-              </div>
+              <div className="font-bold text-[1.2rem] text-white">{t('header.menu')}</div>
             </div>
           </Drawer>
         </div>

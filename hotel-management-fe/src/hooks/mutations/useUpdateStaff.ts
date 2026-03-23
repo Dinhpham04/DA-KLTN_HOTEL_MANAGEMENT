@@ -1,6 +1,6 @@
-import { useMutation } from '@tanstack/react-query'
 import { staffApi } from '@/api/staff.api'
 import type { UpdateStaffBody } from '@/types/staff'
+import { useMutation } from '@tanstack/react-query'
 
 interface UseUpdateStaffParams {
   onSuccess?: () => void

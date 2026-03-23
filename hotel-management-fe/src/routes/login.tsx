@@ -66,7 +66,7 @@ function LoginPage() {
               401: t('auth.invalidCredentials'),
               403: t('auth.accountLocked'),
               429: t('auth.tooManyAttempts'),
-            }),
+            })
           )
         },
       }
@@ -181,9 +181,7 @@ function LoginPage() {
                   disabled={login.isPending}
                   className="flex justify-center items-center bg-[#4F46E5] hover:bg-[#3d35a8] mt-10 rounded-[.6rem] w-[35rem] h-14"
                 >
-                  {login.isPending && (
-                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                  )}
+                  {login.isPending && <Loader2 className="w-6 h-6 animate-spin mr-2" />}
                   <span className="font-bold text-white text-[1.5rem]">
                     {t('auth.loginButton')}
                   </span>

@@ -1,18 +1,25 @@
-import type { PaginatedResponse, PaginationParams, Room, RoomStatus } from '@/types'
 import apiClient from '@/lib/axios'
+import type {
+  CreateRoomBody,
+  PaginatedRoomResponse,
+  Room,
+  RoomFilterParams,
+  UpdateRoomBody,
+} from '@/types/room'
 
 export const roomApi = {
-  getList: (params?: PaginationParams & { status?: RoomStatus }) =>
-    apiClient.get<PaginatedResponse<Room>>('/rooms', { params }),
+  getRooms: (params?: RoomFilterParams) =>
+    apiClient.get<PaginatedRoomResponse>('/rooms', { params }),
 
-  getById: (id: number) => apiClient.get<Room>(`/rooms/${id}`),
+  getRoomById: (roomId: number) => apiClient.get<Room>(`/rooms/${roomId}`),
 
-  create: (data: Partial<Room>) => apiClient.post<Room>('/rooms', data),
+  createRoom: (data: CreateRoomBody) => apiClient.post<Room>('/rooms', data),
 
-  update: (id: number, data: Partial<Room>) => apiClient.patch<Room>(`/rooms/${id}`, data),
+  updateRoom: ({ roomId, ...data }: UpdateRoomBody) =>
+    apiClient.patch<Room>(`/rooms/${roomId}`, data),
 
-  delete: (id: number) => apiClient.delete(`/rooms/${id}`),
+  deleteRoom: (roomId: number) => apiClient.delete(`/rooms/${roomId}`),
 
-  updateStatus: (id: number, status: RoomStatus) =>
-    apiClient.patch<Room>(`/rooms/${id}/status`, { status }),
+  updateRoomStatus: (roomId: number, roomStatus: number) =>
+    apiClient.patch<Room>(`/rooms/${roomId}/status`, { roomStatus }),
 }

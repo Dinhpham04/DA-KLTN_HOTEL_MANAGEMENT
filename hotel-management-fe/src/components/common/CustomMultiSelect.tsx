@@ -12,7 +12,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { type VariantProps, cva } from 'class-variance-authority'
 import { Check, XIcon } from 'lucide-react'
 import * as React from 'react'
 
@@ -32,12 +32,12 @@ const multiSelectVariants = cva(
     defaultVariants: {
       variant: 'default',
     },
-  },
+  }
 )
 
 interface CustomMultiSelectProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof multiSelectVariants> {
+    VariantProps<typeof multiSelectVariants> {
   options: {
     label: string
     value: string
@@ -58,10 +58,7 @@ interface CustomMultiSelectProps
   hiddenSelectAll?: boolean
 }
 
-export const CustomMultiSelect = React.forwardRef<
-  HTMLButtonElement,
-  CustomMultiSelectProps
->(
+export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMultiSelectProps>(
   (
     {
       options,
@@ -80,7 +77,7 @@ export const CustomMultiSelect = React.forwardRef<
       selectFull = false,
       ...props
     },
-    ref,
+    ref
   ) => {
     const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue)
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
@@ -137,7 +134,7 @@ export const CustomMultiSelect = React.forwardRef<
               onClick={handleTogglePopover}
               className={cn(
                 'h-auto min-h-10 w-full items-stretch justify-between rounded-md border border-black bg-inherit p-0 text-[1.4rem] hover:bg-inherit',
-                className,
+                className
               )}
             >
               {selectedValues.length > 0 ? (
@@ -152,11 +149,13 @@ export const CustomMultiSelect = React.forwardRef<
                           key={value}
                           className={cn(
                             'max-w-full flex-shrink-0 overflow-hidden font-[500]',
-                            multiSelectVariants({ variant }),
+                            multiSelectVariants({ variant })
                           )}
                           style={{ animationDuration: `${animation}s` }}
                         >
-                          {IconComponent && <IconComponent className="mr-2 h-[1.6rem] w-[1.6rem]" />}
+                          {IconComponent && (
+                            <IconComponent className="mr-2 h-[1.6rem] w-[1.6rem]" />
+                          )}
                           <span className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-black">
                             {option?.label}
                           </span>
@@ -176,7 +175,7 @@ export const CustomMultiSelect = React.forwardRef<
                     <div
                       className={cn(
                         'flex h-full w-[3.2rem] items-center justify-center border-l border-black bg-[#eee]',
-                        classIconName,
+                        classIconName
                       )}
                     >
                       <svg
@@ -205,7 +204,7 @@ export const CustomMultiSelect = React.forwardRef<
                     <div
                       className={cn(
                         'flex h-full w-[3.2rem] items-center justify-center border-l border-black bg-[#eee]',
-                        classIconName,
+                        classIconName
                       )}
                     >
                       <svg
@@ -239,9 +238,7 @@ export const CustomMultiSelect = React.forwardRef<
             : {})}
         >
           <Command
-            filter={(value, search) =>
-              value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-            }
+            filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
           >
             <CommandInput
               className="text-[1.4rem]"
@@ -260,7 +257,7 @@ export const CustomMultiSelect = React.forwardRef<
                     <Check
                       className={cn(
                         'mr-2 h-[1.4rem] w-[1.4rem]',
-                        selectedValues.length === options.length ? 'opacity-100' : 'opacity-0',
+                        selectedValues.length === options.length ? 'opacity-100' : 'opacity-0'
                       )}
                     />
                     <span>(すべて選択)</span>
@@ -277,7 +274,7 @@ export const CustomMultiSelect = React.forwardRef<
                       <Check
                         className={cn(
                           'mr-2 h-[1.4rem] w-[1.4rem]',
-                          isSelected ? 'opacity-100' : 'opacity-0',
+                          isSelected ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       {option.icon && (
@@ -315,7 +312,7 @@ export const CustomMultiSelect = React.forwardRef<
         </PopoverContent>
       </Popover>
     )
-  },
+  }
 )
 
 CustomMultiSelect.displayName = 'CustomMultiSelect'

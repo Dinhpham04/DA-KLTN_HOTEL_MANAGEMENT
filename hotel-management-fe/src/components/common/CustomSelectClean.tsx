@@ -65,7 +65,7 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
           aria-expanded={open}
           className={cn(
             'w-full justify-between border border-black bg-white py-0 pr-0 text-[1.4rem] hover:bg-[#eeeeee] disabled:cursor-not-allowed disabled:opacity-50',
-            customClassMain,
+            customClassMain
           )}
         >
           <span className="flex h-full max-w-[calc(100%-40px)] flex-1 items-center overflow-hidden text-left text-ellipsis">
@@ -77,7 +77,7 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
             className={cn(
               'flex h-full w-[3.2rem] items-center justify-center border-l border-black',
               disabledSelect ? 'cursor-not-allowed bg-white' : 'bg-[#eee]',
-              customClassArrow,
+              customClassArrow
             )}
           >
             <svg
@@ -102,10 +102,7 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
           }
         >
           <CommandList className={cn(customClassDropDown)}>
-            <CommandInput
-              className="text-xl text-black"
-              placeholder="Tìm kiếm tùy chọn"
-            />
+            <CommandInput className="text-xl text-black" placeholder="Tìm kiếm tùy chọn" />
             <CommandEmpty className="text-xl text-black">Không tìm thấy dữ liệu</CommandEmpty>
             <CommandGroup className="pr-4" onWheel={(e) => e.stopPropagation()}>
               {option.map((item) => (
@@ -118,7 +115,7 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
                   <Check
                     className={cn(
                       'mr-2 h-6 w-6',
-                      value === item.value ? 'opacity-100' : 'opacity-0',
+                      value === item.value ? 'opacity-100' : 'opacity-0'
                     )}
                   />
                   <span className="max-w-[30rem] overflow-hidden text-ellipsis text-xl">

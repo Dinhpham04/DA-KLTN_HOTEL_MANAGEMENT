@@ -74,9 +74,7 @@ function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{t('dashboard.title')}</h2>
-          <p className="text-sm text-muted-foreground">
-            Tổng quan hoạt động khách sạn hôm nay
-          </p>
+          <p className="text-sm text-muted-foreground">Tổng quan hoạt động khách sạn hôm nay</p>
         </div>
         <Badge variant="outline" className="gap-1">
           <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />

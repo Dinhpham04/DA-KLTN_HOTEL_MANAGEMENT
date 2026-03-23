@@ -27,12 +27,7 @@ import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import { Button } from '@/components/ui/button'
 import { DialogClose } from '@/components/ui/dialog'
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form'
+import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Label } from '@/components/ui/label'
 import { NButton } from '@/components/ui/new-button'
 import { cn } from '@/lib/utils'
@@ -116,7 +111,7 @@ const CreateSchema = BaseSchema.refine(
   {
     message: t('facility.validation.parkingImgInvalid'),
     path: ['parkingImg'],
-  },
+  }
 )
   .refine(
     (data) => {
@@ -128,7 +123,7 @@ const CreateSchema = BaseSchema.refine(
     {
       message: t('facility.validation.parkingImgSize'),
       path: ['parkingImg'],
-    },
+    }
   )
   .refine(
     (data) => {
@@ -140,7 +135,7 @@ const CreateSchema = BaseSchema.refine(
     {
       message: t('facility.validation.bicycleParkingImgInvalid'),
       path: ['bicycleParkingImg'],
-    },
+    }
   )
   .refine(
     (data) => {
@@ -152,23 +147,24 @@ const CreateSchema = BaseSchema.refine(
     {
       message: t('facility.validation.bicycleParkingImgSize'),
       path: ['bicycleParkingImg'],
-    },
+    }
   )
 
 const UpdateSchema = BaseSchema.extend({
   facilityId: z.number(),
-}).refine(
-  (data) => {
-    if (data.parkingImg instanceof File) {
-      return validMimeTypes.includes(data.parkingImg.type)
+})
+  .refine(
+    (data) => {
+      if (data.parkingImg instanceof File) {
+        return validMimeTypes.includes(data.parkingImg.type)
+      }
+      return true
+    },
+    {
+      message: t('facility.validation.parkingImgInvalid'),
+      path: ['parkingImg'],
     }
-    return true
-  },
-  {
-    message: t('facility.validation.parkingImgInvalid'),
-    path: ['parkingImg'],
-  },
-)
+  )
   .refine(
     (data) => {
       if (data.parkingImg instanceof File) {
@@ -179,7 +175,7 @@ const UpdateSchema = BaseSchema.extend({
     {
       message: t('facility.validation.parkingImgSize'),
       path: ['parkingImg'],
-    },
+    }
   )
   .refine(
     (data) => {
@@ -191,7 +187,7 @@ const UpdateSchema = BaseSchema.extend({
     {
       message: t('facility.validation.bicycleParkingImgInvalid'),
       path: ['bicycleParkingImg'],
-    },
+    }
   )
   .refine(
     (data) => {
@@ -203,7 +199,7 @@ const UpdateSchema = BaseSchema.extend({
     {
       message: t('facility.validation.bicycleParkingImgSize'),
       path: ['bicycleParkingImg'],
-    },
+    }
   )
 
 type FormCreateValues = z.infer<typeof CreateSchema>
@@ -220,7 +216,9 @@ interface UpdateFacilityRowProps {
   handleUpdate: (data: FormUpdateValues, type: number) => void
 }
 
-function getFileNameFromValue(value: FormCreateValues['parkingImg'] | FormUpdateValues['parkingImg']) {
+function getFileNameFromValue(
+  value: FormCreateValues['parkingImg'] | FormUpdateValues['parkingImg']
+) {
   if (typeof value === 'string') return value
   if (value instanceof File) return value.name
   return ''
@@ -293,7 +291,11 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
   } = methods
 
   return (
-    <TableFormRow methods={methods} onSubmit={methods.handleSubmit(handleCreate)} className="bg-white">
+    <TableFormRow
+      methods={methods}
+      onSubmit={methods.handleSubmit(handleCreate)}
+      className="bg-white"
+    >
       <TableCell className="text-left">
         <FormField
           control={methods.control}
@@ -310,7 +312,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityNo,
-                    },
+                    }
                   )}
                   autoResize
                 />
@@ -336,7 +338,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityName,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -364,7 +366,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityNameEn,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -394,7 +396,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                       {
                         'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                           errors.zipCode,
-                      },
+                      }
                     )}
                     autoResize
                   />
@@ -418,7 +420,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                       {
                         'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                           errors.address,
-                      },
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -447,7 +449,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.addressEn,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -475,7 +477,7 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.memo,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -499,13 +501,10 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
                   change={(option) => field.onChange(option.value)}
                   option={KEY_FUNCTION_OPTIONS}
                   selected={field.value}
-                  customClassMain={cn(
-                    'h-14 border hover:bg-white disabled:bg-gray',
-                    {
-                      'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
-                        errors.keyFunction,
-                    },
-                  )}
+                  customClassMain={cn('h-14 border hover:bg-white disabled:bg-gray', {
+                    'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
+                      errors.keyFunction,
+                  })}
                   ref={field.ref}
                   hideWhenDetached
                   collisionBoundary={document.getElementById('store-table') ?? undefined}
@@ -701,18 +700,16 @@ function CreateFacilityRow({ facility, handleCreate }: CreateFacilityRowProps) {
 
       <TableCell className="text-center">
         <NButton className="bg-gray w-auto min-w-fit h-auto" type="submit">
-          <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.save')}</span>
+          <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+            {t('facility.actions.save')}
+          </span>
         </NButton>
       </TableCell>
     </TableFormRow>
   )
 }
 
-function UpdateFacilityRow({
-  facility,
-  index,
-  handleUpdate,
-}: UpdateFacilityRowProps) {
+function UpdateFacilityRow({ facility, index, handleUpdate }: UpdateFacilityRowProps) {
   const { t } = useTranslation()
   const methods = useForm<FormUpdateValues>({
     resolver: zodResolver(UpdateSchema),
@@ -796,7 +793,7 @@ function UpdateFacilityRow({
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityNo,
-                    },
+                    }
                   )}
                   disabled={isSuspended}
                   autoResize
@@ -823,7 +820,7 @@ function UpdateFacilityRow({
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityName,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -852,7 +849,7 @@ function UpdateFacilityRow({
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.facilityNameEn,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -883,7 +880,7 @@ function UpdateFacilityRow({
                       {
                         'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                           errors.zipCode,
-                      },
+                      }
                     )}
                     autoResize
                     disabled={isSuspended}
@@ -908,7 +905,7 @@ function UpdateFacilityRow({
                       {
                         'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                           errors.address,
-                      },
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -938,7 +935,7 @@ function UpdateFacilityRow({
                     {
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.addressEn,
-                    },
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -965,8 +962,9 @@ function UpdateFacilityRow({
                   className={cn(
                     'min-w-full h-full min-h-0 border-transparent text-[1.4rem] whitespace-break-spaces focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300',
                     {
-                      'border-red-500 focus:outline-red-500 focus-visible:outline-red-500': errors.memo,
-                    },
+                      'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
+                        errors.memo,
+                    }
                   )}
                   autoResize
                   disableNewline
@@ -996,7 +994,7 @@ function UpdateFacilityRow({
                       'border-red-500 focus:outline-red-500 focus-visible:outline-red-500':
                         errors.keyFunction,
                     },
-                    isSuspended && '!bg-gray-400',
+                    isSuspended && '!bg-gray-400'
                   )}
                   customClassArrow={cn('', {
                     '!bg-gray-400': isSuspended,
@@ -1052,7 +1050,10 @@ function UpdateFacilityRow({
                       id={`share_place_flag1-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`share_place_flag1-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`share_place_flag1-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Không
                     </Label>
                   </div>
@@ -1062,7 +1063,10 @@ function UpdateFacilityRow({
                       id={`share_place_flag2-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`share_place_flag2-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`share_place_flag2-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Có
                     </Label>
                   </div>
@@ -1093,7 +1097,10 @@ function UpdateFacilityRow({
                       id={`deliverybox_flag1-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`deliverybox_flag1-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`deliverybox_flag1-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Không
                     </Label>
                   </div>
@@ -1103,7 +1110,10 @@ function UpdateFacilityRow({
                       id={`deliverybox_flag2-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`deliverybox_flag2-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`deliverybox_flag2-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Có
                     </Label>
                   </div>
@@ -1134,7 +1144,10 @@ function UpdateFacilityRow({
                       id={`parking_flag1-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`parking_flag1-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`parking_flag1-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Không
                     </Label>
                   </div>
@@ -1144,7 +1157,10 @@ function UpdateFacilityRow({
                       id={`parking_flag2-${index}`}
                       className="disabled:opacity-100"
                     />
-                    <Label htmlFor={`parking_flag2-${index}`} className="text-[1.4rem] cursor-pointer">
+                    <Label
+                      htmlFor={`parking_flag2-${index}`}
+                      className="text-[1.4rem] cursor-pointer"
+                    >
                       Có
                     </Label>
                   </div>
@@ -1262,17 +1278,19 @@ function UpdateFacilityRow({
             {facility.dataStatus !== 0 ? (
               <>
                 <NButton className="bg-gray w-auto min-w-fit h-auto" type="submit">
-                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.update')}</span>
+                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                    {t('facility.actions.update')}
+                  </span>
                 </NButton>
                 <CustomDialog
                   customClass="text-center [&_svg]:hidden z-[99999]"
                   size="medium"
                   customClassContent="max-w-[50rem]"
                   trigger={
-                    <NButton
-                      className="bg-gray px-4 w-auto min-w-fit h-auto btn btn-default"
-                    >
-                      <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.suspend')}</span>
+                    <NButton className="bg-gray px-4 w-auto min-w-fit h-auto btn btn-default">
+                      <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                        {t('facility.actions.suspend')}
+                      </span>
                     </NButton>
                   }
                   title={t('facility.dialogs.suspendTitle')}
@@ -1285,7 +1303,7 @@ function UpdateFacilityRow({
                               ...methods.getValues(),
                               dataStatus: 0,
                             },
-                            1,
+                            1
                           )
                         }
                       >
@@ -1308,8 +1326,13 @@ function UpdateFacilityRow({
                 size="medium"
                 customClassContent="max-w-[50rem]"
                 trigger={
-                  <NButton className="bg-gray px-2 w-auto min-w-fit h-auto btn btn-default" variant="default">
-                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">{t('facility.actions.reactivate')}</span>
+                  <NButton
+                    className="bg-gray px-2 w-auto min-w-fit h-auto btn btn-default"
+                    variant="default"
+                  >
+                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                      {t('facility.actions.reactivate')}
+                    </span>
                   </NButton>
                 }
                 title={t('facility.dialogs.reactivateTitle')}
@@ -1322,7 +1345,7 @@ function UpdateFacilityRow({
                             ...methods.getValues(),
                             dataStatus: 1,
                           },
-                          2,
+                          2
                         )
                       }
                     >
@@ -1357,7 +1380,11 @@ function StoreMasterPage() {
   const [indexAddFacility, setIndexAddFacility] = useState(0)
   const [currentOperationType, setCurrentOperationType] = useState<number>(0)
 
-  const { data: facilitiesResponse, isLoading, refetch } = useGetFacilities({
+  const {
+    data: facilitiesResponse,
+    isLoading,
+    refetch,
+  } = useGetFacilities({
     params: { page: 1, limit: 500 },
     onError(error) {
       toast.error(getErrorMessage(error))
@@ -1473,8 +1500,7 @@ function StoreMasterPage() {
     updateFacility(payload)
   }
 
-  const isPageLoading =
-    isLoading || isPendingUpdate || isPendingCreate
+  const isPageLoading = isLoading || isPendingUpdate || isPendingCreate
 
   return (
     <>
@@ -1502,24 +1528,50 @@ function StoreMasterPage() {
               'flex-grow min-w-[160rem] text-[1.4rem] text-center',
               'border-separate border-spacing-0',
               '[&>div>div>div]:border-l-0 [&>div>div>div]:border-t-0',
-              '[&_form>div]:border-l-0 [&_form>div]:border-t-0',
+              '[&_form>div]:border-l-0 [&_form>div]:border-t-0'
             )}
           >
             <TableHeader className="sticky top-0 z-[9]">
               <TableRow className="bg-gray-eee data-[state=selected]:bg-gray-eee hover:bg-gray-eee">
-                <TableHead className="min-w-[6.5rem] h-[5.6rem]  text-[1.6rem] text-center">{t('facility.columns.no')}</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.name')}</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.nameEn')}</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.address')}</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.addressEn')}</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.memo')}</TableHead>
-                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.keyFunction')}</TableHead>
-                <TableHead className="min-w-[8rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.color')}</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.sharePlace')}</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.deliverybox')}</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.parking')}</TableHead>
-                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.bicycleParking')}</TableHead>
-                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">{t('facility.columns.actions')}</TableHead>
+                <TableHead className="min-w-[6.5rem] h-[5.6rem]  text-[1.6rem] text-center">
+                  {t('facility.columns.no')}
+                </TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.name')}
+                </TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.nameEn')}
+                </TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.address')}
+                </TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.addressEn')}
+                </TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.memo')}
+                </TableHead>
+                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.keyFunction')}
+                </TableHead>
+                <TableHead className="min-w-[8rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.color')}
+                </TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.sharePlace')}
+                </TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.deliverybox')}
+                </TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.parking')}
+                </TableHead>
+                <TableHead className="min-w-[9rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.bicycleParking')}
+                </TableHead>
+                <TableHead className="min-w-[18rem] h-[5.6rem] text-[1.6rem] text-center">
+                  {t('facility.columns.actions')}
+                </TableHead>
               </TableRow>
             </TableHeader>
 

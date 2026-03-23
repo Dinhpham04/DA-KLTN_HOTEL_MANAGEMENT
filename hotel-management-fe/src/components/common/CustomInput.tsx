@@ -2,8 +2,7 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   autoResize?: boolean
   enableNumberConversion?: boolean
 }
@@ -19,24 +18,20 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
       onCompositionEnd,
       ...props
     },
-    ref,
+    ref
   ) => {
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [isComposing, setIsComposing] = React.useState(false)
 
     const convertFullWidthToHalfWidth = (str: string): string => {
-      return str.replace(/[０-９]/g, (s) =>
-        String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-      )
+      return str.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
     }
 
     const handleCompositionStart = () => {
       setIsComposing(true)
     }
 
-    const handleCompositionEnd = (
-      e: React.CompositionEvent<HTMLInputElement>,
-    ) => {
+    const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
       setIsComposing(false)
 
       const shouldConvert = enableNumberConversion || type === 'number'
@@ -97,14 +92,12 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         className={cn(
           'flex bg-background disabled:!bg-[#D9D9D9] file:bg-transparent disabled:opacity-50 px-3 py-2 border file:border-0 border-black rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ring-offset-background focus-visible:ring-offset-2 w-full h-[3.6rem] file:font-medium placeholder:font-bold text-[1.6rem] placeholder:text-[#999] file:text-sm disabled:cursor-not-allowed',
-          className,
+          className
         )}
         ref={(node) => {
           inputRef.current = node
           if (typeof ref === 'function') ref(node)
-          else if (ref)
-            (ref as React.MutableRefObject<HTMLInputElement | null>).current =
-              node
+          else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = node
         }}
         onWheel={handleWheel}
         onChange={handleChange}
@@ -114,7 +107,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
         value={props.value ? props.value : ''}
       />
     )
-  },
+  }
 )
 CustomInput.displayName = 'CustomInput'
 

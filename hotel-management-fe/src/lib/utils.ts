@@ -1,9 +1,9 @@
 import type { ApiError } from '@/types'
+import type { AxiosError } from 'axios'
 import { type ClassValue, clsx } from 'clsx'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { twMerge } from 'tailwind-merge'
-import type { AxiosError } from 'axios'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -32,7 +32,7 @@ export function getInitials(name: string): string {
 export function getApiErrorMessage(
   error: unknown,
   fallback: string,
-  statusMessages?: Record<number, string>,
+  statusMessages?: Record<number, string>
 ): string {
   const axiosError = error as AxiosError<ApiError>
   const status = axiosError?.response?.status

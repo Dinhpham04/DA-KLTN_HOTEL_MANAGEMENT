@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
 import { staffApi } from '@/api/staff.api'
 import type { PaginatedStaffResponse, Staff } from '@/types/staff'
+import { useQuery } from '@tanstack/react-query'
 
 interface UseGetStaffsParams {
   staffType?: string
@@ -15,7 +15,7 @@ export function useGetStaffs({ staffType, onSuccess, onError }: UseGetStaffsPara
       try {
         const staffTypeNum = staffType ? Number(staffType) : undefined
         const response = await staffApi.getStaffs(
-          staffTypeNum ? { staffType: staffTypeNum } : undefined,
+          staffTypeNum ? { staffType: staffTypeNum } : undefined
         )
 
         const paginated = response.data as unknown as PaginatedStaffResponse

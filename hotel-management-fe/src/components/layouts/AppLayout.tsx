@@ -1,6 +1,6 @@
-import { Header } from './Header'
-import { Footer } from './Footer'
 import type * as React from 'react'
+import { Footer } from './Footer'
+import { Header } from './Header'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -11,12 +11,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div
       className="flex min-h-screen flex-col"
       style={{
-        backgroundImage:
-          'linear-gradient(rgba(0,0,0,0.0), rgba(0,0,0,0.0)), url(/hotel-bg.jpg)',
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.0), rgba(0,0,0,0.0)), url(/hotel-bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
         backgroundAttachment: 'fixed',
-
       }}
     >
       <Header />

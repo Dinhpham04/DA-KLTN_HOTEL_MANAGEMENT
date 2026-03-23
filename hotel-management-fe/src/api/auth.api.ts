@@ -1,5 +1,5 @@
-import type { LoginRequest, LoginResponse, User } from '@/types'
 import apiClient from '@/lib/axios'
+import type { LoginRequest, LoginResponse, User } from '@/types'
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -11,5 +11,7 @@ export const authApi = {
   me: () => apiClient.get<User>('/auth/me'),
 
   refreshToken: (refreshToken: string) =>
-    apiClient.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken }),
+    apiClient.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
+      refreshToken,
+    }),
 }

@@ -1,9 +1,8 @@
-import * as React from 'react'
-import { useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
 
-export interface CustomTextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface CustomTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   autoResize?: boolean
   disableNewline?: boolean
 }
@@ -30,20 +29,18 @@ const CustomTextarea = React.forwardRef<HTMLTextAreaElement, CustomTextareaProps
         className={cn(
           'flex min-h-[8.3rem] w-full rounded-md border border-black resize-none bg-background px-3 py-2 text-[1.6rem] ring-offset-background placeholder:text-[#999] placeholder:font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 leading-normal',
           autoResize ? 'overflow-hidden' : '',
-          className,
+          className
         )}
         ref={(node) => {
           textareaRef.current = node
           if (typeof ref === 'function') ref(node)
-          else if (ref)
-            (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current =
-              node
+          else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = node
         }}
         onKeyDown={handleKeyDown}
         {...props}
       />
     )
-  },
+  }
 )
 CustomTextarea.displayName = 'CustomTextarea'
 

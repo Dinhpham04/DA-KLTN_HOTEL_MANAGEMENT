@@ -65,6 +65,7 @@
     "master": "Quản lý",
     "staffMaster": "Quản lý nhân viên",
     "storeMaster": "Quản lý cơ sở",
+    "roomMaster": "Quản lý phòng",
     "reports": "Báo cáo",
     "settings": "Cài đặt"
   },
@@ -113,6 +114,76 @@
       "maintenance": "Bảo trì",
       "reserved": "Đã đặt"
     }
+  },
+  "roomMaster": {
+    "title": "Quản lý phòng",
+    "addRow": "Thêm",
+    "filterByFacility": "Lọc theo cơ sở",
+    "filterByRoomType": "Lọc theo loại phòng",
+    "filterByStatus": "Lọc theo trạng thái",
+    "columns": {
+      "no": "STT",
+      "roomNumber": "Số phòng",
+      "facility": "Cơ sở",
+      "roomType": "Loại phòng",
+      "roomClass": "Hạng phòng",
+      "keyType": "Loại khóa",
+      "roomStatus": "Trạng thái dọn",
+      "reservedCleanDay": "Ngày dọn",
+      "deliveryboxFlag": "Hộp giao hàng",
+      "petFlag": "Thú cưng",
+      "mailboxPassword": "Mật khẩu hộp thư",
+      "externalFlag": "Phòng ngoài",
+      "externalDateFrom": "Từ ngày",
+      "externalDateTo": "Đến ngày",
+      "updatedAt": "Ngày cập nhật",
+      "updatedBy": "Người cập nhật",
+      "actions": "Thao tác"
+    },
+    "roomStatus": {
+      "fullCleaning": "Dọn toàn bộ",
+      "partial": "Dọn một phần",
+      "finishing": "Hoàn thiện"
+    },
+    "keyType": {
+      "room": "Phòng",
+      "cleaning": "Dọn dẹp"
+    },
+    "actions": {
+      "save": "Lưu",
+      "update": "Cập nhật",
+      "suspend": "Tạm ngưng",
+      "delete": "Xóa",
+      "reactivate": "Kích hoạt lại"
+    },
+    "dialogs": {
+      "suspendTitle": "Bạn có muốn tạm ngưng phòng này?",
+      "deleteTitle": "Bạn có chắc muốn xóa phòng này?",
+      "reactivateTitle": "Bạn có muốn kích hoạt lại phòng này?",
+      "confirm": "Xác nhận",
+      "cancel": "Hủy"
+    },
+    "messages": {
+      "createSuccess": "Tạo phòng thành công",
+      "updateSuccess": "Cập nhật phòng thành công",
+      "deleteSuccess": "Xóa phòng thành công",
+      "suspendSuccess": "Đã tạm ngưng phòng",
+      "reactivateSuccess": "Đã kích hoạt lại phòng"
+    },
+    "placeholders": {
+      "roomNumber": "VD: 101",
+      "mailboxPassword": "Mật khẩu hộp thư"
+    },
+    "validation": {
+      "roomNumberRequired": "Số phòng là bắt buộc",
+      "roomNumberMax": "Số phòng tối đa 32 ký tự",
+      "facilityRequired": "Cơ sở là bắt buộc",
+      "roomTypeRequired": "Loại phòng là bắt buộc",
+      "roomStatusRequired": "Trạng thái dọn là bắt buộc",
+      "mailboxPasswordRequired": "Mật khẩu hộp thư là bắt buộc",
+      "mailboxPasswordMax": "Mật khẩu hộp thư tối đa 64 ký tự"
+    },
+    "noData": "Không có dữ liệu phòng"
   },
   "client": {
     "title": "Quản lý khách hàng",

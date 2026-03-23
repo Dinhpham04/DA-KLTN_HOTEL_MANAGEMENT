@@ -1,5 +1,5 @@
-import type { PaginatedResponse, PaginationParams, Reservation } from '@/types'
 import apiClient from '@/lib/axios'
+import type { PaginatedResponse, PaginationParams, Reservation } from '@/types'
 
 export const reservationApi = {
   getList: (params?: PaginationParams) =>

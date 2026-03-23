@@ -1,23 +1,18 @@
+import i18n from '@/i18n'
+import { cn } from '@/lib/utils'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
 import { Fragment, useEffect, useState } from 'react'
 import { FormProvider, useFieldArray, useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { format } from 'date-fns'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { cn } from '@/lib/utils'
-import i18n from '@/i18n'
+import { z } from 'zod'
 
-import { NButton } from '@/components/ui/new-button'
-import { Label } from '@/components/ui/label'
 import { DialogClose } from '@/components/ui/dialog'
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form'
+import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import { Label } from '@/components/ui/label'
+import { NButton } from '@/components/ui/new-button'
 import {
   Table,
   TableBody,
@@ -27,23 +22,18 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
-import { CustomTextarea } from '@/components/common/CustomTextarea'
 import { CustomRadio, CustomRadioItems } from '@/components/common/CustomRadio'
 import CustomSelect from '@/components/common/CustomSelect'
-import CustomDialog from '@/components/common/CustomDialog'
+import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 
-import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useCreateStaff } from '@/hooks/mutations/useCreateStaff'
-import { useUpdateStaff } from '@/hooks/mutations/useUpdateStaff'
 import { useDeleteStaff } from '@/hooks/mutations/useDeleteStaff'
-import type {
-  CreateStaffBody,
-  Staff,
-  StaffErrorResponse,
-  UpdateStaffBody,
-} from '@/types/staff'
+import { useUpdateStaff } from '@/hooks/mutations/useUpdateStaff'
+import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
+import type { CreateStaffBody, Staff, StaffErrorResponse, UpdateStaffBody } from '@/types/staff'
 import { ATTENDANCE_OPTIONS, STAFF_TYPE_OPTIONS } from '@/types/staff'
 
 // ─── Validation Schemas ──────────────────────────────────────────────
@@ -78,8 +68,11 @@ const BaseSchema = z.object({
     .optional()
     .refine(
       (value) =>
-        value === undefined || value === null || value === '' || z.string().email().safeParse(value).success,
-      { message: t('validation.email', { field: 'Email' }) },
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        z.string().email().safeParse(value).success,
+      { message: t('validation.email', { field: 'Email' }) }
     ),
   orderNum: z.number(),
 })
@@ -97,14 +90,8 @@ const UpdateSchema = BaseSchema.extend({
   password: z
     .string()
     .optional()
-    .refine(
-      (value) => !value || value.length >= 8,
-      { message: t('validation.passwordLength') },
-    )
-    .refine(
-      (value) => !value || value.length <= 16,
-      { message: t('validation.passwordLength') },
-    ),
+    .refine((value) => !value || value.length >= 8, { message: t('validation.passwordLength') })
+    .refine((value) => !value || value.length <= 16, { message: t('validation.passwordLength') }),
 })
 
 export const Route = createFileRoute('/_authenticated/staff-master')({
@@ -134,7 +121,9 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
     },
   })
 
-  const { formState: { errors } } = methods
+  const {
+    formState: { errors },
+  } = methods
 
   return (
     <TableRow>
@@ -155,7 +144,10 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     placeholder={t('staff.columns.name')}
                     className={cn(
                       'border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full min-h-0 text-[1.4rem] whitespace-break-spaces',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffName },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.staffName,
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -178,7 +170,10 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     placeholder={t('staff.columns.shortName')}
                     className={cn(
                       'border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full min-h-0 text-[1.4rem] whitespace-break-spaces',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffNameShort },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.staffNameShort,
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -203,11 +198,15 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     change={(option) => field.onChange(option.value)}
                     option={STAFF_TYPE_OPTIONS}
                     selected={String(field.value ?? '')}
-                    customClassMain={cn(
-                      'w-[18.5rem] h-[2rem] sm:h-[3.6rem]',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffType },
-                    )}
-                    customClassArrow={errors.staffType ? 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500' : ''}
+                    customClassMain={cn('w-[18.5rem] h-[2rem] sm:h-[3.6rem]', {
+                      'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                        errors.staffType,
+                    })}
+                    customClassArrow={
+                      errors.staffType
+                        ? 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500'
+                        : ''
+                    }
                     ref={field.ref}
                     hideWhenDetached
                     collisionBoundary={document.getElementById('store-table') ?? undefined}
@@ -233,7 +232,10 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     placeholder={t('staff.columns.password')}
                     className={cn(
                       'border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full text-[1.4rem]',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.password },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.password,
+                      }
                     )}
                     autoResize
                     readOnly
@@ -260,7 +262,10 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     ref={field.ref}
                   >
                     {ATTENDANCE_OPTIONS.map((opt) => (
-                      <div className="flex items-center space-x-4 w-[4.3rem]" key={`att_${opt.value}`}>
+                      <div
+                        className="flex items-center space-x-4 w-[4.3rem]"
+                        key={`att_${opt.value}`}
+                      >
                         <CustomRadioItems value={opt.value} id={`att_${opt.value}-create`} />
                         <Label
                           htmlFor={`att_${opt.value}-create`}
@@ -292,7 +297,10 @@ function CreateStaffRow({ orderNum, onSubmit }: CreateStaffRowProps) {
                     placeholder={t('staff.columns.email')}
                     className={cn(
                       'border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full text-[1.4rem]',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.mail },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.mail,
+                      }
                     )}
                     autoResize
                     autoComplete="off"
@@ -351,7 +359,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
     },
   })
 
-  const { reset, formState: { errors } } = methods
+  const {
+    reset,
+    formState: { errors },
+  } = methods
 
   useEffect(() => {
     reset({
@@ -375,9 +386,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
     <TableRow>
       <FormProvider {...methods}>
         {/* STT */}
-        <TableCell className={cn(rowBg, 'min-w-[5rem] text-center')}>
-          {staff.staffId}
-        </TableCell>
+        <TableCell className={cn(rowBg, 'min-w-[5rem] text-center')}>{staff.staffId}</TableCell>
 
         {/* Họ tên */}
         <TableCell className={cn(rowBg, 'min-w-[20rem] text-left')}>
@@ -393,7 +402,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     disabled={isDisabled}
                     className={cn(
                       'disabled:opacity-100 border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full min-h-0 text-[1.4rem] whitespace-break-spaces',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffName },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.staffName,
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -418,7 +430,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     disabled={isDisabled}
                     className={cn(
                       'disabled:opacity-100 border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full min-h-0 text-[1.4rem] whitespace-break-spaces',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffNameShort },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.staffNameShort,
+                      }
                     )}
                     autoResize
                     disableNewline
@@ -445,11 +460,15 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     selected={String(field.value ?? '')}
                     customClassMain={cn(
                       'disabled:opacity-100 w-[18.5rem] h-[2rem] sm:h-[3.6rem]',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.staffType },
-                      isSuspended && '!bg-gray-400',
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.staffType,
+                      },
+                      isSuspended && '!bg-gray-400'
                     )}
                     customClassArrow={cn('', {
-                      'focus:outline-red-500 focus-visible:outline-red-500 border-red-500 disabled:opacity-100': errors.staffType,
+                      'focus:outline-red-500 focus-visible:outline-red-500 border-red-500 disabled:opacity-100':
+                        errors.staffType,
                       '!bg-gray-400': isSuspended,
                     })}
                     ref={field.ref}
@@ -479,7 +498,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     disabled={isDisabled}
                     className={cn(
                       'disabled:opacity-100 border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full text-[1.4rem] placeholder:text-black',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.password },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.password,
+                      }
                     )}
                     autoResize
                     readOnly
@@ -507,7 +529,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     disabled={isDisabled}
                   >
                     {ATTENDANCE_OPTIONS.map((opt) => (
-                      <div className="flex items-center space-x-4 w-[4.3rem]" key={`att_${opt.value}`}>
+                      <div
+                        className="flex items-center space-x-4 w-[4.3rem]"
+                        key={`att_${opt.value}`}
+                      >
                         <CustomRadioItems
                           value={opt.value}
                           id={`att_${opt.value}-${staff.staffId}`}
@@ -544,7 +569,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                     disabled={isDisabled}
                     className={cn(
                       'disabled:opacity-100 border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full text-[1.4rem]',
-                      { 'focus:outline-red-500 focus-visible:outline-red-500 border-red-500': errors.mail },
+                      {
+                        'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                          errors.mail,
+                      }
                     )}
                     autoResize
                     autoComplete="off"
@@ -583,7 +611,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                 size="medium"
                 customClassContent="max-w-[50rem]"
                 trigger={
-                  <NButton className="bg-gray mt-[.5rem] mx-2 px-2 w-auto min-w-fit h-auto btn btn-default" variant="default">
+                  <NButton
+                    className="bg-gray mt-[.5rem] mx-2 px-2 w-auto min-w-fit h-auto btn btn-default"
+                    variant="default"
+                  >
                     <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
                       {t('staff.actions.suspend')}
                     </span>
@@ -593,9 +624,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                 content={
                   <div className="flex justify-center p-5">
                     <DialogClose
-                      onClick={() =>
-                        onUpdate({ ...methods.getValues(), dataStatus: 0 }, 1)
-                      }
+                      onClick={() => onUpdate({ ...methods.getValues(), dataStatus: 0 }, 1)}
                     >
                       <div className="bg-[#8bd08e] mx-4 w-[14.4rem] border border-black btn btn-default">
                         <span>{t('staff.dialogs.confirm')}</span>
@@ -615,7 +644,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
                 size="medium"
                 customClassContent="max-w-[52rem]"
                 trigger={
-                  <NButton className="bg-gray mt-[.5rem] px-2 w-auto min-w-fit h-auto btn btn-default" variant="default">
+                  <NButton
+                    className="bg-gray mt-[.5rem] px-2 w-auto min-w-fit h-auto btn btn-default"
+                    variant="default"
+                  >
                     <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
                       {t('staff.actions.delete')}
                     </span>
@@ -644,7 +676,10 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
               size="medium"
               customClassContent="max-w-[50rem]"
               trigger={
-                <NButton className="bg-gray px-2 w-auto min-w-fit h-auto btn btn-default" variant="default">
+                <NButton
+                  className="bg-gray px-2 w-auto min-w-fit h-auto btn btn-default"
+                  variant="default"
+                >
                   <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
                     {t('staff.actions.reactivate')}
                   </span>
@@ -654,9 +689,7 @@ function UpdateStaffRow({ staff, onUpdate, onDelete }: UpdateStaffRowProps) {
               content={
                 <div className="flex justify-center p-5">
                   <DialogClose
-                    onClick={() =>
-                      onUpdate({ ...methods.getValues(), dataStatus: 1 }, 2)
-                    }
+                    onClick={() => onUpdate({ ...methods.getValues(), dataStatus: 1 }, 2)}
                   >
                     <div className="bg-[#8bd08e] mx-4 w-[14.4rem] btn btn-default border-[1px] border-black">
                       <span>{t('staff.dialogs.confirm')}</span>
@@ -787,9 +820,7 @@ function StaffMasterPage() {
           </div>
           <div className="group-button flex flex-wrap gap-[2.4rem]">
             <NButton className="bg-gray" onClick={() => addStaffAtIndex(0)}>
-              <span className="text-[1.4rem] leading-[1.4rem]">
-                {t('staff.addRowTop')}
-              </span>
+              <span className="text-[1.4rem] leading-[1.4rem]">{t('staff.addRowTop')}</span>
             </NButton>
           </div>
         </div>
@@ -804,30 +835,45 @@ function StaffMasterPage() {
               'flex-grow min-w-[130rem] text-[1.4rem] text-center',
               'border-separate border-spacing-0',
               '[&_td]:border [&_td]:border-black [&_td]:border-l-0 [&_td]:border-t-0',
-              '[&_th]:border [&_th]:border-black [&_th]:border-l-0 [&_th]:border-t-0',
+              '[&_th]:border [&_th]:border-black [&_th]:border-l-0 [&_th]:border-t-0'
             )}
           >
             <TableHeader className="top-0 z-[9] sticky">
               <TableRow className="bg-gray-eee data-[state=selected]:bg-gray-eee hover:bg-gray-eee">
-                <TableHead className="min-w-[5rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.no')}</TableHead>
-                <TableHead className="min-w-[20rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.name')}</TableHead>
-                <TableHead className="min-w-[14rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.role')}</TableHead>
-                <TableHead className="min-w-[14rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.password')}</TableHead>
-                <TableHead className="min-w-[11rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.attendance')}</TableHead>
-                <TableHead className="min-w-[18rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.email')}</TableHead>
-                <TableHead className="min-w-[11rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.updatedAt')}</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.updatedBy')}</TableHead>
-                <TableHead className="min-w-[15rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">{t('staff.columns.actions')}</TableHead>
+                <TableHead className="min-w-[5rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.no')}
+                </TableHead>
+                <TableHead className="min-w-[20rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.name')}
+                </TableHead>
+                <TableHead className="min-w-[14rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.role')}
+                </TableHead>
+                <TableHead className="min-w-[14rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.password')}
+                </TableHead>
+                <TableHead className="min-w-[11rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.attendance')}
+                </TableHead>
+                <TableHead className="min-w-[18rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.email')}
+                </TableHead>
+                <TableHead className="min-w-[11rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.updatedAt')}
+                </TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.updatedBy')}
+                </TableHead>
+                <TableHead className="min-w-[15rem] h-[5.6rem] font-bold text-[1.6rem] text-center text-black bg-[#eee]">
+                  {t('staff.columns.actions')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fieldStaffs.map((staff, index) => (
                 <Fragment key={staff.staffId || index}>
                   {isAddStaff && index === indexAddStaff ? (
-                    <CreateStaffRow
-                      orderNum={staff?.orderNum || 1}
-                      onSubmit={handleCreate}
-                    />
+                    <CreateStaffRow orderNum={staff?.orderNum || 1} onSubmit={handleCreate} />
                   ) : null}
                   <UpdateStaffRow
                     staff={staff}
@@ -846,9 +892,7 @@ function StaffMasterPage() {
 
               {!fieldStaffs.length && !isAddStaff && (
                 <TableRow className="!bg-white">
-                  <TableCell className="font-bold text-red-500">
-                    {t('staff.noData')}
-                  </TableCell>
+                  <TableCell className="font-bold text-red-500">{t('staff.noData')}</TableCell>
                 </TableRow>
               )}
             </TableBody>

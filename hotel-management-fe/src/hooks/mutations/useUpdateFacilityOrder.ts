@@ -1,5 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
 import { facilityApi } from '@/api/facility.api'
+import { useMutation } from '@tanstack/react-query'
 
 interface FacilityOrderItem {
   facilityId: number
@@ -20,8 +20,8 @@ export function useUpdateFacilityOrder({ onSuccess, onError }: UseUpdateFacility
           facilityApi.updateFacility({
             facilityId: item.facilityId,
             orderNum: item.orderNum,
-          }),
-        ),
+          })
+        )
       )
     },
     onSuccess,

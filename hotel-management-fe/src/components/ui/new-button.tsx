@@ -20,7 +20,7 @@ const buttonVariants = cva('btn', {
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> {
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean
 }
 
@@ -34,7 +34,7 @@ const NButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       />
     )
-  },
+  }
 )
 NButton.displayName = 'NButton'
 

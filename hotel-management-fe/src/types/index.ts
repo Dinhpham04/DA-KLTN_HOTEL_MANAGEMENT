@@ -70,12 +70,7 @@ export interface Room {
 }
 
 // ---- Reservation ----
-export type ReservationStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'checked_in'
-  | 'checked_out'
-  | 'cancelled'
+export type ReservationStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled'
 
 export interface Reservation {
   id: number

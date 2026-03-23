@@ -1,6 +1,6 @@
-import { useMutation } from '@tanstack/react-query'
 import { facilityApi } from '@/api/facility.api'
 import type { UpdateFacilityBody } from '@/types/facility'
+import { useMutation } from '@tanstack/react-query'
 
 interface UseUpdateFacilityParams {
   onSuccess?: () => void

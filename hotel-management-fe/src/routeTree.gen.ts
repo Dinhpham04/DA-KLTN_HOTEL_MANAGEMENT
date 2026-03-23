@@ -25,6 +25,12 @@ import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticate
 const AuthenticatedStoreMasterLazyRouteImport = createFileRoute(
   '/_authenticated/store-master',
 )()
+const AuthenticatedRoomMasterLazyRouteImport = createFileRoute(
+  '/_authenticated/room-master',
+)()
+const AuthenticatedRentsMasterLazyRouteImport = createFileRoute(
+  '/_authenticated/rents-master',
+)()
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -47,6 +53,22 @@ const AuthenticatedStoreMasterLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/store-master.lazy').then((d) => d.Route),
+  )
+const AuthenticatedRoomMasterLazyRoute =
+  AuthenticatedRoomMasterLazyRouteImport.update({
+    id: '/room-master',
+    path: '/room-master',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/room-master.lazy').then((d) => d.Route),
+  )
+const AuthenticatedRentsMasterLazyRoute =
+  AuthenticatedRentsMasterLazyRouteImport.update({
+    id: '/rents-master',
+    path: '/rents-master',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/rents-master.lazy').then((d) => d.Route),
   )
 const AuthenticatedStaffMasterRoute =
   AuthenticatedStaffMasterRouteImport.update({
@@ -96,6 +118,8 @@ export interface FileRoutesByFullPath {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
+  '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +132,8 @@ export interface FileRoutesByTo {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
+  '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRoutesById {
@@ -122,6 +148,8 @@ export interface FileRoutesById {
   '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/_authenticated/rents-master': typeof AuthenticatedRentsMasterLazyRoute
+  '/_authenticated/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/_authenticated/store-master': typeof AuthenticatedStoreMasterLazyRoute
 }
 export interface FileRouteTypes {
@@ -136,6 +164,8 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/rents-master'
+    | '/room-master'
     | '/store-master'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -148,6 +178,8 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/rents-master'
+    | '/room-master'
     | '/store-master'
   id:
     | '__root__'
@@ -161,6 +193,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reservations'
     | '/_authenticated/rooms'
     | '/_authenticated/staff-master'
+    | '/_authenticated/rents-master'
+    | '/_authenticated/room-master'
     | '/_authenticated/store-master'
   fileRoutesById: FileRoutesById
 }
@@ -198,6 +232,20 @@ declare module '@tanstack/react-router' {
       path: '/store-master'
       fullPath: '/store-master'
       preLoaderRoute: typeof AuthenticatedStoreMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/room-master': {
+      id: '/_authenticated/room-master'
+      path: '/room-master'
+      fullPath: '/room-master'
+      preLoaderRoute: typeof AuthenticatedRoomMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rents-master': {
+      id: '/_authenticated/rents-master'
+      path: '/rents-master'
+      fullPath: '/rents-master'
+      preLoaderRoute: typeof AuthenticatedRentsMasterLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/staff-master': {
@@ -260,6 +308,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
+  AuthenticatedRentsMasterLazyRoute: typeof AuthenticatedRentsMasterLazyRoute
+  AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
   AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
 }
 
@@ -271,6 +321,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedStaffMasterRoute: AuthenticatedStaffMasterRoute,
+  AuthenticatedRentsMasterLazyRoute: AuthenticatedRentsMasterLazyRoute,
+  AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,
   AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
 }
 

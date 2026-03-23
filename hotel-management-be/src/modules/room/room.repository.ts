@@ -10,6 +10,7 @@ export class RoomRepository {
   private readonly includeRelations = {
     facility: true,
     roomType: { include: { roomClass: true } },
+    updatedBy: { select: { staffId: true, staffName: true } },
   } as const;
 
   async findAll(filter: RoomFilterDto) {

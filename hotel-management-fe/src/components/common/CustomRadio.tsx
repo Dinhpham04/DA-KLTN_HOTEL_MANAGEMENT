@@ -1,19 +1,13 @@
+import { cn } from '@/lib/utils'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
 import { Circle } from 'lucide-react'
 import * as React from 'react'
-import { cn } from '@/lib/utils'
 
 const CustomRadio = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
 >(({ className, ...props }, ref) => {
-  return (
-    <RadioGroupPrimitive.Root
-      className={cn('grid gap-2', className)}
-      {...props}
-      ref={ref}
-    />
-  )
+  return <RadioGroupPrimitive.Root className={cn('grid gap-2', className)} {...props} ref={ref} />
 })
 CustomRadio.displayName = RadioGroupPrimitive.Root.displayName
 
@@ -31,7 +25,7 @@ const CustomRadioItems = React.forwardRef<
       ref={ref}
       className={cn(
         'aspect-square h-[2rem] w-[2rem] rounded-full border border-black text-black hover:bg-gray-100 bg-white ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:!bg-[#D9D9D9]',
-        className,
+        className
       )}
       {...props}
     >
@@ -39,7 +33,7 @@ const CustomRadioItems = React.forwardRef<
         <Circle
           className={cn(
             'h-[1rem] w-[1rem] fill-current flex items-center justify-center text-center',
-            circleClassName,
+            circleClassName
           )}
         />
       </RadioGroupPrimitive.Indicator>

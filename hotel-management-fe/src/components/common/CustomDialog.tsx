@@ -72,13 +72,13 @@ const CustomDialog: React.FC<DialogType> = ({
           className={cn(
             handleSize(),
             'border-none [&>button]:hidden outline-none',
-            customClassContent,
+            customClassContent
           )}
         >
           <div
             className={cn(
               'bg-white w-full py-16 relative rounded-[0.8rem] max-h-[calc(100dvh-17rem)]',
-              customClass,
+              customClass
             )}
           >
             {title && (
@@ -91,7 +91,7 @@ const CustomDialog: React.FC<DialogType> = ({
               id="content-wrapper"
               className={cn(
                 'w-full max-h-[calc(100%-4rem)] px-8 lg:px-12 xl:px-16 py-4',
-                disableOverflow ? '' : 'overflow-auto',
+                disableOverflow ? '' : 'overflow-auto'
               )}
             >
               {content}
@@ -104,7 +104,7 @@ const CustomDialog: React.FC<DialogType> = ({
             >
               <div
                 className={cn(
-                  'w-[2.6rem] h-[2.6rem] top-[2.4rem] right-[2.4rem] absolute z-10 cursor-pointer',
+                  'w-[2.6rem] h-[2.6rem] top-[2.4rem] right-[2.4rem] absolute z-10 cursor-pointer'
                 )}
               >
                 <CloseSVG />
