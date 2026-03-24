@@ -35,7 +35,7 @@ import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
 import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import type { CreateRoomBody, Room, RoomErrorResponse, UpdateRoomBody } from '@/types/room'
-import { BOOLEAN_FLAG_OPTIONS, KEY_TYPE_OPTIONS, ROOM_STATUS_OPTIONS } from '@/types/room'
+import { BOOLEAN_FLAG_OPTIONS, ROOM_STATUS_OPTIONS } from '@/types/room'
 
 // ─── Validation Schemas ──────────────────────────────────────────────
 const t = i18n.t.bind(i18n)

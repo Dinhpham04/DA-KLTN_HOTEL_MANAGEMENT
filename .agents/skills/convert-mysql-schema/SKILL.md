@@ -73,11 +73,13 @@ Search in `docs/hotel_management_sql_create.sql` for:
 
 Đọc các column, datatype, comment, và foreign key constraints từ schema.
 
-### Step 2: Optimize for PostgreSQL
+### Step 2: Optimize & Clean up Japan-specific Fields
 
 Khi thiết kế Prisma model:
+- **Xóa bỏ các trường dành riêng cho Nhật Bản**: Vì dự án mới hướng tới thị trường việt nam/quốc tế, hãy MẠNH DẠN XÓA BỎ các column như `name_kana`, `name_ruby`, `furigana`, `postal_code_jp`, v.v.
+- Chuyển đổi các cột như `client_name_en` thành `client_name` (tiêu chuẩn chung) thay vì giữ tiền tố `_en` dư thừa.
 - Đổi các field dạng `TINYINT(1)` (flag/boolean) trong MySQL sang `Boolean` hợp lý hơn cho Postgres.
-- Map kiểu dữ liệu, bỏ các thuộc tính chỉ có ở MySQL (như `UNSIGNED` vì Postgres không có unsigned interger pattern tương tự, dùng `Int` bình thường).
+- Map kiểu dữ liệu, bỏ các thuộc tính chỉ có ở MySQL (như `UNSIGNED`).
 - Không cần copy 100% schema cũ. Hãy tối ưu để chuẩn hóa database.
 
 ### Step 3: Build Prisma Model

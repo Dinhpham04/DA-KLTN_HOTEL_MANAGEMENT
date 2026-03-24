@@ -163,6 +163,7 @@ pnpm test
 cd hotel-management-fe
 pnpm check
 pnpm type-check
+pnpm build
 ```
 
 Test end-to-end flow in browser.

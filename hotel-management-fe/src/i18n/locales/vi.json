@@ -33,7 +33,10 @@
     "note": "Ghi chú",
     "date": "Ngày",
     "createdAt": "Ngày tạo",
-    "updatedAt": "Ngày cập nhật"
+    "updatedAt": "Ngày cập nhật",
+    "showing": "Hiển thị",
+    "of": "của",
+    "page": "Trang"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -188,7 +191,96 @@
   "client": {
     "title": "Quản lý khách hàng",
     "nationality": "Quốc tịch",
-    "identityNumber": "CMND/CCCD/Hộ chiếu"
+    "identityNumber": "CMND/CCCD/Hộ chiếu",
+    "searchConditions": "Điều kiện tìm kiếm",
+    "createNew": "Thêm khách hàng",
+    "columns": {
+      "type": "Loại",
+      "name": "Tên/Công ty",
+      "telHome": "SĐT (Nhà/Công ty)",
+      "telMobile": "SĐT (Di động)",
+      "telEmergency": "SĐT (Khẩn cấp)",
+      "email": "Email",
+      "memo": "Ghi chú",
+      "createdAt": "Ngày đăng ký",
+      "actions": "Thao tác"
+    },
+    "type": {
+      "unspecified": "Chưa xác định",
+      "individual": "Cá nhân",
+      "corporation": "Doanh nghiệp",
+      "specialCorp": "DN đặc biệt"
+    },
+    "filters": {
+      "type": "Loại",
+      "name": "Tên",
+      "nameKana": "Tên (Kana)",
+      "contactName": "Người liên hệ",
+      "contactNameKana": "Người liên hệ (Kana)",
+      "telHome": "SĐT (Nhà)",
+      "telMobile": "SĐT (Di động)",
+      "telEmergency": "SĐT (Khẩn cấp)",
+      "email": "Email",
+      "corpSearchNote": "※ Với doanh nghiệp, tìm theo tên công ty"
+    },
+    "sort": {
+      "label": "Thứ tự hiển thị"
+    },
+    "actions": {
+      "search": "Tìm kiếm",
+      "clearFilters": "Xóa bộ lọc",
+      "edit": "Sửa",
+      "suspend": "Tạm ngưng",
+      "reactivate": "Kích hoạt lại",
+      "delete": "Xóa"
+    },
+    "dialogs": {
+      "suspendTitle": "Bạn có muốn tạm ngưng khách hàng này?",
+      "reactivateTitle": "Bạn có muốn kích hoạt lại khách hàng này?",
+      "execute": "Thực hiện",
+      "cancel": "Hủy"
+    },
+    "messages": {
+      "suspendSuccess": "Đã tạm ngưng khách hàng",
+      "reactivateSuccess": "Đã kích hoạt lại khách hàng",
+      "createSuccess": "Thêm khách hàng thành công",
+      "updateSuccess": "Cập nhật khách hàng thành công",
+      "deleteSuccess": "Xóa khách hàng thành công"
+    },
+    "noData": "Không có dữ liệu khách hàng"
+  },
+  "identification": {
+    "title": "Giấy tờ tùy thân",
+    "addNew": "Thêm giấy tờ",
+    "type": {
+      "label": "Loại giấy tờ",
+      "passport": "Hộ chiếu",
+      "cccd": "CCCD",
+      "cmnd": "CMND",
+      "driverLicense": "Giấy phép lái xe",
+      "residenceCard": "Thẻ cư trú",
+      "other": "Khác"
+    },
+    "inputType": {
+      "label": "Hình thức nhập",
+      "image": "Hình ảnh",
+      "manual": "Nhập tay"
+    },
+    "fields": {
+      "number": "Số giấy tờ",
+      "expirationDate": "Ngày hết hạn",
+      "image": "Hình ảnh"
+    },
+    "actions": {
+      "view": "Xem",
+      "edit": "Sửa",
+      "delete": "Xóa"
+    },
+    "messages": {
+      "createSuccess": "Thêm giấy tờ thành công",
+      "updateSuccess": "Cập nhật giấy tờ thành công",
+      "deleteSuccess": "Xóa giấy tờ thành công"
+    }
   },
   "billing": {
     "title": "Quản lý thanh toán",

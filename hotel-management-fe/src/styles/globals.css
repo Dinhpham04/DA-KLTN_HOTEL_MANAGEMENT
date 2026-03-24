@@ -84,14 +84,13 @@ html {
     --ring: 224.3 76.3% 48%;
   }
 
-
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-weight: 500;
+    font-weight: 400;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-y: auto;
     overflow-x: hidden;
@@ -106,14 +105,14 @@ html {
   /* Page title - consistent across all pages */
   .page-title {
     font-size: 2.3rem;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 3.22rem;
     letter-spacing: 0.05em;
   }
 
   .page-subtitle {
     font-size: 1.8rem;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 2.6rem;
   }
 
@@ -125,7 +124,7 @@ html {
   /* Form label */
   .form-label {
     font-size: 1.4rem;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 2rem;
     @apply text-foreground;
   }
@@ -138,11 +137,12 @@ html {
 
   /* Primary action button */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md font-bold transition-colors;
+    @apply inline-flex items-center justify-center rounded-md transition-colors;
     font-size: 1.6rem;
     line-height: 1;
     letter-spacing: 0.05em;
     padding: 1rem 2.4rem;
+    font-weight: 600;
   }
 
   .btn:hover {
@@ -217,7 +217,7 @@ html {
   .btn-link {
     @apply bg-transparent underline-offset-4;
     font-size: 1.4rem;
-    font-weight: 500;
+    font-weight: 400;
     color: hsl(var(--primary));
   }
 

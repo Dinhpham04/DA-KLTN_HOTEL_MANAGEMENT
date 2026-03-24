@@ -18,7 +18,6 @@ import { Route as AuthenticatedStaffMasterRouteImport } from './routes/_authenti
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedReservationsRouteImport } from './routes/_authenticated/reservations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCleaningRouteImport } from './routes/_authenticated/cleaning'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
 
@@ -30,6 +29,18 @@ const AuthenticatedRoomMasterLazyRouteImport = createFileRoute(
 )()
 const AuthenticatedRentsMasterLazyRouteImport = createFileRoute(
   '/_authenticated/rents-master',
+)()
+const AuthenticatedClientsIndexLazyRouteImport = createFileRoute(
+  '/_authenticated/clients/',
+)()
+const AuthenticatedClientsCreateLazyRouteImport = createFileRoute(
+  '/_authenticated/clients/create',
+)()
+const AuthenticatedClientsClientIdEditLazyRouteImport = createFileRoute(
+  '/_authenticated/clients/$clientId/edit',
+)()
+const AuthenticatedClientsClientIdDetailLazyRouteImport = createFileRoute(
+  '/_authenticated/clients/$clientId/detail',
 )()
 
 const LoginRoute = LoginRouteImport.update({
@@ -92,11 +103,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedCleaningRoute = AuthenticatedCleaningRouteImport.update({
   id: '/cleaning',
   path: '/cleaning',
@@ -107,13 +113,48 @@ const AuthenticatedBillingRoute = AuthenticatedBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedClientsIndexLazyRoute =
+  AuthenticatedClientsIndexLazyRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/clients/index.lazy').then((d) => d.Route),
+  )
+const AuthenticatedClientsCreateLazyRoute =
+  AuthenticatedClientsCreateLazyRouteImport.update({
+    id: '/clients/create',
+    path: '/clients/create',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/clients/create.lazy').then((d) => d.Route),
+  )
+const AuthenticatedClientsClientIdEditLazyRoute =
+  AuthenticatedClientsClientIdEditLazyRouteImport.update({
+    id: '/clients/$clientId/edit',
+    path: '/clients/$clientId/edit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/clients/$clientId/edit.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AuthenticatedClientsClientIdDetailLazyRoute =
+  AuthenticatedClientsClientIdDetailLazyRouteImport.update({
+    id: '/clients/$clientId/detail',
+    path: '/clients/$clientId/detail',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/clients/$clientId/detail.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/billing': typeof AuthenticatedBillingRoute
   '/cleaning': typeof AuthenticatedCleaningRoute
-  '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
@@ -121,13 +162,16 @@ export interface FileRoutesByFullPath {
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
+  '/clients/': typeof AuthenticatedClientsIndexLazyRoute
+  '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
+  '/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/billing': typeof AuthenticatedBillingRoute
   '/cleaning': typeof AuthenticatedCleaningRoute
-  '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
@@ -135,6 +179,10 @@ export interface FileRoutesByTo {
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
+  '/clients': typeof AuthenticatedClientsIndexLazyRoute
+  '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
+  '/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,7 +191,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/billing': typeof AuthenticatedBillingRoute
   '/_authenticated/cleaning': typeof AuthenticatedCleaningRoute
-  '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
@@ -151,6 +198,10 @@ export interface FileRoutesById {
   '/_authenticated/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/_authenticated/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/_authenticated/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/_authenticated/clients/create': typeof AuthenticatedClientsCreateLazyRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexLazyRoute
+  '/_authenticated/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
+  '/_authenticated/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,7 +210,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/billing'
     | '/cleaning'
-    | '/clients'
     | '/dashboard'
     | '/reservations'
     | '/rooms'
@@ -167,13 +217,16 @@ export interface FileRouteTypes {
     | '/rents-master'
     | '/room-master'
     | '/store-master'
+    | '/clients/create'
+    | '/clients/'
+    | '/clients/$clientId/detail'
+    | '/clients/$clientId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/billing'
     | '/cleaning'
-    | '/clients'
     | '/dashboard'
     | '/reservations'
     | '/rooms'
@@ -181,6 +234,10 @@ export interface FileRouteTypes {
     | '/rents-master'
     | '/room-master'
     | '/store-master'
+    | '/clients/create'
+    | '/clients'
+    | '/clients/$clientId/detail'
+    | '/clients/$clientId/edit'
   id:
     | '__root__'
     | '/'
@@ -188,7 +245,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/billing'
     | '/_authenticated/cleaning'
-    | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/reservations'
     | '/_authenticated/rooms'
@@ -196,6 +252,10 @@ export interface FileRouteTypes {
     | '/_authenticated/rents-master'
     | '/_authenticated/room-master'
     | '/_authenticated/store-master'
+    | '/_authenticated/clients/create'
+    | '/_authenticated/clients/'
+    | '/_authenticated/clients/$clientId/detail'
+    | '/_authenticated/clients/$clientId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,13 +336,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/clients': {
-      id: '/_authenticated/clients'
-      path: '/clients'
-      fullPath: '/clients'
-      preLoaderRoute: typeof AuthenticatedClientsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/cleaning': {
       id: '/_authenticated/cleaning'
       path: '/cleaning'
@@ -297,13 +350,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBillingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
+      path: '/clients'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clients/create': {
+      id: '/_authenticated/clients/create'
+      path: '/clients/create'
+      fullPath: '/clients/create'
+      preLoaderRoute: typeof AuthenticatedClientsCreateLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clients/$clientId/edit': {
+      id: '/_authenticated/clients/$clientId/edit'
+      path: '/clients/$clientId/edit'
+      fullPath: '/clients/$clientId/edit'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdEditLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clients/$clientId/detail': {
+      id: '/_authenticated/clients/$clientId/detail'
+      path: '/clients/$clientId/detail'
+      fullPath: '/clients/$clientId/detail'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdDetailLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedBillingRoute: typeof AuthenticatedBillingRoute
   AuthenticatedCleaningRoute: typeof AuthenticatedCleaningRoute
-  AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
@@ -311,12 +391,15 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRentsMasterLazyRoute: typeof AuthenticatedRentsMasterLazyRoute
   AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
   AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
+  AuthenticatedClientsCreateLazyRoute: typeof AuthenticatedClientsCreateLazyRoute
+  AuthenticatedClientsIndexLazyRoute: typeof AuthenticatedClientsIndexLazyRoute
+  AuthenticatedClientsClientIdDetailLazyRoute: typeof AuthenticatedClientsClientIdDetailLazyRoute
+  AuthenticatedClientsClientIdEditLazyRoute: typeof AuthenticatedClientsClientIdEditLazyRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBillingRoute: AuthenticatedBillingRoute,
   AuthenticatedCleaningRoute: AuthenticatedCleaningRoute,
-  AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
@@ -324,6 +407,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRentsMasterLazyRoute: AuthenticatedRentsMasterLazyRoute,
   AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,
   AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
+  AuthenticatedClientsCreateLazyRoute: AuthenticatedClientsCreateLazyRoute,
+  AuthenticatedClientsIndexLazyRoute: AuthenticatedClientsIndexLazyRoute,
+  AuthenticatedClientsClientIdDetailLazyRoute:
+    AuthenticatedClientsClientIdDetailLazyRoute,
+  AuthenticatedClientsClientIdEditLazyRoute:
+    AuthenticatedClientsClientIdEditLazyRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

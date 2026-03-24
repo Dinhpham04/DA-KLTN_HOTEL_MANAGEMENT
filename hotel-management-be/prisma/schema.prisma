@@ -80,6 +80,11 @@ model Staff {
   reserveOccupiersUpdated ReserveOccupier[] @relation("ReserveOccupierUpdatedBy")
   reserveOccupiersDeleted ReserveOccupier[] @relation("ReserveOccupierDeletedBy")
 
+  // Phase 3: Identification
+  identificationsCreated  Identification[] @relation("IdentificationCreatedBy")
+  identificationsUpdated  Identification[] @relation("IdentificationUpdatedBy")
+  identificationsDeleted  Identification[] @relation("IdentificationDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -358,6 +363,7 @@ model Client {
 
   reserves            Reserve[]
   reserveOccupiers    ReserveOccupier[]
+  identifications     Identification[]
 
   @@index([countryId], map: "clients_country_id_idx")
   @@index([createdStaffId], map: "clients_created_staff_id_idx")
@@ -479,4 +485,57 @@ model ReserveOccupier {
   @@index([deletedStaffId], map: "reserve_occupiers_deleted_staff_id_idx")
 
   @@map("reserve_occupiers")
+}
+
+// ─── Identification (Client ID Documents) ────────────
+
+model Identification {
+  identificationId        Int       @id @default(autoincrement()) @map("identification_id")
+  clientId                Int       @map("client_id")
+  identificationType      Int       @map("identification_type") @db.SmallInt
+  // Type: 1=Passport, 2=CCCD, 3=CMND, 4=Driver License, 5=Residence Card, 9=Other
+  identificationTypeInput String?   @map("identification_type_input") @db.VarChar(32)
+  // Custom type name when type=9 (Other)
+  identificationInputType Int?      @default(1) @map("identification_input_type") @db.SmallInt
+  // Input type: 1=Image, 2=Manual Input
+  imagePath               String?   @map("image_path") @db.VarChar(1024)
+  identificationNumber    String?   @map("identification_number") @db.VarChar(32)
+  expirationDate          DateTime? @map("expiration_date") @db.Date
+  active                  Boolean   @default(true)
+
+  // Audit
+  createdStaffId          Int       @map("created_staff_id")
+  updatedStaffId          Int?      @map("updated_staff_id")
+  deletedStaffId          Int?      @map("deleted_staff_id")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  deletedAt               DateTime? @map("deleted_at")
+
+  client                  Client    @relation(fields: [clientId], references: [clientId])
+  createdBy               Staff     @relation("IdentificationCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy               Staff?    @relation("IdentificationUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy               Staff?    @relation("IdentificationDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([clientId], map: "identifications_client_id_idx")
+  @@index([createdStaffId], map: "identifications_created_staff_id_idx")
+  @@index([updatedStaffId], map: "identifications_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "identifications_deleted_staff_id_idx")
+
+  @@map("identifications")
+}
+
+// ─── ImageIdentification (Uploaded ID Images) ────────
+
+model ImageIdentification {
+  imageIdentificationId Int       @id @default(autoincrement()) @map("image_identification_id")
+  imagePath             String?   @map("image_path") @db.VarChar(1024)
+  imageName             String?   @map("image_name") @db.VarChar(255)
+  assignStatus          Boolean   @default(false) @map("assign_status")
+  // assignStatus: false=Unassigned, true=Assigned to client
+
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  @@map("image_identifications")
 }

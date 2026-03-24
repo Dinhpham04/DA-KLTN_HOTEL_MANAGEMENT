@@ -166,7 +166,101 @@ export const Route = createLazyFileRoute('/_authenticated/feature')({
 })
 ```
 
-### 5. Form with Zod Validation
+### 5. Navigation Patterns
+
+#### Link Component (Declarative)
+```typescript
+import { Link } from '@tanstack/react-router'
+
+// Simple link
+<Link to="/clients">Client List</Link>
+
+// Link with dynamic params
+<Link
+  to="/clients/$clientId/detail"
+  params={{ clientId: String(client.clientId) }}
+>
+  View Details
+</Link>
+
+// Link with search params
+<Link to="/clients" search={{ page: 1, status: 'active' }}>
+  Active Clients
+</Link>
+```
+
+#### useNavigate Hook (Programmatic)
+```typescript
+import { useNavigate } from '@tanstack/react-router'
+
+function Component() {
+  const navigate = useNavigate()
+
+  // Simple navigation
+  navigate({ to: '/clients' })
+
+  // Navigation with params
+  navigate({
+    to: '/clients/$clientId/edit',
+    params: { clientId: String(id) }
+  })
+
+  // Navigation with search params
+  navigate({
+    to: '/clients',
+    search: { page: 1, status: 'active' }
+  })
+
+  // Replace instead of push
+  navigate({ to: '/clients', replace: true })
+}
+```
+
+#### useParams Hook
+```typescript
+import { useParams } from '@tanstack/react-router'
+
+// With explicit 'from' path (recommended - type-safe)
+const { clientId } = useParams({ from: '/_authenticated/clients/$clientId/detail' })
+
+// Alternative: Route.useParams() (when Route is exported)
+const { clientId } = Route.useParams()
+```
+
+### 6. Nested Route Structure
+
+For features with multiple pages (list, create, detail, edit):
+
+```
+src/routes/_authenticated/
+├── feature.lazy.tsx           # Single page feature
+└── features/                  # Multi-page feature
+    ├── index.lazy.tsx         # List page (/features)
+    ├── create.lazy.tsx        # Create page (/features/create)
+    └── $featureId/            # Dynamic param folder
+        ├── detail.lazy.tsx    # Detail page (/features/:id/detail)
+        └── edit.lazy.tsx      # Edit page (/features/:id/edit)
+```
+
+**Route Definitions:**
+```typescript
+// List page: src/routes/_authenticated/features/index.lazy.tsx
+export const Route = createLazyFileRoute('/_authenticated/features')({
+  component: FeaturesListPage,
+})
+
+// Detail page: src/routes/_authenticated/features/$featureId/detail.lazy.tsx
+export const Route = createLazyFileRoute('/_authenticated/features/$featureId/detail')({
+  component: FeatureDetailPage,
+})
+```
+
+**Conventions:**
+- Use camelCase for param names: `$featureId`, `$clientId` (NOT `$feature_id`)
+- Use plural for list routes: `/clients`, `/features` (NOT `/client`)
+- No trailing slash in route paths
+
+### 7. Form with Zod Validation
 
 ```typescript
 import { useForm, FormProvider } from 'react-hook-form'
@@ -197,7 +291,7 @@ function FeatureForm() {
 }
 ```
 
-### 6. Type Definitions
+### 8. Type Definitions
 
 ```typescript
 // src/types/{feature}.ts
@@ -277,6 +371,7 @@ pnpm type-check    # TypeScript type checking only
 | Variable | camelCase | `facilityName` |
 | Type/Interface | PascalCase | `Facility`, `CreateFacilityBody` |
 | API object | camelCase + Api suffix | `facilityApi` |
+| Route param | camelCase ($paramId) | `$clientId`, `$featureId` |
 
 ### Import Order (auto-organized by Biome)
 1. React imports
@@ -390,5 +485,8 @@ formatCurrency(1000000) // "1.000.000 ₫"
 4. [ ] Create mutation hooks `src/hooks/mutations/useCreate{Feature}.ts`, etc.
 5. [ ] Add translations to `src/i18n/locales/vi.json`
 6. [ ] Create route `src/routes/_authenticated/{feature}.tsx`
-7. [ ] Run `pnpm check` and fix any issues
-8. [ ] Run `pnpm type-check` to verify types
+7. [ ] For multi-page features: Create proper nested route structure (see Section 6)
+8. [ ] Use camelCase for route params (`$featureId` not `$feature_id`)
+9. [ ] Run `pnpm check` and fix any issues
+10. [ ] Run `pnpm type-check` to verify types
+11. [ ] Run `pnpm build` to verify production build works without errors

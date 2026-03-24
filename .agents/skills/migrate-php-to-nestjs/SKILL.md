@@ -76,9 +76,10 @@ Read in order:
 3. `app/Http/Controllers/BaseController.php` → default CRUD logic
 4. Custom controller if exists
 
-### Step 2: Create DTOs from PHP $fillable
+### Step 2: Create DTOs from PHP $fillable (Clean up Japan-specific fields)
 
 Map `$fillable` fields → `CreateFeatureDto`:
+- **QUAN TRỌNG**: Xóa bỏ hoàn toàn các trường dữ liệu đặc thù của thị trường Nhật Bản như `name_kana`, `name_ruby`, `furigana`. Cập nhật các trường như `client_name_en` thành tiêu chuẩn chung `clientName` (nếu phù hợp).
 
 ```php
 // PHP

@@ -52,7 +52,7 @@ Truy vết ngược từ nơi phát ra lỗi để tìm nguồn gốc.
 
 - [ ] Lỗi cũ đã được giải quyết chưa?
 - [ ] Fix này có gây ảnh hưởng phụ (Side effect) làm hỏng tính năng khác không?
-- [ ] Chạy `pnpm build` (ở FE/BE) hoặc `pnpm type-check` để đảm bảo code không có lỗi Typecript ẩn.
+- [ ] Chạy `pnpm build` (ở FE/BE) để đảm bảo code không có lỗi Typecript ẩn.
 - [ ] Đã dọn dẹp các lệnh `console.log()` dùng để debug ra khỏi code chưa?
 
 ## Edge Cases (Trường hợp ngoại lệ)
