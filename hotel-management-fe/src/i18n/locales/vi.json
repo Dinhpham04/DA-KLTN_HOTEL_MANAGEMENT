@@ -214,9 +214,7 @@
     "filters": {
       "type": "Loại",
       "name": "Tên",
-      "nameKana": "Tên (Kana)",
       "contactName": "Người liên hệ",
-      "contactNameKana": "Người liên hệ (Kana)",
       "telHome": "SĐT (Nhà)",
       "telMobile": "SĐT (Di động)",
       "telEmergency": "SĐT (Khẩn cấp)",

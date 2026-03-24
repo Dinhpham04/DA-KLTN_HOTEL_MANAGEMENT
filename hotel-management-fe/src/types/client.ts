@@ -39,7 +39,16 @@ export interface ClientFilterParams {
   page?: number
   limit?: number
   search?: string
+  // Individual filter fields
+  clientName?: string
+  contactName?: string
+  email?: string
+  tel?: string
+  telPhone?: string
+  telEmergency?: string
+  // Type filters
   dataType?: number
+  dataTypes?: number[]
   dataStatus?: number
   countryId?: number
   orderBy?: string

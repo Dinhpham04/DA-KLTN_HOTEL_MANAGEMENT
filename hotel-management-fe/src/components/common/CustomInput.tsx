@@ -104,7 +104,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
         {...props}
-        value={props.value ? props.value : ''}
+        {...(props.value !== undefined ? { value: props.value } : {})}
       />
     )
   }

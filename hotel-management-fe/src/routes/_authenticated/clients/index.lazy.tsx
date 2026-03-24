@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { DialogClose } from '@radix-ui/react-dialog'
 import { Link, createLazyFileRoute, useNavigate } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -42,13 +42,11 @@ interface TypeOption {
 interface ClientSearchFormType {
   type: TypeOption
   name: string
-  kana: string
   housePhone: string
   ownerPhone: string
   urgentPhone: string
   email: string
   contactName: string
-  contactKana: string
 }
 
 interface SortParam {
@@ -64,13 +62,11 @@ const defaultFormValues: ClientSearchFormType = {
     isSpecial: false,
   },
   name: '',
-  kana: '',
   housePhone: '',
   ownerPhone: '',
   urgentPhone: '',
   email: '',
   contactName: '',
-  contactKana: '',
 }
 
 const SORT_OPTIONS = [
@@ -88,7 +84,6 @@ const TYPE_MAPPING: Record<number, string> = {
 function ClientsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // State
   const [page, setPage] = useState(1)
@@ -106,13 +101,11 @@ function ClientsPage() {
       isSpecial: z.boolean(),
     }),
     name: z.string().optional(),
-    kana: z.string().optional(),
     housePhone: z.string().optional(),
     ownerPhone: z.string().optional(),
     urgentPhone: z.string().optional(),
     email: z.string().optional(),
     contactName: z.string().optional(),
-    contactKana: z.string().optional(),
   })
 
   const methods = useForm<ClientSearchFormType>({
@@ -121,6 +114,19 @@ function ClientsPage() {
   })
 
   const { isIndividual, isCompany, isSpecial } = methods.watch('type')
+  const formValues = methods.watch()
+
+  // Check if form has any input values
+  const isFormEmpty =
+    !formValues.name &&
+    !formValues.housePhone &&
+    !formValues.ownerPhone &&
+    !formValues.urgentPhone &&
+    !formValues.email &&
+    !formValues.contactName &&
+    !formValues.type.isIndividual &&
+    !formValues.type.isCompany &&
+    !formValues.type.isSpecial
 
   // API Query
   const { data, isLoading, refetch } = useGetClients({
@@ -153,15 +159,18 @@ function ClientsPage() {
     if (formData.type.isCompany) dataTypes.push(2)
     if (formData.type.isSpecial) dataTypes.push(3)
 
+    // Strip non-alphanumeric characters from phone numbers
+    const cleanPhone = (phone: string | undefined) =>
+      phone ? phone.replace(/[^a-zA-Z0-9]/g, '') : undefined
+
     setCurrentFilters({
-      search:
-        formData.name ||
-        formData.email ||
-        formData.housePhone ||
-        formData.ownerPhone ||
-        formData.urgentPhone ||
-        undefined,
-      dataType: dataTypes.length === 1 ? dataTypes[0] : undefined,
+      clientName: formData.name || undefined,
+      contactName: formData.contactName || undefined,
+      email: formData.email || undefined,
+      tel: cleanPhone(formData.housePhone),
+      telPhone: cleanPhone(formData.ownerPhone),
+      telEmergency: cleanPhone(formData.urgentPhone),
+      dataTypes: dataTypes.length > 0 ? dataTypes : undefined,
     })
     setPage(1)
   }
@@ -195,13 +204,13 @@ function ClientsPage() {
   }
 
   // Generate dynamic label text based on selected type
-  const generateLabelText = (isKana?: boolean): string => {
+  const generateLabelText = (): string => {
     const showIndividual = isIndividual || (!isIndividual && !isCompany && !isSpecial)
     const showCompany = isCompany || isSpecial
 
     const labels: string[] = []
-    if (showIndividual) labels.push(isKana ? 'Tên (Kana)' : 'Tên')
-    if (showCompany) labels.push(isKana ? 'Tên công ty (Kana)' : 'Tên công ty')
+    if (showIndividual) labels.push('Tên')
+    if (showCompany) labels.push('Tên công ty')
     return labels.join('/')
   }
 
@@ -220,13 +229,13 @@ function ClientsPage() {
       <div className="box-border flex flex-col gap-[2.3rem] py-[2.3rem] common-container">
         {/* Title */}
         <div className="flex items-center bg-white before:bg-primary before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-          <div className="ml-[1.5rem] font-bold text-[2.3rem]">{t("client.title")}</div>
+          <div className="ml-[1.5rem] font-bold text-[2.3rem]">{t('client.title')}</div>
         </div>
 
         {/* Search Form */}
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(handleSearch)}>
-            <CustomAccordion type="multiple" className="w-full" defaultValue={["item-1"]}>
+            <CustomAccordion type="multiple" className="w-full" defaultValue={['item-1']}>
               <CustomAccordionItem
                 className="bg-white first:mt-0 mb-20 border !border-black rounded-[0.8rem]"
                 value="item-1"
@@ -234,7 +243,7 @@ function ClientsPage() {
                 <CustomAccordionTrigger className="bg-[#79A3E0] py-3 border-none rounded-[0.8rem] [&[data-state=open]]:rounded-[0.8rem_0.8rem_0_0]">
                   <div className="flex justify-between">
                     <div className="flex md:flex-row flex-col items-center text-[1.2rem] md:text-[1.8rem]">
-                      <div className="font-bold text-black">{t("client.searchConditions")}</div>
+                      <div className="font-bold text-black">{t('client.searchConditions')}</div>
                     </div>
                     <NButton
                       className="bg-white p-4"
@@ -252,9 +261,9 @@ function ClientsPage() {
                     {/* Type checkboxes */}
                     <div className="gap-[2rem] grid grid-cols-12 max-md:[&>*]:col-span-12 mb-[1.2rem] w-[100%]">
                       <div>
-                        <div className="flex items-center h-[100%]">{t("client.filters.type")}</div>
+                        <div className="flex items-center h-[100%]">{t('client.filters.type')}</div>
                       </div>
-                      <div className="flex [&>*]:flex [&>*]:items-center gap-[3rem] [&>*]:gap-[.5rem] col-span-11">
+                      <div className="flex [&>*]:flex [&>*]:items-center gap-[4rem] [&>*]:gap-[.5rem] col-span-11">
                         <CustomCheckboxWithTitle
                           title={t('client.type.individual')}
                           checked={methods.watch('type.isIndividual')}
@@ -275,7 +284,7 @@ function ClientsPage() {
                       </div>
                     </div>
 
-                    {/* Name/Kana fields */}
+                    {/* Name fields */}
                     <div
                       className={cn(
                         'gap-[2rem] max-md:gap-[.5rem] grid grid-cols-12 w-[100%]',
@@ -290,22 +299,11 @@ function ClientsPage() {
                       <div className="col-span-2">
                         <CustomInput
                           {...methods.register('name')}
-                          ref={nameInputRef}
                           className="w-[100%] hover:!outline-black focus:!outline-black focus:!border-transparent"
                         />
                       </div>
 
-                      <div>
-                        <div className="flex items-center h-[100%]">{generateLabelText(true)}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <CustomInput
-                          {...methods.register('kana')}
-                          className="w-[100%] focus:!outline-black focus:!border-transparent"
-                        />
-                      </div>
-
-                      <div className="col-span-6 h-[2.5rem]">
+                      <div className="col-span-9 h-[2.5rem]">
                         <div className="flex items-center h-[100%]">
                           {t('client.filters.corpSearchNote')}
                         </div>
@@ -325,48 +323,36 @@ function ClientsPage() {
                               className="w-[100%] hover:!outline-black focus:!outline-black focus:!border-transparent"
                             />
                           </div>
-
-                          <div>
-                            <div className="flex items-center h-[100%] leading-tight">
-                              {t('client.filters.contactNameKana')}
-                            </div>
-                          </div>
-                          <div className="col-span-2">
-                            <CustomInput
-                              {...methods.register('contactKana')}
-                              className="w-[100%] focus:!outline-black focus:!border-transparent"
-                            />
-                          </div>
+                          <div className="col-span-9" />
                         </>
                       )}
-                      {(isCompany || isSpecial) && <div className="col-span-6" />}
 
                       {/* Phone fields */}
                       <div>
                         <div className="flex items-center h-[100%]">
-                          ☎ ({t('client.filters.telHome')})
+                          {t('client.filters.telHome')}
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <CustomInput {...methods.register('housePhone')} className='w-[100%]' />
+                        <CustomInput {...methods.register('housePhone')} className="w-[100%]" />
                       </div>
 
                       <div>
-                        <div className="flex items-center h-[100%]">
-                          ☎ ({t('client.filters.telMobile')})
+                        <div className="flex items-center h-[100%] min-w-[10rem]">
+                          {t('client.filters.telMobile')}
                         </div>
                       </div>
-                      <div className="col-span-2 customDatePicker">
-                        <CustomInput {...methods.register('ownerPhone')} className='w-[100%]' />
+                      <div className="col-span-2 ml-2">
+                        <CustomInput {...methods.register('ownerPhone')} className="w-[100%]" />
                       </div>
 
                       <div>
-                        <div className="flex items-center h-[100%]">
-                          ☎ ({t('client.filters.telEmergency')})
+                        <div className="flex items-center h-[100%] min-w-[14rem]">
+                          {t('client.filters.telEmergency')}
                         </div>
                       </div>
-                      <div className="col-span-2">
-                        <CustomInput {...methods.register('urgentPhone')} className='w-[100%]' />
+                      <div className="col-span-2 ml-4">
+                        <CustomInput {...methods.register('urgentPhone')} className="w-[100%]" />
                       </div>
 
                       <div className="max-md:!hidden col-span-3 h-[2.5rem]" />
@@ -388,28 +374,29 @@ function ClientsPage() {
                     {/* Search/Clear buttons */}
                     <div
                       className={cn(
-                        'gap-[2rem] grid grid-cols-12',
-                        '[&>*]:h-[2.5rem] mt-[2rem] mb-[2rem]'
+                        'gap-[2rem] flex justify-center',
+                        '[&>*]:h-[3rem] mt-[2rem] mb-[2rem]'
                       )}
                     >
                       <div
                         className={cn(
-                          'flex col-span-3 max-md:col-span-12 md:col-start-5',
+                          'flex ',
                           '[&>*]:flex [&>*]:justify-center [&>*]:items-center',
                           'max-md:flex max-md:gap-[2rem] max-md:mt-[1rem]'
                         )}
                       >
                         <NButton
-                          className="flex-1 bg-[#d9d9d9] border border-black min-w-[10rem]"
+                          className="flex-1 p-6 bg-[#d9d9d9] border border-black min-w-[10rem]"
                           type="submit"
                         >
                           {t('client.actions.search')}
                         </NButton>
                         <div className="max-md:!hidden w-[2.5rem] shrink-0" />
                         <NButton
-                          className="flex-1 bg-[#d9d9d9] border border-black min-w-[10rem]"
+                          className="flex-1 p-6 bg-[#d9d9d9] border border-black min-w-[12rem] disabled:opacity-50 disabled:cursor-not-allowed"
                           type="button"
                           onClick={handleClearForm}
+                          disabled={isFormEmpty}
                         >
                           {t('client.actions.clearFilters')}
                         </NButton>
@@ -435,7 +422,7 @@ function ClientsPage() {
             />
           </div>
           <div className="max-sm:hidden flex-1" />
-          <div className="flex items-center h-[100%] text-[1.5rem]">{t("client.sort.label")}</div>
+          <div className="flex items-center h-[100%] text-[1.5rem]">{t('client.sort.label')}</div>
           <div className="w-[20rem] max-sm:w-[100%] [&>*]:h-[100%] text-[1.5rem]">
             <CustomSelect
               option={SORT_OPTIONS}
@@ -459,14 +446,14 @@ function ClientsPage() {
             <thead>
               <tr className="!h-[5.9rem]">
                 <th className="w-[5.6rem]">UG</th>
-                <th className="w-[7.8rem]">{t("client.columns.type")}</th>
-                <th className="w-[20rem]">{t("client.columns.name")}</th>
-                <th className="w-[13rem] whitespace-nowrap">{t("client.columns.telHome")}</th>
-                <th className="w-[13rem]">{t("client.columns.telMobile")}</th>
-                <th className="w-[13rem]">{t("client.columns.telEmergency")}</th>
-                <th className="w-[14rem]">{t("client.columns.email")}</th>
-                <th className="w-[15.6rem]">{t("client.columns.memo")}</th>
-                <th className="w-[5rem]">{t("client.columns.actions")}</th>
+                <th className="w-[7.8rem]">{t('client.columns.type')}</th>
+                <th className="w-[20rem]">{t('client.columns.name')}</th>
+                <th className="w-[13rem] whitespace-nowrap">{t('client.columns.telHome')}</th>
+                <th className="w-[13rem]">{t('client.columns.telMobile')}</th>
+                <th className="w-[13rem]">{t('client.columns.telEmergency')}</th>
+                <th className="w-[14rem]">{t('client.columns.email')}</th>
+                <th className="w-[15.6rem]">{t('client.columns.memo')}</th>
+                <th className="w-[5rem]">{t('client.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -550,7 +537,7 @@ function ClientRow({ client, onSuspend, onNavigate, t }: ClientRowProps) {
           )}
           style={{ scrollbarWidth: 'thin' }}
         >
-          <span className="m-auto">{client.memo ?? ""}</span>
+          <span className="m-auto">{client.memo ?? ''}</span>
         </div>
       </td>
       <td>
@@ -569,10 +556,13 @@ function ClientRow({ client, onSuspend, onNavigate, t }: ClientRowProps) {
                 disabled={isDeleted}
                 className={cn({ '!border-none !shadow-none': isDeleted })}
                 onClick={() =>
-                  onNavigate({ to: '/clients/$clientId/edit', params: { clientId: String(client.clientId) } })
+                  onNavigate({
+                    to: '/clients/$clientId/edit',
+                    params: { clientId: String(client.clientId) },
+                  })
                 }
               >
-                <span className="text-xl">{t("client.actions.edit")}</span>
+                <span className="text-xl">{t('client.actions.edit')}</span>
               </NButton>
               <CustomDialog
                 customClass="text-center [&_svg]:hidden"

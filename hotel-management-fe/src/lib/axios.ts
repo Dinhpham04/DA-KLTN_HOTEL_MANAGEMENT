@@ -27,6 +27,28 @@ function isApiEnvelope<T>(data: unknown): data is ApiEnvelope<T> {
   )
 }
 
+// Custom params serializer to handle arrays correctly for NestJS
+function paramsSerializer(params: Record<string, unknown>): string {
+  const searchParams = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue
+
+    if (Array.isArray(value)) {
+      // Use repeat format: dataTypes=1&dataTypes=2 (NestJS parses this as array)
+      for (const item of value) {
+        if (item !== undefined && item !== null) {
+          searchParams.append(key, String(item))
+        }
+      }
+    } else {
+      searchParams.append(key, String(value))
+    }
+  }
+
+  return searchParams.toString()
+}
+
 export const apiClient = axios.create({
   baseURL: `${API_URL}${API_PREFIX}`,
   headers: {
@@ -34,6 +56,7 @@ export const apiClient = axios.create({
     Accept: 'application/json',
   },
   timeout: 30000,
+  paramsSerializer: { serialize: paramsSerializer },
 })
 
 // Request interceptor - attach token
