@@ -210,7 +210,7 @@ Register in `app.module.ts`.
 
 ```bash
 cd hotel-management-be
-pnpm run build    # No TypeScript errors
+pnpm run build    # LƯU Ý TỐI QUAN TRỌNG: Nếu build có lỗi, BẮT BUỘC phải đọc log và tự viết bài giải pháp sửa lỗi cho đến khi pass hẳn. KHÔNG ĐƯỢC CHỜ USER NHẮC NHỞ.
 pnpm test         # Tests pass
 ```
 

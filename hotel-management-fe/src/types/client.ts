@@ -93,6 +93,9 @@ export interface CreateClientBody {
   fax?: string
   postpaidFlag?: boolean
   advertisingType?: number
+  stayDurationAutoFlag?: number
+  ugFlag?: number
+  usedMessyLevel?: number
   memo?: string
 }
 

@@ -489,4 +489,4 @@ formatCurrency(1000000) // "1.000.000 ₫"
 8. [ ] Use camelCase for route params (`$featureId` not `$feature_id`)
 9. [ ] Run `pnpm check` and fix any issues
 10. [ ] Run `pnpm type-check` to verify types
-11. [ ] Run `pnpm build` to verify production build works without errors
+11. [ ] **CỰC KỲ QUAN TRỌNG**: Chạy `pnpm build`. Nếu có bất kỳ lỗi nào (Type errors, Biome lint, v.v.), BẮT BUỘC PHẢI TỰ ĐỘNG TÌM LỖI VÀ FIX XONG MỚI ĐƯỢC BÁO CÁO HOÀN THÀNH. Tuyệt đối không để lại code lỗi build.

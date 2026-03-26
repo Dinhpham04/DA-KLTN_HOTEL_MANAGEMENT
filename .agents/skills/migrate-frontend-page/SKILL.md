@@ -6,21 +6,21 @@ description: Convert frontend page từ aic-yokohama-weekly-mansion-FE sang hote
 # Migrate Frontend Page
 
 Convert frontend page từ source (Japanese) sang target (Vietnamese).
-**Yêu cầu thiết kế (CRITICAL)**: Ưu tiên giữ nguyên "Look & Feel" của bản gốc (màu sắc, cấu trúc, layout). **TUY NHIÊN**:
-1. Khuyến khích sử dụng các component có sẵn của thư viện (ví dụ `shadcn/ui`, `CustomDialog`) nếu giao diện tương đương với bản gốc.
-2. Khi dịch sang tiếng Việt/English, độ dài text thường dài hơn tiếng Nhật. Được TỰ DO ĐIỀU CHỈNH kích thước (width, height), padding, margins của button, label để chứa hết văn bản nhằm tránh tình trạng chữ bị ép, rớt dòng hoặc tràn viền vô lý.
-3. Nếu source dùng custom component đặc thù chưa có bên target (và không có trong shadcn), hãy COPY y nguyên custom component đó sang.
-4. **Loại bỏ tính năng đặc thù Nhật Bản**: FE cũ có thể chứa các text input hoặc table columns cho `nameKana`, `furigana`, `nameRuby`. **BẮT BUỘC PHẢI XÓA BỎ** chúng khỏi form và giao diện.
-**Yêu cầu code**: 
+**Yêu cầu thiết kế (CRITICAL)**: BẮT BUỘC giữ nguyên "Look & Feel" giống y hệt mẫu gốc. Giao diện gốc đã rất đẹp và chính xác nên các thông số (kích thước, màu sắc, cỡ chữ...) KHÔNG CẦN CHỈNH SỬA thêm. **TUY NHIÊN**:
+1. Khi dịch sang tiếng Việt/English, độ dài text thường dài hơn tiếng Nhật. Có thể ĐIỀU CHỈNH kích thước (width, height), padding, margins của button, label để chứa hết văn bản nhằm tránh tình trạng chữ bị ép, rớt dòng hoặc tràn viền vô lý.
+2. Nếu source dùng custom component đặc thù chưa có bên target, hãy COPY y nguyên custom component đó sang.
+3. **Loại bỏ tính năng đặc thù Nhật Bản**: FE cũ có thể chứa các text input, table columns (như `nameKana`, `furigana`, `nameRuby`...) hoặc logic xử lý dành riêng cho Nhật. **BẮT BUỘC PHẢI XÓA BỎ HOÀN TOÀN** chúng khỏi form, logic code và màn hình giao diện.
+**Yêu cầu code**:
+- **BƯỚC TIỀN QUYẾT (QUAN TRỌNG NHẤT)**: Khi bắt đầu migration frontend, **BẮT BUỘC PHẢI KIỂM TRA** xem code backend (Controllers, DTO, Database) đã được migrate đúng nghiệp vụ và đủ chưa. Nếu chưa, PHẢI DỪNG LẠI và thực hiện migration backend trước tiên (bằng skill `migrate-php-to-nestjs`). Tuyệt đối không làm FE mù quáng khi BE chưa sẵn sàng.
 - Dù UI giữ nguyên, code bên dưới phải được refactor thành cấu trúc rõ ràng, chuẩn clean code và tách biệt logic.
-- **Dữ liệu phải đi đôi với Backend**: KHÔNG được migrate 100% data shape của source cũ một cách máy móc. Bạn phải nhìn vào API và DTO thực tế của Backend (`hotel-management-be`) đang trả về cái gì để map data lên UI cho chuẩn xác.
+- **Dữ liệu map với Backend**: KHÔNG được migrate 100% data shape của source cũ một cách máy móc. Phải nhìn vào API và DTO thực tế của Backend (`hotel-management-be`) xem trả về chính xác loại dữ liệu/tên biến thế nào để dùng gọi lên UI.
 
 ## Intent (Mục tiêu)
 
 - **Goal 1**: Chuyển đổi một page/feature từ `aic-yokohama-weekly-mansion-FE` sang `hotel-management-fe`
 - **Goal 2**: Refactor code (chia nhỏ component, extract hooks, xóa dead code), tuân thủ best practices của target repo
-- **Boundaries**: Frontend only — backend API phải tồn tại trước (dùng `migrate-php-to-nestjs`)
-- **When to use**: Sau khi backend API đã migrate xong
+- **Boundaries**: Frontend only — **BẮT BUỘC** bạn phải verify backend API của NestJS đã hoàn thiện, đủ tính năng mới được tiến hành làm Frontend. Nếu API hụt chức năng, phải qua xử lý Backend trước!
+- **When to use**: Sau khi backend API đã migrate 100% xong râu ria.
 
 ## Knowledge (Kiến thức)
 
@@ -29,7 +29,7 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 | Layer | Source (`aic-yokohama-weekly-mansion-FE`) | Target (`hotel-management-fe`) |
 |-------|------------------------------------------|-------------------------------|
 | Routes | `src/routes/_layout/{feature}*.tsx` | `src/routes/_authenticated/{feature}*.tsx` |
-| Components | `src/components/` | `src/components/common/` |
+| Components | `src/components/` |
 | Hooks | `src/hooks/` | `src/hooks/queries/` + `src/hooks/mutations/` |
 | API | Inline or `src/common/` | `src/api/{feature}.api.ts` |
 | Types | Inline or `types/` | `src/types/{feature}.ts` |
@@ -58,40 +58,103 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 - API: separate file (`feature.api.ts`)
 - Types: separate file (`feature.ts`)
 
+### Japanese Features to REMOVE (Tính năng Nhật Bản cần loại bỏ)
+
+Khi migrate, BẮT BUỘC phải xóa bỏ các tính năng đặc thù Nhật Bản sau:
+
+| Feature | Mô tả | Cách xử lý |
+|---------|-------|-----------|
+| **Kana fields** | `client_name_kana`, `company_name_kana`, `contact_name_kana` | Xóa khỏi form schema, UI, và API calls |
+| **Wareki Calendar** | `JpDatePicker`, `JpEraPicker`, `JpYearPicker`, `JpAgeDisplay`, `type_calendal` | Thay bằng `CustomDatePicker` với locale `vi-VN` |
+| **Kuromoji conversion** | `convertToKatakanaUsingKuromoji()` | Xóa hoàn toàn logic tự động convert sang Katakana |
+| **Japanese zipcode API** | `zipcloud.ibsnet.co.jp/api/search` | Xóa hoặc thay bằng API phù hợp (nếu cần) |
+| **Geonames JP** | `geonames.postalCodeSearch()` với `country: 'JP'` | Xóa hoặc điều chỉnh cho phù hợp |
+| **Japanese text patterns** | Regex patterns cho Hiragana/Katakana validation | Xóa validation rules đặc thù |
+
 ## Execution (Các bước thực hiện)
 
-### Step 1: Read Source Page
+### Step 1: Read Source Page & Identify Dependencies
 
 Read source page(s) in `aic-yokohama-weekly-mansion-FE/src/routes/_layout/{feature}*.tsx`:
 - Identify UI structure (table, forms, dialogs)
 - Identify "code smells" (huge files, inline styles, mixed business logic) để chuẩn bị refactor
-- List all components used
+- **List all components used** (đặc biệt custom components)
+- **List all dependencies/imports** cần copy sang target
 - List all API calls
 - List all Japanese text strings
+- **Identify Japanese-specific features** để loại bỏ (xem bảng trên)
 - Understand state management (useState, useForm, etc.)
 
-### Step 2: Create Types & Match Target Backend
+### Step 2: Copy Dependencies & Custom Components
 
-Extract TypeScript interfaces from source, **NHƯNG PHẢI CẬP NHẬT DỰA TRÊN API THỰC TẾ CỦA BACKEND MỚI**.
+**CRITICAL**: Copy tất cả dependencies từ source sang target TRƯỚC KHI viết page chính.
+
+```bash
+# Ví dụ các file cần copy:
+# Components
+src/components/common/CustomCheckbox.tsx
+src/components/common/CustomDatePicker.tsx  # Sửa locale từ JP sang vi-VN
+src/components/common/CustomSelectClean.tsx
+src/components/svgs/*.tsx                   # SVG icons
+
+# Constants
+src/constants/common.ts                     # Dịch sang tiếng Việt
+
+# Types
+src/types/*.ts
+
+# Misc utilities
+src/misc/type-guard.misc.ts
+
+# DOM type definitions
+src/dom.d.ts
+```
+
+**Khi copy CustomDatePicker.tsx**:
+- Thay `locale` từ `'ja-JP'` sang `'vi-VN'`
+- Xóa Japanese era picker components
+- Sử dụng `const locale = 'vi-VN'` thay vì `useState`
+
+**Khi copy constants/common.ts**:
+- Dịch tất cả labels sang tiếng Việt
+- Giữ nguyên value/enum numbers
+
+### Step 3: Install Missing Packages
+
+Kiểm tra và cài đặt packages thiếu:
+
+```bash
+cd hotel-management-fe
+# Thường cần cài thêm:
+pnpm add dayjs usehooks-ts react-datetime-picker react-calendar react-clock
+```
+
+### Step 4: Create Types & Match Target Backend
+
+Extract TypeScript interfaces từ source, **NHƯNG PHẢI CẬP NHẬT DỰA TRÊN API THỰC TẾ CỦA BACKEND MỚI**.
 - Loại bỏ các field dành riêng cho Nhật Bản (như `nameKana`, `furigana`).
-- Đảm bảo type khớp 100% với DTO và Response format từ NestJS, KHÔNG bưng y nguyên type của dữ liệu project PHP cũ.
-Map to target format:
+- **Thêm các field mới** nếu backend hỗ trợ (như `stayDurationAutoFlag`, `ugFlag`, `usedMessyLevel`)
+- Đảm bảo type khớp 100% với DTO và Response format từ NestJS.
 
 ```typescript
 // src/types/{feature}.ts
-export interface Feature {
-  featureId: number
-  dataStatus: number
-  featureName: string
-  // ... fields matching API response
-}
+export interface CreateFeatureBody {
+  // Fields from source (translated to camelCase)
+  dataType: number
+  clientName: string
+  // ...
 
-export interface CreateFeatureBody { ... }
-export interface UpdateFeatureBody { ... }
-export interface FeatureFilterParams { ... }
+  // THÊM fields mới nếu cần
+  stayDurationAutoFlag?: number
+  ugFlag?: number
+  usedMessyLevel?: number
+
+  // XÓA fields JP-specific
+  // clientNameKana: string  ← XÓA
+}
 ```
 
-### Step 3: Create API Module
+### Step 5: Create API Module
 
 Map source API calls → target API module:
 
@@ -106,18 +169,22 @@ export const featureApi = {
 }
 ```
 
-### Step 4: Create Hooks
+### Step 6: Create Hooks
 
 Split source hooks into query/mutation hooks:
 
 ```typescript
 // src/hooks/queries/useGetFeatures.ts
 // src/hooks/mutations/useCreateFeature.ts
-// src/hooks/mutations/useUpdateFeature.ts
-// src/hooks/mutations/useDeleteFeature.ts
+
+// QUAN TRỌNG: Đảm bảo callback types đúng
+interface UseCreateFeatureParams {
+  onSuccess?: (data: unknown) => void  // Trả về data nếu cần
+  onError?: (error: unknown) => void
+}
 ```
 
-### Step 5: Add Translations
+### Step 7: Add Translations
 
 Extract Japanese strings → create Vietnamese translations:
 
@@ -126,55 +193,156 @@ Source: "施設マスタ" → Target: "Quản lý cơ sở"
 Source: "追加" → Target: "Thêm mới"
 Source: "編集" → Target: "Chỉnh sửa"
 Source: "削除確認" → Target: "Xác nhận xóa"
+Source: "顧客作成" → Target: "Tạo khách hàng"
+Source: "名前" → Target: "Họ tên"
+Source: "会社名" → Target: "Tên công ty"
+Source: "電話番号" → Target: "Số điện thoại"
 ```
 
 Add to `src/i18n/locales/vi.json`.
 
-### Step 6: Create Target Page (with Refactoring & Strict UI)
+### Step 8: Create Target Page (with Refactoring & Strict UI)
 
-Convert source page → target page. **Tuyệt đối KHÔNG bê y nguyên code lộn xộn, TRỪ UI STYLE**:
+Convert source page → target page. **Copy Y HỆT UI layout và style, CHỈ thay đổi**:
 
 1. **Routing**: `createLazyFileRoute('/_layout/feature')` → `createLazyFileRoute('/_authenticated/feature')`
-2. **Clean Component**: Chia nhỏ các file component quá lớn (> 200 lines) thành các sub-components (ví dụ: `FeatureTable`, `FeatureForm`, `FeatureDialog`). Các logic phức tạp không được nhét chung vào UI.
-3. **Adaptive UI Maintenance**: Dùng đúng cấu trúc Tailwind CSS của bản gốc để giữ màu sắc/layout tổng thể. **Tuy nhiên**, nhớ tăng `w-*`, `px-*`, `py-*` hoặc `margins` nếu bản dịch tiếng Việt dài hơn tiếng Nhật để tránh vỡ layout/chữ rớt dòng. Khuyến khích tận dụng các UI component hiện đại (như `shadcn`) thay thế cho HTML thuần nếu giống phong cách gốc. Nếu thiếu custom component, copy thẳng từ dự án cũ sang target rồi mới refactor logic bên trong.
-4. **Logic Separation**: Di chuyển toàn bộ business logic và API calls ra custom hooks (đã tạo ở Step 4).
-5. **i18n**: Replace inline Japanese text → `t('feature.key')`
-6. **No Dead Code**: Bỏ đi mọi unused variables, commented code, alert/console.log hoặc inline hooks cũ bừa bộn từ FE cũ.
-7. **Formatting**: Apply Biome conventions (no semicolons, single quotes) và tái sử dụng components (`CustomDialog`, v.v.).
 
-### Step 7: Verify
+2. **Form Schema**: Copy Zod schema từ source, SỬA:
+   - Xóa fields JP-specific (`client_name_kana`, `type_calendal`, etc.)
+   - Dịch error messages sang tiếng Việt
+   - Đảm bảo types khớp với backend DTO
+
+3. **Form Default Values**: Copy cấu trúc, xóa JP fields
+
+4. **onSubmit Handler**:
+   - Map form data sang backend DTO format (snake_case → camelCase)
+   - Convert types đúng (`null` → `undefined` nếu cần)
+   - Xử lý boolean/number conversions
+
+5. **UI Components**:
+   - Copy Y HỆT layout (flex, grid, spacing, colors)
+   - Thay Japanese labels → Vietnamese labels
+   - Xóa JP-specific inputs (Kana fields, Wareki picker)
+   - Giữ nguyên conditional rendering logic
+
+6. **Logic Separation**: Di chuyển business logic ra custom hooks
+
+7. **i18n**: Replace inline text → `t('feature.key')`
+
+### Step 9: Fix Common Issues
+
+Sau khi viết xong, thường gặp các lỗi sau:
+
+**1. Unused Imports**
+```typescript
+// XÓA imports không dùng
+import { Sex, UsedMessyLevel } from '@/constants/common'  // ← Xóa nếu không dùng
+import { ClientDataType, SexType } from '@/types/client'  // ← Xóa nếu không dùng
+```
+
+**2. Type Mismatches**
+```typescript
+// Sai: fax có thể là null
+fax: data.fax,
+
+// Đúng: Convert null → undefined
+fax: data.fax ?? undefined,
+```
+
+**3. Callback Types**
+```typescript
+// Sai: onSuccess không có param
+onSuccess?: () => void
+
+// Đúng: onSuccess cần data
+onSuccess?: (data: unknown) => void
+```
+
+**4. Locale in DatePicker**
+```typescript
+// Sai: useState không cần thiết
+const [locale, setLocale] = useState('vi-VN')
+
+// Đúng: Const vì không thay đổi
+const locale = 'vi-VN'
+```
+
+### Step 10: Verify
 
 ```bash
 cd hotel-management-fe
-pnpm check        # Biome lint + format
-pnpm type-check   # TypeScript check
+pnpm build        # Build thử xem có crash không. NẾU CÓ LỖI: PHẢI TỰ ĐỌC LOG VÀ TỰ FIX LUÔN TỚI KHI BUILD THÀNH CÔNG THÌ THÔI.
+pnpm check        # Biome lint + format (phải fix hết lỗi lint)
+pnpm type-check   # TypeScript check (không được bỏ qua lỗi type)
 ```
 
 Open browser và kiểm tra visual match với source.
 
 ## Verification (Kiểm tra)
 
-- [ ] UI layout matches source page
+- [ ] UI layout matches source page **100%** (trừ JP-specific elements)
 - [ ] All CRUD operations work
 - [ ] All Japanese text translated to Vietnamese
 - [ ] No hardcoded strings
-- [ ] `pnpm build` passes
-- [ ] `pnpm check` passes
-- [ ] `pnpm type-check` passes
+- [ ] **All JP features REMOVED**: No Kana fields, no Wareki calendar, no Kuromoji
+- [ ] Dependencies copied and working (CustomCheckbox, CustomDatePicker, etc.)
+- [ ] **BẮT BUỘC**: `pnpm build`, `pnpm check`, `pnpm type-check` PASSES hoàn toàn
 - [ ] API calls point to correct NestJS endpoints
 
 ### 4C Checklist
 - **Concise**: Tái sử dụng common components (như `CustomDialog`, `DataTable`). Nếu thiếu component đặc thù của UI cũ, copy từ source sang và refactor. Tuyệt đối không lặp lại code cũ hoặc để lại dead code.
 - **Clear**: File component chỉ chứa UI. Toàn bộ logic ở trong Custom Hook. Code base của target phải "sạch", chuẩn cấu trúc, nhỏ gọn.
 - **Correct**: Style tổng thể (màu sắc, layout) đảm bảo y hệt bản gốc, NHƯNG kích thước/khoảng cách đã được điều chỉnh phù hợp để hiển thị văn bản mới dịch (Vietnamese) mà không làm vỡ giao diện. URL API endpoint gọi sang BE chính xác.
-- **Complete**: All features từ source phải hoạt động bình thường trên target.
+- **Complete**: All features từ source phải hoạt động bình thường trên target (trừ JP-specific features).
 
-## Reference Files
+## Example Migration: Client Create Page
 
-- Source staff page: `aic-yokohama-weekly-mansion-FE/src/routes/_layout/staff-master.lazy.tsx`
-- Target staff page: `hotel-management-fe/src/routes/_authenticated/staff-master.tsx`
-- Source store page: `aic-yokohama-weekly-mansion-FE/src/routes/_layout/store-master.lazy.tsx`
-- Target store page: `hotel-management-fe/src/routes/_authenticated/store-master.lazy.tsx`
+### Files Created/Modified:
+
+```
+hotel-management-fe/
+├── src/
+│   ├── api/
+│   │   └── country.api.ts              # NEW: Country API
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── CustomCheckbox.tsx      # COPIED from source
+│   │   │   ├── CustomDatePicker.tsx    # COPIED, fixed locale
+│   │   │   └── CustomSelectClean.tsx   # ALREADY EXISTS
+│   │   └── svgs/
+│   │       ├── BicycleSVG.tsx          # COPIED
+│   │       ├── CarSvg.tsx              # COPIED
+│   │       ├── DogSvg.tsx              # COPIED
+│   │       └── CloseCommonWhite.tsx    # COPIED
+│   ├── constants/
+│   │   └── common.ts                   # UPDATED: Vietnamese labels
+│   ├── hooks/
+│   │   ├── mutations/
+│   │   │   └── useCreateClient.ts      # UPDATED: onSuccess callback
+│   │   └── queries/
+│   │       └── useGetCountries.ts      # NEW
+│   ├── misc/
+│   │   └── type-guard.misc.ts          # COPIED
+│   ├── routes/_authenticated/clients/
+│   │   └── create.lazy.tsx             # REWRITTEN: Full UI copy
+│   ├── types/
+│   │   ├── client.ts                   # UPDATED: New fields
+│   │   └── country.ts                  # NEW
+│   └── dom.d.ts                        # NEW: LooseValue type
+```
+
+### JP Features Removed from Client Create:
+- `client_name_kana`, `company_name_kana`, `contact_name_kana` fields
+- `JpDatePicker`, `JpEraPicker`, `JpYearPicker`, `JpAgeDisplay` components
+- `convertToKatakanaUsingKuromoji()` function
+- `zipcloud.ibsnet.co.jp` API call
+- `type_calendal` field
+
+### JP Features Kept (Non-JP versions):
+- `CustomDatePicker` with `vi-VN` locale
+- All form fields (translated labels)
+- Full form validation (translated messages)
+- All checkboxes (`stay_duration_auto_flag`, `ug_flag`, `postpaid_flag`, etc.)
 
 ## Edge Cases
 
@@ -182,5 +350,6 @@ Open browser và kiểm tra visual match với source.
 - **Sub-pages/tabs**: Tạo folder với sub-routes
 - **Custom components**: Nếu source dùng component đặc biệt, tạo tương đương trong target
 - **Different API shape**: NestJS response có thể khác PHP, cần adjust data mapping
-- **Source dùng libraries không có trong target**: Tìm equivalent hoặc reimplement
+- **Source dùng libraries không có trong target**: Cài thêm packages (`pnpm add ...`)
 - **Shared state giữa pages**: Sử dụng TanStack Query cache hoặc React context
+- **Type mismatches**: Convert `null` → `undefined`, `number` ↔ `boolean` theo DTO

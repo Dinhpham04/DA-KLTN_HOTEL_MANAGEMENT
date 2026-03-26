@@ -18,6 +18,7 @@ import { RoomModule } from '@modules/room/room.module';
 import { ClientModule } from '@modules/client/client.module';
 import { IdentificationModule } from '@modules/identification/identification.module';
 import { ReservationModule } from '@modules/reservation/reservation.module';
+import { CountryModule } from '@modules/country/country.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -80,6 +81,7 @@ import { AppService } from './app.service';
     ClientModule,
     IdentificationModule,
     ReservationModule,
+    CountryModule,
   ],
   controllers: [AppController],
   providers: [

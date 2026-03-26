@@ -34,3 +34,59 @@ When tasked to migrate a feature (e.g., Facility, Area, Reserve), follow this ex
 1. **Always use specific skills:** If the user says "Translate the Staff page", read `/translate-japanese-ui/SKILL.md` before touching the code.
 2. **Read the sub-CLAUDE.md files:** The backend (`hotel-management-be/CLAUDE.md`) and frontend (`hotel-management-fe/CLAUDE.md`) have very strict linting, formatting (Biome), and architectural rules. Obey them.
 3. **If unsure, Ask:** The source logic can be messy. If a PHP endpoint is overly complex and you're unsure how to optimize it for NestJS, use the `notify_user` tool or ask for clarification.
+
+---
+
+## 🎯 Frontend Migration: "Exact Copy" Mode
+
+When user requests to make target page **"giống y hệt"** (exactly like) source, follow this process:
+
+### Japanese Features to REMOVE (Bắt buộc loại bỏ)
+
+| Feature | Files/Functions | Action |
+|---------|-----------------|--------|
+| Kana fields | `*_kana`, `nameKana`, `furigana` | Xóa khỏi form, schema, API |
+| Wareki Calendar | `JpDatePicker`, `JpEraPicker`, `JpYearPicker`, `JpAgeDisplay` | Thay `CustomDatePicker` locale `vi-VN` |
+| Kuromoji | `convertToKatakanaUsingKuromoji()` | Xóa hoàn toàn |
+| JP Zipcode API | `zipcloud.ibsnet.co.jp` | Xóa hoặc thay thế |
+| Era type | `type_calendal` | Xóa field |
+
+### Migration Steps
+
+1. **Copy ALL dependencies first**:
+   - Components: `CustomCheckbox`, `CustomDatePicker`, `CustomSelectClean`, SVGs
+   - Constants: Translate to Vietnamese, keep structure
+   - Types, utilities, DOM type definitions
+
+2. **Install missing packages**:
+   ```bash
+   pnpm add dayjs usehooks-ts react-datetime-picker react-calendar react-clock
+   ```
+
+3. **Copy UI layout Y HỆT source**:
+   - Same flex/grid structure
+   - Same Tailwind classes
+   - Same colors, spacing
+   - Only translate labels to Vietnamese
+
+4. **Adapt form schema**:
+   - Remove JP fields
+   - Keep all other fields
+   - Translate error messages
+
+5. **Fix types to match backend DTO**:
+   - Add new fields if needed
+   - Convert `null` → `undefined`
+   - Ensure correct types (boolean vs number)
+
+6. **Run build & fix all errors**:
+   ```bash
+   pnpm build && pnpm check && pnpm type-check
+   ```
+
+### Example: Client Create Migration
+
+**Removed**: `client_name_kana`, `JpDatePicker`, `convertToKatakanaUsingKuromoji`, `zipcloud.ibsnet.co.jp`
+
+**Kept (translated)**: All form fields, checkboxes (`ug_flag`, `stay_duration_auto_flag`, `postpaid_flag`, `used_messy_level`), full validation
+

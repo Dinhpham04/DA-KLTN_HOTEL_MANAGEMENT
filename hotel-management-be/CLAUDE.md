@@ -538,7 +538,7 @@ throw new Error('Something wrong');  // WRONG
 9. [ ] Register module in `app.module.ts`
 10. [ ] Add Staff relations in schema if using audit fields
 11. [ ] Create unit tests `*.spec.ts`
-12. [ ] Run `pnpm run build` - must pass
+12. [ ] **LƯU Ý TỐI QUAN TRỌNG**: Chạy `pnpm run build`. Nếu build fail, BẮT BUỘC phải tự động phân tích lỗi, sửa lỗi cho đến khi build chạy thành công (exit code 0) thì mới được phép kết thúc task.
 13. [ ] Run `pnpm test` - must pass
 
 ---
