@@ -35,6 +35,12 @@ export enum UgFlag {
   Có = 1,
 }
 
+// Stay Duration Auto Flag
+export enum StayDurationAutoFlag {
+  Không = 0,
+  Có = 1,
+}
+
 // Identifications type
 export interface IdentificationsType {
   label: string

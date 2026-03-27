@@ -1,3 +1,8 @@
+export interface ServiceUsed {
+  id: number
+  type: number // 1: Car, 2: Bicycle, 4: Dog, 5: Trash
+}
+
 export interface Client {
   clientId: number
   dataStatus: number
@@ -25,12 +30,14 @@ export interface Client {
   emergencyRelation: string | null
   fax: string | null
   postpaidFlag: boolean
-  stayDurationAutoFlag: boolean
-  ugFlag: boolean
-  usedMessyLevel: number | null
   advertisingType: number | null
   memo: string | null
   useCount: number
+  ugFlag?: boolean | number
+  stayDurationAutoFlag?: number
+  usedMessyLevel?: number
+  expirationDateLast?: string | null
+  lastUsedServiceIds?: ServiceUsed[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null
