@@ -44,6 +44,7 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
     monthOnly ? 'year' : 'month'
   )
   const [activeStartDate, setActiveStartDate] = useState<Date | undefined>(defaultActiveStartDate)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(isShow)
 
   const pickerRef = useRef<HTMLDivElement>(null)
 
@@ -61,6 +62,10 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
       setDateTime(null)
     }
   }, [value])
+
+  useEffect(() => {
+    setIsCalendarOpen(isShow)
+  }, [isShow])
 
   useEffect(() => {
     if (value) {
@@ -82,31 +87,37 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
     const dayEl = pickerRef.current?.querySelector('.react-datetime-picker__inputGroup__day')
 
     const openCalendar = () => {
-      const icon = pickerRef.current?.querySelector('.react-datetime-picker__button')
-      if (icon instanceof HTMLElement) {
-        icon.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-      }
+      setIsCalendarOpen(true)
     }
 
-    yearEl?.addEventListener('click', () => {
+    const handleYearClick = () => {
       setCalendarView('decade')
       openCalendar()
-    })
+    }
 
-    monthEl?.addEventListener('click', () => {
+    const handleMonthClick = () => {
       setCalendarView('year')
       openCalendar()
-    })
+    }
 
-    dayEl?.addEventListener('click', () => {
+    const handleDayClick = () => {
       setCalendarView('month')
       openCalendar()
-    })
+    }
 
-    return () => {}
+    yearEl?.addEventListener('click', handleYearClick)
+    monthEl?.addEventListener('click', handleMonthClick)
+    dayEl?.addEventListener('click', handleDayClick)
+
+    return () => {
+      yearEl?.removeEventListener('click', handleYearClick)
+      monthEl?.removeEventListener('click', handleMonthClick)
+      dayEl?.removeEventListener('click', handleDayClick)
+    }
   }, [])
 
   const handleCalendarOpen = () => {
+    setIsCalendarOpen(true)
     setTimeout(() => {
       const calendar = document.querySelector('.react-datetime-picker__calendar--open')
       if (calendar) {
@@ -118,6 +129,19 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
   }
 
   const handleCalendarClose = () => {
+    setCalendarView(monthOnly ? 'year' : 'month')
+    setIsCalendarOpen(false)
+  }
+
+  // Handle year selection - navigate to month selection view (don't set date yet)
+  const handleYearSelect = (selectedDate: Date) => {
+    setActiveStartDate(selectedDate)
+    setCalendarView('year')
+  }
+
+  // Handle month selection - navigate to day selection view (don't set date yet)
+  const handleMonthSelect = (selectedDate: Date) => {
+    setActiveStartDate(selectedDate)
     setCalendarView('month')
   }
 
@@ -182,6 +206,8 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
           activeStartDate: activeStartDate,
           onActiveStartDateChange: ({ activeStartDate }) =>
             setActiveStartDate(activeStartDate || undefined),
+          onClickYear: handleYearSelect,
+          onClickMonth: handleMonthSelect,
           formatShortWeekday: (_locale, date) => {
             const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
             return weekdays[date.getDay()]
@@ -204,12 +230,12 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
         clearIcon={false}
         calendarIcon={false}
         className={cn(
-          'z-1000 flex-1 bg-white [&>div]:px-4 border border-black w-[19rem] h-16 [&_input::placeholder]:text-black text-2xl text-center cursor-pointer react-date-picker__calendar-button',
+          'z-1000 flex-1 bg-white [&>div]:px-4 border-[1px] font-bold border-black w-[19rem] h-16 [&_input::placeholder]:text-black text-2xl text-center cursor-pointer react-date-picker__calendar-button',
           disable ? 'disabled' : '',
           className
         )}
         onChange={handleDateChange}
-        isCalendarOpen={isShow}
+        isCalendarOpen={isCalendarOpen}
         value={dateTime}
         onCalendarOpen={handleCalendarOpen}
         onCalendarClose={handleCalendarClose}

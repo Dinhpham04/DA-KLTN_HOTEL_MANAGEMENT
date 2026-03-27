@@ -344,6 +344,9 @@ model Client {
   emergencyRelation   String?   @map("emargency_relation") @db.VarChar(256)
   fax                 String?   @db.VarChar(18)
   postpaidFlag        Boolean   @default(false) @map("postpaid_flag")
+  stayDurationAutoFlag Boolean  @default(false) @map("stay_duration_auto_flag")
+  ugFlag              Boolean   @default(false) @map("ug_flag")
+  usedMessyLevel      Int?      @map("used_messy_level") @db.SmallInt
   advertisingType     Int?      @map("advertising_type") @db.SmallInt
   memo                String?   @db.Text
   useCount            Int       @default(0) @map("use_count") @db.SmallInt

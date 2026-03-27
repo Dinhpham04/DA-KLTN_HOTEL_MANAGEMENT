@@ -33,7 +33,7 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 | Hooks | `src/hooks/` | `src/hooks/queries/` + `src/hooks/mutations/` |
 | API | Inline or `src/common/` | `src/api/{feature}.api.ts` |
 | Types | Inline or `types/` | `src/types/{feature}.ts` |
-| i18n | `src/i18n.ts` (single file, Japanese) | `src/i18n/locales/vi.json` (Vietnamese) |
+| i18n | `src/i18n.ts` (single file, Japanese) | <!-- `src/i18n/locales/vi.json` (Vietnamese) --> Dịch thẳng tiếng Việt trong code |
 | Styling | Tailwind CSS | Tailwind CSS (same) |
 | UI lib | shadcn/ui | shadcn/ui (same) |
 
@@ -41,7 +41,7 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 
 1. **Route layout**: Source uses `_layout`, target uses `_authenticated`
 2. **File router**: Both use TanStack Router, same pattern
-3. **i18n**: Source has Japanese inline, target uses separate `vi.json` with `useTranslation()`
+3. **i18n**: <!-- Source has Japanese inline, target uses separate `vi.json` with `useTranslation()` --> Tạm thời hardcode thẳng tiếng Việt thay cho tiếng Nhật để dễ debug, chưa dùng i18n vội.
 4. **API client**: Source may have different Axios config, target uses `@/lib/axios`
 5. **Linter**: Source may use ESLint, target uses **Biome** (no semicolons, single quotes)
 
@@ -186,6 +186,7 @@ interface UseCreateFeatureParams {
 
 ### Step 7: Add Translations
 
+<!-- TẠM THỜI KHÔNG DÙNG i18n, CHỈ HARDCODE TIẾNG VIỆT ĐỂ DỄ DEBUG
 Extract Japanese strings → create Vietnamese translations:
 
 ```
@@ -200,6 +201,9 @@ Source: "電話番号" → Target: "Số điện thoại"
 ```
 
 Add to `src/i18n/locales/vi.json`.
+-->
+
+Dịch trực tiếp các chuỗi tiếng Nhật sang tiếng Việt và **hardcode thẳng vào code JSX/TSX**. Không sử dụng i18n/`t()` ở thời điểm hiện tại.
 
 ### Step 8: Create Target Page (with Refactoring & Strict UI)
 
@@ -227,7 +231,7 @@ Convert source page → target page. **Copy Y HỆT UI layout và style, CHỈ t
 
 6. **Logic Separation**: Di chuyển business logic ra custom hooks
 
-7. **i18n**: Replace inline text → `t('feature.key')`
+7. **i18n**: <!-- Replace inline text → `t('feature.key')` --> Tạm thời replace inline Japanese text → inline Vietnamese text (hardcode).
 
 ### Step 9: Fix Common Issues
 

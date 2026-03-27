@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { DialogClose } from '@radix-ui/react-dialog'
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { useDocumentTitle } from 'usehooks-ts'
+import { useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
 import {
@@ -20,7 +20,7 @@ import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
 import { CustomRadio, CustomRadioItems } from '@/components/common/CustomRadio'
 import CustomSelect from '@/components/common/CustomSelect'
-import CustomSelectClean, { type Option } from '@/components/common/CustomSelectClean'
+import type { Option } from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import {
@@ -33,13 +33,7 @@ import {
 } from '@/components/ui/form'
 import { NButton } from '@/components/ui/new-button'
 
-import {
-  DataType,
-  regexHtml,
-  regexIcon,
-  regexSQL,
-  regexUrl,
-} from '@/constants/common'
+import { DataType, regexHtml, regexIcon, regexSQL, regexUrl } from '@/constants/common'
 import { useCreateClient } from '@/hooks/mutations/useCreateClient'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import i18n from '@/i18n'
@@ -63,8 +57,8 @@ const sexArr = [
 ]
 
 const UsedMessyLevelOption: Option[] = [
-  { label: 'Không', value: '0' },
-  { label: 'Có', value: '1' },
+  { label: 'Sạch', value: '0' },
+  { label: 'Bẩn', value: '1' },
 ]
 
 const FormSchemaContact = z
@@ -317,16 +311,18 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
 
 function ClientCreatePage() {
   useDocumentTitle('Tạo khách hàng')
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState<boolean>(true)
   const [loadingSubmit, setLoadingSubmit] = useState<boolean>(false)
   const [loadingCountry, setLoadingCountry] = useState<boolean>(true)
   const [countryOption, setCountryOption] = useState<Option[]>([])
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState<boolean>(false)
 
   const { data: dataCountries } = useGetCountries()
 
@@ -349,6 +345,7 @@ function ClientCreatePage() {
       if (clientId) {
         navigate({ to: `/clients/${clientId}/edit` })
       } else {
+        queryClient.invalidateQueries({ queryKey: ['clients'] })
         navigate({ to: '/clients' })
       }
     },
@@ -394,11 +391,12 @@ function ClientCreatePage() {
   })
 
   const convertDate = (data: TypeFormClientSchemaContact) => {
-    return data.birthday ? dayjs(data.birthday).format('YYYY/MM/DD') : ''
+    return data.birthday ? dayjs(data.birthday).format('YYYY-MM-DD') : undefined
   }
 
   const onSubmit = (data: TypeFormClientSchemaContact) => {
     setLoadingSubmit(true)
+    setIsConfirmDialogOpen(false)
 
     const postpaid_flag_handle = data.data_type === '3' ? data.postpaid_flag : false
 
@@ -407,13 +405,13 @@ function ClientCreatePage() {
       clientName: data.client_name || data.company_name || '',
       contactName: data.contact_name,
       companyName: data.company_name,
-      email: data.email ?? '',
+      email: data.email || undefined,
       countryId: data.country_id.value ? Number(data.country_id.value) : undefined,
       sex: data.sex ? Number.parseInt(data.sex) : undefined,
       birthday: convertDate(data),
-      stayDurationAutoFlag: data.stay_duration_auto_flag ? 1 : 0,
+      stayDurationAutoFlag: data.stay_duration_auto_flag ?? false,
       advertisingType: data.advertising_type ? 1 : 0,
-      ugFlag: data.ug_flag ? 1 : 0,
+      ugFlag: data.ug_flag ?? false,
       usedMessyLevel:
         data.used_messy_level.value !== '' ? Number.parseInt(data.used_messy_level.value) : 0,
       postpaidFlag: postpaid_flag_handle,
@@ -433,6 +431,13 @@ function ClientCreatePage() {
     }
 
     createClientMutation.mutate(handleData)
+  }
+
+  const handleOpenConfirmDialog = async () => {
+    const isValid = await form.trigger()
+    if (isValid) {
+      setIsConfirmDialogOpen(true)
+    }
   }
 
   useEffect(() => {
@@ -485,7 +490,7 @@ function ClientCreatePage() {
                           render={({ field }) => (
                             <FormItem>
                               <div className="flex">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                   Loại
                                 </FormLabel>
                                 <CustomRadio onValueChange={field.onChange} className="flex">
@@ -518,7 +523,7 @@ function ClientCreatePage() {
                           render={({ field }) => (
                             <FormItem className="my-4 mr-10">
                               <div className="flex">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                   Mã KH
                                 </FormLabel>
                                 <CustomInput
@@ -534,7 +539,7 @@ function ClientCreatePage() {
                       </div>
 
                       {/* Advertising checkbox */}
-                      <div className="flex items-center ml-[10rem]">
+                      <div className="flex items-center ml-[15rem]">
                         <FormItem className="w-96">
                           <FormField
                             control={form.control}
@@ -551,7 +556,7 @@ function ClientCreatePage() {
                                     />
                                   </FormControl>
                                   <FormLabel className="flex items-center !mt-0 ml-3 font-bold text-[1.6rem] leading-7 cursor-pointer">
-                                    Đặt qua trang tiếng Anh
+                                    Đặt phòng trực tuyến
                                   </FormLabel>
                                 </FormItem>
                                 <FormMessage className="text-red-500 text-xl" />
@@ -570,7 +575,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem className="my-4 mr-16">
                                 <div className="flex">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Họ tên
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -593,7 +598,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <div className="flex">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Giới tính
                                   </FormLabel>
                                   <CustomRadio onValueChange={field.onChange} className="flex">
@@ -631,7 +636,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem className="my-4 mr-16">
                                 <div className="flex">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Tên công ty
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -658,7 +663,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <div className="flex">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Giới tính
                                   </FormLabel>
                                   <CustomRadio onValueChange={field.onChange} className="flex">
@@ -696,7 +701,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem className="my-4 mr-16">
                                 <div className="flex">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Người liên hệ
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -717,10 +722,10 @@ function ClientCreatePage() {
                       )}
 
                       {/* Country + Birthday */}
-                      <div className="flex flex-wrap items-center gap-[.2rem]">
+                      <div className="flex flex-wrap items-center gap-[5rem]">
                         <FormItem className="my-4 md:w-[40rem]">
                           <div className="flex">
-                            <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                            <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                               Quốc tịch
                             </FormLabel>
                             <Controller
@@ -730,7 +735,7 @@ function ClientCreatePage() {
                                 <FormItem className="w-[26.2rem]">
                                   <CustomSelect
                                     disable={loadingCountry}
-                                    customClassMain={cn('w-full h-[3.6rem]', {
+                                    customClassMain={cn('w-[26.2rem] h-[3.6rem]', {
                                       ' border-red-500': form.formState.errors.country_id,
                                     })}
                                     option={countryOption.map((c) => ({
@@ -756,7 +761,7 @@ function ClientCreatePage() {
 
                         <FormItem className="my-4 md:w-[40.6rem]">
                           <div className="flex">
-                            <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                            <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                               Ngày sinh
                             </FormLabel>
                             <Controller
@@ -767,9 +772,6 @@ function ClientCreatePage() {
                                   <CustomDatePicker
                                     onBlur={onBlur}
                                     format="yyyy/MM/dd"
-                                    className={cn(
-                                      'flex-1 [&>div]:px-4 w-[19rem] h-[3.5rem] font-bold [&_input::placeholder]:text-black text-2xl cursor-pointer react-date-picker__calendar-button'
-                                    )}
                                     change={onChange}
                                     value={value}
                                   />
@@ -783,18 +785,18 @@ function ClientCreatePage() {
 
                       {/* Individual: Address */}
                       {form.watch('data_type') === '1' && (
-                        <div className="flex flex-wrap items-center gap-[4rem]">
+                        <div className="flex flex-wrap items-center">
                           <FormField
                             control={form.control}
                             name="zip_code"
                             render={({ field }) => (
                               <FormItem className="my-4">
-                                <div className="flex items-center">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                <div className="flex items-center mr-[3.8rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Mã bưu điện
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
-                                    <CustomInput className="bg-white w-[14.4rem]" {...field} />
+                                    <CustomInput className="bg-white w-[26.2rem]" {...field} />
                                     <FormMessage className="max-w-[14rem] text-red-500 text-xl line-clamp-2" />
                                   </div>
                                 </div>
@@ -808,7 +810,7 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4 mr-8">
                                   <div className="flex">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                       Địa chỉ
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
@@ -835,7 +837,7 @@ function ClientCreatePage() {
                                     className={cn('bg-white w-[35.7rem]', {
                                       ' border-red-500': form.formState.errors.address2,
                                     })}
-                                    placeholder="Quận/Huyện, Phường/Xã, Số nhà"
+                                    placeholder="Số nhà, Phường/Xã, Quận/Huyện"
                                   />
                                   <FormMessage className="text-red-500 text-xl" />
                                 </FormItem>
@@ -847,19 +849,19 @@ function ClientCreatePage() {
 
                       {/* Corporation: Company Address */}
                       {form.watch('data_type') !== '1' && (
-                        <div className="flex flex-wrap items-center gap-[4rem]">
+                        <div className="flex flex-wrap items-center">
                           <FormField
                             control={form.control}
                             name="company_zip_code"
                             render={({ field }) => (
-                              <FormItem className="my-4">
+                              <FormItem className="my-4 mr-[3.8rem]">
                                 <div className="flex items-center">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                     Mã bưu điện (CT)
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
-                                    <CustomInput className="bg-white w-[14.4rem]" {...field} />
-                                    <FormMessage className="max-w-[14rem] text-red-500 text-xl line-clamp-2" />
+                                    <CustomInput className="bg-white w-[26.2rem]" {...field} />
+                                    <FormMessage className="max-w-[26.2rem] text-red-500 text-xl line-clamp-2" />
                                   </div>
                                 </div>
                               </FormItem>
@@ -872,7 +874,7 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4 mr-8">
                                   <div className="flex">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                       Địa chỉ (CT)
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
@@ -910,7 +912,7 @@ function ClientCreatePage() {
                       )}
 
                       {/* Phone numbers */}
-                      <div className="flex flex-wrap items-center gap-[4.2rem]">
+                      <div className="flex flex-wrap items-center gap-[3.8rem]">
                         {form.watch('data_type') === '1' && (
                           <FormField
                             control={form.control}
@@ -918,7 +920,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem className="my-4">
                                 <div className="flex items-center">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                     ☎ (Nhà)
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -942,7 +944,7 @@ function ClientCreatePage() {
                             render={({ field }) => (
                               <FormItem className="my-4">
                                 <div className="flex items-center">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                  <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                     ☎ (Công ty)
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -965,7 +967,7 @@ function ClientCreatePage() {
                           render={({ field }) => (
                             <FormItem className="my-4">
                               <div className="flex items-center">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                   ☎ (Di động)
                                 </FormLabel>
                                 <div className="flex flex-col gap-1">
@@ -982,8 +984,8 @@ function ClientCreatePage() {
                           name="email"
                           render={({ field }) => (
                             <FormItem className="my-4">
-                              <div className="flex items-center">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                              <div className="flex items-center ml-2">
+                                <FormLabel className="flex items-center min-w-[9.8rem] font-bold text-[1.6rem] leading-7">
                                   Email
                                 </FormLabel>
                                 <div className="flex flex-col gap-1">
@@ -997,14 +999,14 @@ function ClientCreatePage() {
                       </div>
 
                       {/* Emergency contact */}
-                      <div className="flex flex-wrap items-center gap-[4.3rem]">
+                      <div className="flex flex-wrap items-center">
                         <FormField
                           control={form.control}
                           name="tel_emergency"
                           render={({ field }) => (
-                            <FormItem className="my-4">
+                            <FormItem className="my-4 mr-[3.8rem]">
                               <div className="flex items-center">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                   ☎ (Khẩn cấp)
                                 </FormLabel>
                                 <div className="flex flex-col gap-1">
@@ -1021,8 +1023,8 @@ function ClientCreatePage() {
                           name="emargency_relation"
                           render={({ field }) => (
                             <FormItem className="my-4">
-                              <div className="flex items-center">
-                                <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                              <div className="flex items-center mr-[4.3rem]">
+                                <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                   Quan hệ
                                 </FormLabel>
                                 <div className="flex flex-col gap-1">
@@ -1041,7 +1043,7 @@ function ClientCreatePage() {
                             render={({ field: { value, onChange } }) => (
                               <FormItem className="my-4">
                                 <div className="flex items-center">
-                                  <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                  <FormLabel className="flex items-center min-w-[9.8rem] font-bold text-[1.6rem] leading-7">
                                     FAX
                                   </FormLabel>
                                   <div className="flex flex-col gap-1">
@@ -1069,7 +1071,7 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4 mr-16">
                                   <div className="flex">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                       Tên công ty
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
@@ -1094,12 +1096,12 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4">
                                   <div className="flex items-center">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                       Mã bưu điện (CT)
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
-                                      <CustomInput className="bg-white w-[14.4rem]" {...field} />
-                                      <FormMessage className="max-w-[14rem] text-red-500 text-xl line-clamp-2" />
+                                      <CustomInput className="bg-white w-[26.2rem]" {...field} />
+                                      <FormMessage className="max-w-[26.2rem] text-red-500 text-xl line-clamp-2" />
                                     </div>
                                   </div>
                                 </FormItem>
@@ -1112,7 +1114,7 @@ function ClientCreatePage() {
                                 render={({ field }) => (
                                   <FormItem className="my-4 mr-8">
                                     <div className="flex">
-                                      <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem]">
+                                      <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
                                         Địa chỉ (CT)
                                       </FormLabel>
                                       <div className="flex flex-col gap-1">
@@ -1155,7 +1157,7 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4">
                                   <div className="flex items-center">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                       ☎ (Công ty)
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
@@ -1177,7 +1179,7 @@ function ClientCreatePage() {
                               render={({ field }) => (
                                 <FormItem className="my-4">
                                   <div className="flex items-center">
-                                    <FormLabel className="flex items-center min-w-[10rem] font-bold text-[1.6rem] leading-7">
+                                    <FormLabel className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
                                       FAX (CT)
                                     </FormLabel>
                                     <div className="flex flex-col gap-1">
@@ -1224,21 +1226,21 @@ function ClientCreatePage() {
                                 )}
                               />
                             </FormItem>
-                            <FormItem className="flex !my-[1.2rem] w-[25rem]">
-                              <FormLabel className="flex items-center w-[9.2rem] font-bold text-[1.6rem]">
-                                Mức bẩn
+                            <FormItem className="flex !my-[1.2rem] w-[25rem] mr-[4rem]">
+                              <FormLabel className="flex items-center w-[15rem] font-bold text-[1.6rem]">
+                                Vệ sinh phòng
                               </FormLabel>
                               <Controller
                                 control={form.control}
                                 name="used_messy_level"
                                 render={({ field: { onChange, value } }) => (
                                   <FormItem className="!mt-0">
-                                    <CustomSelectClean
-                                      customClassMain={cn('w-[10.4rem] h-[3.6rem]', {
+                                    <CustomSelect
+                                      customClassMain={cn('w-[10.4rem] h-[3.6rem] text-black', {
                                         'border-red-500': form.formState.errors.used_messy_level,
                                       })}
                                       option={UsedMessyLevelOption}
-                                      selected={value}
+                                      selected={value.value}
                                       change={(e) => {
                                         onChange({
                                           label: e.label,
@@ -1351,36 +1353,39 @@ function ClientCreatePage() {
 
               {/* Submit button */}
               <div className="flex justify-center mx-auto">
+                <NButton
+                  disabled={loadingSubmit}
+                  type="button"
+                  onClick={handleOpenConfirmDialog}
+                  className="bg-[#D9D9D9] mx-8 w-[15rem]"
+                >
+                  Tạo mới
+                </NButton>
                 <CustomDialog
                   customClass="text-center [&_svg]:hidden"
                   size="medium"
                   customClassContent="max-w-[50rem]"
-                  trigger={
-                    <NButton
-                      disabled={loadingSubmit}
-                      type="button"
-                      className="bg-[#D9D9D9] mx-8 w-48"
-                    >
-                      Tạo mới
-                    </NButton>
-                  }
+                  opened={isConfirmDialogOpen}
+                  changeOnOpened={setIsConfirmDialogOpen}
+                  trigger={<></>}
                   title={<>Xác nhận tạo khách hàng?</>}
                   content={
                     <>
                       <div className="flex justify-center">
-                        <DialogClose>
-                          <NButton
-                            form="mainForm"
-                            className="bg-green-600 mx-4 w-[12.4rem] text-white btn btn-default"
-                          >
-                            <span>Thực hiện</span>
-                          </NButton>
-                        </DialogClose>
-                        <DialogClose>
-                          <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
-                            <span>Hủy</span>
-                          </div>
-                        </DialogClose>
+                        <NButton
+                          type="submit"
+                          form="mainForm"
+                          className="bg-green-600 mx-4 w-[14.4rem] text-white btn btn-default"
+                        >
+                          <span>Thực hiện</span>
+                        </NButton>
+                        <NButton
+                          type="button"
+                          onClick={() => setIsConfirmDialogOpen(false)}
+                          className="bg-[#eee] mx-4 w-[14.4rem] border border-black btn btn-default"
+                        >
+                          <span>Hủy</span>
+                        </NButton>
                       </div>
                     </>
                   }

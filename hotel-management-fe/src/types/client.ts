@@ -25,10 +25,12 @@ export interface Client {
   emergencyRelation: string | null
   fax: string | null
   postpaidFlag: boolean
+  stayDurationAutoFlag: boolean
+  ugFlag: boolean
+  usedMessyLevel: number | null
   advertisingType: number | null
   memo: string | null
   useCount: number
-  ugFlag?: boolean
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -93,8 +95,8 @@ export interface CreateClientBody {
   fax?: string
   postpaidFlag?: boolean
   advertisingType?: number
-  stayDurationAutoFlag?: number
-  ugFlag?: number
+  stayDurationAutoFlag?: boolean
+  ugFlag?: boolean
   usedMessyLevel?: number
   memo?: string
 }

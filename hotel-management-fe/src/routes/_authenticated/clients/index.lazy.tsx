@@ -447,10 +447,10 @@ function ClientsPage() {
               <tr className="!h-[5.9rem]">
                 <th className="w-[5.6rem]">UG</th>
                 <th className="w-[7.8rem]">{t('client.columns.type')}</th>
-                <th className="w-[20rem]">{t('client.columns.name')}</th>
+                <th className="w-[18rem]">{t('client.columns.name')}</th>
                 <th className="w-[13rem] whitespace-nowrap">{t('client.columns.telHome')}</th>
                 <th className="w-[13rem]">{t('client.columns.telMobile')}</th>
-                <th className="w-[13rem]">{t('client.columns.telEmergency')}</th>
+                <th className="w-[15rem]">{t('client.columns.telEmergency')}</th>
                 <th className="w-[14rem]">{t('client.columns.email')}</th>
                 <th className="w-[15.6rem]">{t('client.columns.memo')}</th>
                 <th className="w-[5rem]">{t('client.columns.actions')}</th>
@@ -544,7 +544,7 @@ function ClientRow({ client, onSuspend, onNavigate, t }: ClientRowProps) {
         <div
           className={cn(
             'flex flex-col gap-[.5rem] p-[.5rem]',
-            '[&>*]:bg-[#efefef] [&>*]:border-2 [&>*]:box-border [&>*]:border-[black] [&>*]:rounded-[.6rem]',
+            '[&>*]:bg-[#efefef] [&>*]:border-1 [&>*]:box-border [&>*]:border-[black] [&>*]:rounded-[.6rem]',
             { 'h-[7.9rem] justify-center': isDeleted }
           )}
         >
@@ -587,12 +587,12 @@ function ClientRow({ client, onSuspend, onNavigate, t }: ClientRowProps) {
                 content={
                   <div className="flex justify-center p-5">
                     <DialogClose onClick={() => onSuspend(client.clientId, client.dataStatus)}>
-                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#8bd08e] mx-4 w-[14.4rem] border border-black btn btn-default">
                         <span>{t('client.dialogs.execute')}</span>
                       </div>
                     </DialogClose>
                     <DialogClose>
-                      <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
+                      <div className="bg-[#eee] mx-4 w-[14.4rem] btn border border-black btn-default">
                         <span>{t('client.dialogs.cancel')}</span>
                       </div>
                     </DialogClose>

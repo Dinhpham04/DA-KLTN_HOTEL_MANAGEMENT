@@ -32,6 +32,9 @@ export class ClientResponseDto {
   @ApiPropertyOptional() readonly emergencyRelation!: string | null;
   @ApiPropertyOptional() readonly fax!: string | null;
   @ApiProperty() readonly postpaidFlag!: boolean;
+  @ApiProperty() readonly stayDurationAutoFlag!: boolean;
+  @ApiProperty() readonly ugFlag!: boolean;
+  @ApiPropertyOptional() readonly usedMessyLevel!: number | null;
   @ApiPropertyOptional() readonly advertisingType!: number | null;
   @ApiPropertyOptional() readonly memo!: string | null;
   @ApiProperty() readonly useCount!: number;
@@ -68,6 +71,9 @@ export class ClientResponseDto {
       emergencyRelation: client.emergencyRelation,
       fax: client.fax,
       postpaidFlag: client.postpaidFlag,
+      stayDurationAutoFlag: client.stayDurationAutoFlag,
+      ugFlag: client.ugFlag,
+      usedMessyLevel: client.usedMessyLevel,
       advertisingType: client.advertisingType,
       memo: client.memo,
       useCount: client.useCount,

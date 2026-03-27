@@ -151,6 +151,23 @@ export class CreateClientDto {
   @IsBoolean()
   readonly postpaidFlag?: boolean;
 
+  @ApiPropertyOptional({ description: 'Stay duration auto calculation flag', default: false })
+  @IsOptional()
+  @IsBoolean()
+  readonly stayDurationAutoFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'UG (Undesirable Guest) flag', default: false })
+  @IsOptional()
+  @IsBoolean()
+  readonly ugFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'Room cleanliness level (0=None, 1=Normal, 2=Little, 3=Lot)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  readonly usedMessyLevel?: number;
+
   @ApiPropertyOptional({ description: 'Advertising type' })
   @IsOptional()
   @IsInt()
