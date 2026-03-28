@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { useDocumentTitle } from 'usehooks-ts'
-import { useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
 import {
@@ -311,7 +311,7 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
 
 function ClientCreatePage() {
   useDocumentTitle('Tạo khách hàng')

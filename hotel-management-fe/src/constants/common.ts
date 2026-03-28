@@ -25,8 +25,8 @@ export const TypeCalendal = {
 
 // Used messy level
 export enum UsedMessyLevel {
-  Không = 0,
-  Có = 1,
+  Sạch = 0,
+  Bẩn = 1,
 }
 
 // UG Flag

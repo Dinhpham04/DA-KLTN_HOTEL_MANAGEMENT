@@ -33,8 +33,8 @@ export interface Client {
   advertisingType: number | null
   memo: string | null
   useCount: number
-  ugFlag?: boolean | number
-  stayDurationAutoFlag?: number
+  ugFlag?: boolean
+  stayDurationAutoFlag?: boolean
   usedMessyLevel?: number
   expirationDateLast?: string | null
   lastUsedServiceIds?: ServiceUsed[]

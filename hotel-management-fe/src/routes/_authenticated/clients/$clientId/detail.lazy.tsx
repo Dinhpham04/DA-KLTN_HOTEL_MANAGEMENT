@@ -12,6 +12,7 @@ import {
 } from '@/components/common/CustomAccordion'
 import CustomDialog from '@/components/common/CustomDialog'
 import Loading from '@/components/common/Loading'
+import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { BinSVG } from '@/components/svgs/BinSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
@@ -26,7 +27,6 @@ import { useReactivateClient, useSuspendClient } from '@/hooks/mutations/useSusp
 import { useGetClientById } from '@/hooks/queries/useGetClientById'
 import { useGetIdentifications } from '@/hooks/queries/useGetIdentifications'
 import { ClientDataStatus } from '@/types/client'
-import { getIdentificationTypeName } from '@/types/identification'
 
 export const Route = createLazyFileRoute('/_authenticated/clients/$clientId/detail')({
   component: ClientDetailPage,
@@ -39,9 +39,10 @@ function ClientDetailPage() {
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSuspendOpen, setIsSuspendOpen] = useState(false)
+  const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
   const { data: client, isLoading, refetch } = useGetClientById({ clientId: clientIdNum })
-  const { data: identifications } = useGetIdentifications({
+  const { data: identifications, refetch: refetchIdentifications } = useGetIdentifications({
     clientId: clientIdNum,
     enabled: !!clientIdNum,
   })
@@ -98,11 +99,6 @@ function ClientDetailPage() {
   // Dynamic label based on data type
   const typeTitleOption: string[] = ['Không xác định', 'Họ tên', 'Tên công ty', 'Tên công ty']
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return ''
-    return dayjs(dateStr).format('YYYY/MM/DD')
-  }
-
   const handleDelete = () => {
     deleteClientMutation.mutate(clientIdNum)
     setIsDeleteOpen(false)
@@ -126,7 +122,7 @@ function ClientDetailPage() {
       {!isEmpty(client) ? (
         <>
           <section className="mt-[2rem]">
-            <CustomAccordion type="multiple" defaultValue={['item-1', 'item-2']} className="w-full">
+            <CustomAccordion type="multiple" defaultValue={['item-1']} className="w-full">
               {/* Customer Information Section */}
               <CustomAccordionItem
                 value="item-1"
@@ -171,68 +167,24 @@ function ClientDetailPage() {
                               </div>
                               <CustomDialog
                                 size="medium"
+                                opened={isIdentificationOpen}
+                                changeOnOpened={setIsIdentificationOpen}
                                 trigger={
                                   <NButton className="bg-[#efefef] sm:w-[8rem] text-lg sm:text-2xl">
                                     <span>Xem</span>
                                   </NButton>
                                 }
-                                title="Thông tin giấy tờ tùy thân"
+                                title="Cài đặt giấy tờ tùy thân"
                                 content={
-                                  <div className="p-4">
-                                    {identifications && identifications.length > 0 ? (
-                                      <table className="w-full border-collapse">
-                                        <thead>
-                                          <tr className="bg-gray-100">
-                                            <th className="py-2 px-4 border text-left">
-                                              Loại giấy tờ
-                                            </th>
-                                            <th className="py-2 px-4 border text-left">
-                                              Số giấy tờ
-                                            </th>
-                                            <th className="py-2 px-4 border text-left">
-                                              Ngày hết hạn
-                                            </th>
-                                            <th className="py-2 px-4 border text-left">
-                                              Trạng thái
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {identifications.map((id) => (
-                                            <tr key={id.identificationId} className="border-b">
-                                              <td className="py-2 px-4 border">
-                                                {getIdentificationTypeName(id.identificationType)}
-                                                {id.identificationTypeInput &&
-                                                  ` (${id.identificationTypeInput})`}
-                                              </td>
-                                              <td className="py-2 px-4 border">
-                                                {id.identificationNumber || '-'}
-                                              </td>
-                                              <td className="py-2 px-4 border">
-                                                {formatDate(id.expirationDate)}
-                                              </td>
-                                              <td className="py-2 px-4 border">
-                                                <span
-                                                  className={cn(
-                                                    'px-2 py-1 rounded text-sm',
-                                                    id.active
-                                                      ? 'bg-green-100 text-green-700'
-                                                      : 'bg-gray-100 text-gray-700'
-                                                  )}
-                                                >
-                                                  {id.active ? 'Đang sử dụng' : 'Không sử dụng'}
-                                                </span>
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    ) : (
-                                      <p className="text-gray-500 text-center py-4">
-                                        Chưa có giấy tờ tùy thân nào
-                                      </p>
-                                    )}
-                                  </div>
+                                  <IdentificationSettingModal
+                                    identification={identifications}
+                                    clientId={clientIdNum}
+                                    refetchClient={() => {
+                                      refetch()
+                                      refetchIdentifications()
+                                    }}
+                                    closeModal={() => setIsIdentificationOpen(false)}
+                                  />
                                 }
                               />
                             </div>
@@ -277,7 +229,7 @@ function ClientDetailPage() {
                             Địa chỉ
                           </td>
                           <td className="border border-black leading-7" colSpan={3}>
-                            {`${client.zipCode || ''} ${client.address1 || ''} ${client.address2 || ''}`}
+                            {`${client.zipCode || ''} ${client.address2 || ''} ${client.address1 || ''}`}
                           </td>
                         </tr>
 
@@ -313,11 +265,11 @@ function ClientDetailPage() {
                           </td>
                           <td className="border border-black">
                             {client.stayDurationAutoFlag !== undefined
-                              ? StayDurationAutoFlag[client.stayDurationAutoFlag]
+                              ? StayDurationAutoFlag[client.stayDurationAutoFlag ? 1 : 0]
                               : ''}
                           </td>
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
-                            Phòng bẩn
+                            Vệ sinh
                           </td>
                           <td className="border border-black">
                             {client.usedMessyLevel !== undefined
@@ -428,64 +380,12 @@ function ClientDetailPage() {
                       >
                         <NButton
                           type="button"
-                          className="bg-[#efefef] w-[12.4rem] text-lg sm:text-2xl"
+                          className="bg-[#efefef] w-[14.4rem] text-lg sm:text-2xl"
                         >
                           <span>Chỉnh sửa</span>
                         </NButton>
                       </Link>
                     </div>
-                  </div>
-                </CustomAccordionContent>
-              </CustomAccordionItem>
-
-              {/* Identification Section */}
-              <CustomAccordionItem
-                className="bg-white first:mt-0 mb-4 border !border-black rounded-[0.8rem]"
-                value="item-2"
-              >
-                <CustomAccordionTrigger className="bg-[#79A3E0] py-3 border-none rounded-[0.8rem] [&[data-state=open]]:rounded-[0.8rem_0.8rem_0_0]">
-                  <div className="font-bold text-black text-[1.8rem]">Giấy tờ tùy thân</div>
-                </CustomAccordionTrigger>
-                <CustomAccordionContent className="pb-0">
-                  <div className="p-4">
-                    {identifications && identifications.length > 0 ? (
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="py-2 px-4 border text-left">Loại giấy tờ</th>
-                            <th className="py-2 px-4 border text-left">Số giấy tờ</th>
-                            <th className="py-2 px-4 border text-left">Ngày hết hạn</th>
-                            <th className="py-2 px-4 border text-left">Trạng thái</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {identifications.map((id) => (
-                            <tr key={id.identificationId} className="border-b">
-                              <td className="py-2 px-4 border">
-                                {getIdentificationTypeName(id.identificationType)}
-                                {id.identificationTypeInput && ` (${id.identificationTypeInput})`}
-                              </td>
-                              <td className="py-2 px-4 border">{id.identificationNumber || '-'}</td>
-                              <td className="py-2 px-4 border">{formatDate(id.expirationDate)}</td>
-                              <td className="py-2 px-4 border">
-                                <span
-                                  className={cn(
-                                    'px-2 py-1 rounded text-sm',
-                                    id.active
-                                      ? 'bg-green-100 text-green-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  )}
-                                >
-                                  {id.active ? 'Đang sử dụng' : 'Không sử dụng'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p className="text-gray-500 text-center py-4">Chưa có giấy tờ tùy thân nào</p>
-                    )}
                   </div>
                 </CustomAccordionContent>
               </CustomAccordionItem>

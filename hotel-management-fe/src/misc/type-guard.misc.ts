@@ -23,9 +23,10 @@ export function parseInteger(number: unknown, fieldName = 'number'): number {
 }
 
 export function calculateAge(birthday: string): number | string {
-  const regex = /^\d{4}[\/-]\d{2}[\/-]\d{2}$/
+  const regex = /^\d{4}[/-]\d{2}[/-]\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z)?$/
 
   if (!regex.test(birthday)) {
+    console.log('birthday', birthday)
     return 'XX'
   }
 

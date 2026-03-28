@@ -312,7 +312,7 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
 
 function ClientEditPage() {
   useDocumentTitle('Chỉnh sửa khách hàng')
@@ -529,12 +529,14 @@ function ClientEditPage() {
                         <div className="font-bold text-black">Thông tin khách hàng</div>
                         <div>
                           <NButton
-                            type='button'
+                            type="button"
                             onClick={(e) => {
-                              e.preventDefault();
+                              e.preventDefault()
                               navigate({ to: '/clients' })
                             }}
-                          >Tìm kiếm</NButton>
+                          >
+                            Tìm kiếm
+                          </NButton>
                         </div>
                       </div>
                     </div>

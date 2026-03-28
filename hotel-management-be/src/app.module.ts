@@ -6,7 +6,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 
-import { validate, appConfig, databaseConfig, jwtConfig, throttleConfig } from '@config/index';
+import { validate, appConfig, databaseConfig, jwtConfig, throttleConfig, cloudinaryConfig } from '@config/index';
 import { DatabaseModule } from '@database/index';
 import { AuthModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -19,6 +19,7 @@ import { ClientModule } from '@modules/client/client.module';
 import { IdentificationModule } from '@modules/identification/identification.module';
 import { ReservationModule } from '@modules/reservation/reservation.module';
 import { CountryModule } from '@modules/country/country.module';
+import { UploadModule } from '@modules/upload/upload.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -28,7 +29,7 @@ import { AppService } from './app.service';
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
-      load: [appConfig, databaseConfig, jwtConfig, throttleConfig],
+      load: [appConfig, databaseConfig, jwtConfig, throttleConfig, cloudinaryConfig],
     }),
 
     // ─── Logging (pino) ────────────────────────────
@@ -82,6 +83,7 @@ import { AppService } from './app.service';
     IdentificationModule,
     ReservationModule,
     CountryModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [
