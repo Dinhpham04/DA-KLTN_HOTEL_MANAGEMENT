@@ -33,6 +33,12 @@ const AuthenticatedRoomAreaMasterLazyRouteImport = createFileRoute(
 const AuthenticatedRentsMasterLazyRouteImport = createFileRoute(
   '/_authenticated/rents-master',
 )()
+const AuthenticatedParkingMasterLazyRouteImport = createFileRoute(
+  '/_authenticated/parking-master',
+)()
+const AuthenticatedBicycleParkingMasterLazyRouteImport = createFileRoute(
+  '/_authenticated/bicycle-parking-master',
+)()
 const AuthenticatedClientsIndexLazyRouteImport = createFileRoute(
   '/_authenticated/clients/',
 )()
@@ -93,6 +99,24 @@ const AuthenticatedRentsMasterLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/rents-master.lazy').then((d) => d.Route),
+  )
+const AuthenticatedParkingMasterLazyRoute =
+  AuthenticatedParkingMasterLazyRouteImport.update({
+    id: '/parking-master',
+    path: '/parking-master',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/parking-master.lazy').then((d) => d.Route),
+  )
+const AuthenticatedBicycleParkingMasterLazyRoute =
+  AuthenticatedBicycleParkingMasterLazyRouteImport.update({
+    id: '/bicycle-parking-master',
+    path: '/bicycle-parking-master',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/bicycle-parking-master.lazy').then(
+      (d) => d.Route,
+    ),
   )
 const AuthenticatedStaffMasterRoute =
   AuthenticatedStaffMasterRouteImport.update({
@@ -172,6 +196,8 @@ export interface FileRoutesByFullPath {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
@@ -190,6 +216,8 @@ export interface FileRoutesByTo {
   '/reservations': typeof AuthenticatedReservationsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
@@ -210,6 +238,8 @@ export interface FileRoutesById {
   '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
+  '/_authenticated/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/_authenticated/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/_authenticated/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/_authenticated/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/_authenticated/room-master': typeof AuthenticatedRoomMasterLazyRoute
@@ -230,6 +260,8 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/bicycle-parking-master'
+    | '/parking-master'
     | '/rents-master'
     | '/room-area-master'
     | '/room-master'
@@ -248,6 +280,8 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/rooms'
     | '/staff-master'
+    | '/bicycle-parking-master'
+    | '/parking-master'
     | '/rents-master'
     | '/room-area-master'
     | '/room-master'
@@ -267,6 +301,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reservations'
     | '/_authenticated/rooms'
     | '/_authenticated/staff-master'
+    | '/_authenticated/bicycle-parking-master'
+    | '/_authenticated/parking-master'
     | '/_authenticated/rents-master'
     | '/_authenticated/room-area-master'
     | '/_authenticated/room-master'
@@ -332,6 +368,20 @@ declare module '@tanstack/react-router' {
       path: '/rents-master'
       fullPath: '/rents-master'
       preLoaderRoute: typeof AuthenticatedRentsMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/parking-master': {
+      id: '/_authenticated/parking-master'
+      path: '/parking-master'
+      fullPath: '/parking-master'
+      preLoaderRoute: typeof AuthenticatedParkingMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/bicycle-parking-master': {
+      id: '/_authenticated/bicycle-parking-master'
+      path: '/bicycle-parking-master'
+      fullPath: '/bicycle-parking-master'
+      preLoaderRoute: typeof AuthenticatedBicycleParkingMasterLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/staff-master': {
@@ -414,6 +464,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
+  AuthenticatedBicycleParkingMasterLazyRoute: typeof AuthenticatedBicycleParkingMasterLazyRoute
+  AuthenticatedParkingMasterLazyRoute: typeof AuthenticatedParkingMasterLazyRoute
   AuthenticatedRentsMasterLazyRoute: typeof AuthenticatedRentsMasterLazyRoute
   AuthenticatedRoomAreaMasterLazyRoute: typeof AuthenticatedRoomAreaMasterLazyRoute
   AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
@@ -431,6 +483,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedStaffMasterRoute: AuthenticatedStaffMasterRoute,
+  AuthenticatedBicycleParkingMasterLazyRoute:
+    AuthenticatedBicycleParkingMasterLazyRoute,
+  AuthenticatedParkingMasterLazyRoute: AuthenticatedParkingMasterLazyRoute,
   AuthenticatedRentsMasterLazyRoute: AuthenticatedRentsMasterLazyRoute,
   AuthenticatedRoomAreaMasterLazyRoute: AuthenticatedRoomAreaMasterLazyRoute,
   AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,

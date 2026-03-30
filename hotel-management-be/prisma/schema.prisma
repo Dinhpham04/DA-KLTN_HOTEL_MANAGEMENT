@@ -90,6 +90,19 @@ model Staff {
   facilityRoomTypesUpdated  FacilityRoomType[] @relation("FacilityRoomTypeUpdatedBy")
   facilityRoomTypesDeleted  FacilityRoomType[] @relation("FacilityRoomTypeDeletedBy")
 
+  // Phase 5: Parking
+  parkingsCreated           Parking[]          @relation("ParkingCreatedBy")
+  parkingsUpdated           Parking[]          @relation("ParkingUpdatedBy")
+  parkingsDeleted           Parking[]          @relation("ParkingDeletedBy")
+  parkingRentsCreated       ParkingRent[]      @relation("ParkingRentCreatedBy")
+  parkingRentsUpdated       ParkingRent[]      @relation("ParkingRentUpdatedBy")
+  parkingRentsDeleted       ParkingRent[]      @relation("ParkingRentDeletedBy")
+
+  // Phase 6: Bicycle Parking
+  bicycleParkingsCreated    BicycleParking[]   @relation("BicycleParkingCreatedBy")
+  bicycleParkingsUpdated    BicycleParking[]   @relation("BicycleParkingUpdatedBy")
+  bicycleParkingsDeleted    BicycleParking[]   @relation("BicycleParkingDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -167,6 +180,9 @@ model Facility {
   rooms               Room[]
   reserves            Reserve[]
   facilityRoomTypes   FacilityRoomType[]
+  parkings            Parking[]
+  parkingRents        ParkingRent[]
+  bicycleParkings     BicycleParking[]
 
   @@index([facilityNo], map: "facilities_facility_no_idx")
   @@index([createdStaffId], map: "facilities_created_staff_id_idx")
@@ -314,12 +330,116 @@ model StayType {
   deletedBy           Staff?    @relation("StayTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   reserves            Reserve[]
+  parkingRents        ParkingRent[]
 
   @@index([createdStaffId], map: "stay_types_created_staff_id_idx")
   @@index([updatedStaffId], map: "stay_types_updated_staff_id_idx")
   @@index([deletedStaffId], map: "stay_types_deleted_staff_id_idx")
 
   @@map("stay_types")
+}
+
+// ─── Parking (Car Parking Spot) ─────────────────────
+
+model Parking {
+  parkingId           Int       @id @default(autoincrement()) @map("parking_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  parentFacilityId    Int       @map("parent_facility_id")
+  number              String    @map("number") @db.VarChar(32)
+  heightLimit         Float     @map("height_limit") @db.DoublePrecision
+  notice              String?   @db.VarChar(512)
+  orderNum            Int       @default(99) @map("order_num") @db.SmallInt
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  parentFacility      Facility  @relation(fields: [parentFacilityId], references: [facilityId])
+  createdBy           Staff     @relation("ParkingCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("ParkingUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("ParkingDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  parkingRents        ParkingRent[]
+
+  @@index([parentFacilityId], map: "parkings_parent_facility_id_idx")
+  @@index([createdStaffId], map: "parkings_created_staff_id_idx")
+  @@index([updatedStaffId], map: "parkings_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "parkings_deleted_staff_id_idx")
+  @@index([dataStatus], map: "parkings_data_status_idx")
+
+  @@map("parkings")
+}
+
+// ─── Parking Rent (Pricing per stay type) ───────────
+
+model ParkingRent {
+  parkingRentId       Int       @id @default(autoincrement()) @map("parking_rent_id")
+  parkingId           Int       @map("parking_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  facilityId          Int       @map("facility_id")
+  stayTypeId          Int       @map("stay_type_id")
+  unit                Int       @default(0) @db.SmallInt
+  rent                Int       @default(0)
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  parking             Parking   @relation(fields: [parkingId], references: [parkingId])
+  facility            Facility  @relation(fields: [facilityId], references: [facilityId])
+  stayType            StayType  @relation(fields: [stayTypeId], references: [stayTypeId])
+  createdBy           Staff     @relation("ParkingRentCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("ParkingRentUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("ParkingRentDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([parkingId], map: "parking_rents_parking_id_idx")
+  @@index([facilityId], map: "parking_rents_facility_id_idx")
+  @@index([stayTypeId], map: "parking_rents_stay_type_id_idx")
+  @@index([createdStaffId], map: "parking_rents_created_staff_id_idx")
+  @@index([updatedStaffId], map: "parking_rents_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "parking_rents_deleted_staff_id_idx")
+
+  @@map("parking_rents")
+}
+
+// ─── Bicycle Parking (Bicycle Parking Spot) ─────────
+
+model BicycleParking {
+  bicycleParkingId    Int       @id @default(autoincrement()) @map("bicycle_parking_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  parentFacilityId    Int       @map("parent_facility_id")
+  number              String    @map("number") @db.VarChar(32)
+  notice              String?   @db.Text
+  orderNum            Int       @default(99) @map("order_num") @db.SmallInt
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  parentFacility      Facility  @relation(fields: [parentFacilityId], references: [facilityId])
+  createdBy           Staff     @relation("BicycleParkingCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("BicycleParkingUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("BicycleParkingDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([parentFacilityId], map: "bicycle_parkings_parent_facility_id_idx")
+  @@index([createdStaffId], map: "bicycle_parkings_created_staff_id_idx")
+  @@index([updatedStaffId], map: "bicycle_parkings_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "bicycle_parkings_deleted_staff_id_idx")
+  @@index([dataStatus], map: "bicycle_parkings_data_status_idx")
+
+  @@map("bicycle_parkings")
 }
 
 // ─── Client (Customer) ──────────────────────────────
