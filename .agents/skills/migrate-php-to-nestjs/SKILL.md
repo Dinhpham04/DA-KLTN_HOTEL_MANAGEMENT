@@ -206,6 +206,41 @@ export class FeatureModule {}
 
 Register in `app.module.ts`.
 
+### Step 8: Cập nhật BUSINESS_LOGIC.md (BẮT BUỘC)
+
+Sau khi migration hoàn tất, **BẮT BUỘC** phải cập nhật file `docs/BUSINESS_LOGIC.md` với business logic của module vừa migrate. Đây là bước bắt buộc, không được bỏ qua.
+
+**Nội dung cần ghi lại** (chỉ ghi những gì thực sự tồn tại trong code):
+
+1. **Enum / Status fields**: Các trường có giá trị cố định (status, type, flag...) — ghi rõ từng giá trị và ý nghĩa bằng bảng markdown.
+2. **Business rules**: Các điều kiện/ràng buộc đặc biệt (ví dụ: "Chỉ DN đặc biệt mới được bật postpaid_flag").
+3. **Computed fields**: Các trường được tính toán tự động từ các trường khác.
+4. **Relationships**: Quan hệ với module khác nếu có ảnh hưởng đến business logic.
+5. **Validation rules quan trọng**: Các rule không hiển nhiên (không cần ghi lại các rule cơ bản như required/maxLength).
+
+**Format cập nhật**:
+```markdown
+## N. Quản lý [Feature] ([Feature])
+
+### N.1 [Tên section]
+
+| Giá trị | Tiếng Nhật | Tiếng Việt | Mô tả |
+|---------|------------|------------|-------|
+| 0 | ... | ... | ... |
+| 1 | ... | ... | ... |
+
+### N.2 [Business rule]
+
+[Mô tả ngắn gọn rule]
+```
+
+**Cập nhật Changelog** ở cuối file:
+```markdown
+| [Ngày hiện tại] | Thêm business logic [Feature] ([mô tả ngắn]) |
+```
+
+> **Lưu ý**: Nếu module đã có section trong BUSINESS_LOGIC.md (ví dụ đang là TODO/đang cập nhật), hãy **điền vào chỗ trống đó** thay vì tạo section mới.
+
 ## Verification (Kiểm tra)
 
 ```bash
@@ -225,6 +260,7 @@ Verify API endpoints match PHP source:
 - **Clear**: Code viết theo đúng "TypeScript way" (Interfaces, Type-safe) chứ không phải tư duy "PHP way". Cấu trúc rõ ràng, dùng tận để NestJS DI, Pipes.
 - **Correct**: Đầu ra API (Business logic results) phải giữ nguyên y hệt nguồn gốc, các case tính toán phải đảm bảo chính xác.
 - **Complete**: Cover đủ các rule validation phức tạp, error handling, permission guard.
+- **Documented**: `docs/BUSINESS_LOGIC.md` đã được cập nhật với business logic của module này (bao gồm cả Changelog).
 
 ## Edge Cases
 

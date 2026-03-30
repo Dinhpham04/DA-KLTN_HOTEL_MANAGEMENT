@@ -282,6 +282,25 @@ pnpm type-check   # TypeScript check (không được bỏ qua lỗi type)
 
 Open browser và kiểm tra visual match với source.
 
+### Step 11: Cập nhật BUSINESS_LOGIC.md (BẮT BUỘC)
+
+Sau khi frontend migration hoàn tất, **BẮT BUỘC** phải bổ sung hoặc xác nhận `docs/BUSINESS_LOGIC.md` đã có đầy đủ thông tin về business logic của feature vừa migrate.
+
+**Kiểm tra và bổ sung nếu chưa có**:
+
+1. **UI Behavior rules**: Các hiển thị đặc biệt phụ thuộc vào data (ví dụ: nền màu cam khi `ug_flag = true`, ẩn/hiện field theo `data_type`).
+2. **Form validation rules**: Các rule phức tạp, conditional validation không hiển nhiên.
+3. **Computed/derived display values**: Các giá trị hiển thị được tính từ nhiều trường (ví dụ: full name = firstName + lastName).
+4. **Enum/status values**: Nếu frontend hiển thị label cho enum, bổ sung vào bảng enum trong BUSINESS_LOGIC.md.
+5. **User flow đặc biệt**: Các luồng thao tác đặc biệt (wizard, multi-step form, conditional redirect...).
+
+**Lưu ý**: Nếu backend đã migrate trước và BUSINESS_LOGIC.md đã có section cho feature này, chỉ cần **bổ sung thêm** các UI behavior rules mà backend không cover. Không ghi trùng lặp.
+
+**Cập nhật Changelog** ở cuối file:
+```markdown
+| [Ngày hiện tại] | Bổ sung UI behavior rules cho [Feature] |
+```
+
 ## Verification (Kiểm tra)
 
 - [ ] UI layout matches source page **100%** (trừ JP-specific elements)
@@ -292,12 +311,14 @@ Open browser và kiểm tra visual match với source.
 - [ ] Dependencies copied and working (CustomCheckbox, CustomDatePicker, etc.)
 - [ ] **BẮT BUỘC**: `pnpm build`, `pnpm check`, `pnpm type-check` PASSES hoàn toàn
 - [ ] API calls point to correct NestJS endpoints
+- [ ] **BẮT BUỘC**: `docs/BUSINESS_LOGIC.md` đã được cập nhật với business logic/UI behavior của feature này (bao gồm cả Changelog)
 
 ### 4C Checklist
 - **Concise**: Tái sử dụng common components (như `CustomDialog`, `DataTable`). Nếu thiếu component đặc thù của UI cũ, copy từ source sang và refactor. Tuyệt đối không lặp lại code cũ hoặc để lại dead code.
 - **Clear**: File component chỉ chứa UI. Toàn bộ logic ở trong Custom Hook. Code base của target phải "sạch", chuẩn cấu trúc, nhỏ gọn.
 - **Correct**: Style tổng thể (màu sắc, layout) đảm bảo y hệt bản gốc, NHƯNG kích thước/khoảng cách đã được điều chỉnh phù hợp để hiển thị văn bản mới dịch (Vietnamese) mà không làm vỡ giao diện. URL API endpoint gọi sang BE chính xác.
 - **Complete**: All features từ source phải hoạt động bình thường trên target (trừ JP-specific features).
+- **Documented**: `docs/BUSINESS_LOGIC.md` đã được cập nhật với UI behavior rules và business logic của feature này (bao gồm cả Changelog).
 
 ## Example Migration: Client Create Page
 

@@ -85,6 +85,11 @@ model Staff {
   identificationsUpdated  Identification[] @relation("IdentificationUpdatedBy")
   identificationsDeleted  Identification[] @relation("IdentificationDeletedBy")
 
+  // Phase 4: FacilityRoomType
+  facilityRoomTypesCreated  FacilityRoomType[] @relation("FacilityRoomTypeCreatedBy")
+  facilityRoomTypesUpdated  FacilityRoomType[] @relation("FacilityRoomTypeUpdatedBy")
+  facilityRoomTypesDeleted  FacilityRoomType[] @relation("FacilityRoomTypeDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -161,6 +166,7 @@ model Facility {
 
   rooms               Room[]
   reserves            Reserve[]
+  facilityRoomTypes   FacilityRoomType[]
 
   @@index([facilityNo], map: "facilities_facility_no_idx")
   @@index([createdStaffId], map: "facilities_created_staff_id_idx")
@@ -227,6 +233,7 @@ model RoomType {
   deletedBy         Staff?    @relation("RoomTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   rooms             Room[]
+  facilityRoomTypes FacilityRoomType[]
 
   @@index([roomClassId], map: "room_types_room_class_id_idx")
   @@index([createdStaffId], map: "room_types_created_staff_id_idx")
@@ -525,6 +532,40 @@ model Identification {
   @@index([deletedStaffId], map: "identifications_deleted_staff_id_idx")
 
   @@map("identifications")
+}
+
+// ─── FacilityRoomType (Pivot: acreage per facility+room_type) ──
+
+model FacilityRoomType {
+  facilityRoomTypeId  Int       @id @default(autoincrement()) @map("facility_room_type_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  facilityId          Int       @map("facility_id")
+  roomTypeId          Int       @map("room_type_id")
+  acreage             String?   @db.VarChar(255)
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  facility            Facility  @relation(fields: [facilityId], references: [facilityId])
+  roomType            RoomType  @relation(fields: [roomTypeId], references: [roomTypeId])
+  createdBy           Staff     @relation("FacilityRoomTypeCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("FacilityRoomTypeUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("FacilityRoomTypeDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@unique([facilityId, roomTypeId])
+  @@index([facilityId], map: "facility_room_types_facility_id_idx")
+  @@index([roomTypeId], map: "facility_room_types_room_type_id_idx")
+  @@index([createdStaffId], map: "facility_room_types_created_staff_id_idx")
+  @@index([updatedStaffId], map: "facility_room_types_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "facility_room_types_deleted_staff_id_idx")
+  @@index([dataStatus], map: "facility_room_types_data_status_idx")
+
+  @@map("facility_room_types")
 }
 
 // ─── ImageIdentification (Uploaded ID Images) ────────

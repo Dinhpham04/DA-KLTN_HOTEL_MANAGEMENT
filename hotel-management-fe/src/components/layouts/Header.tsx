@@ -64,6 +64,7 @@ export function Header() {
         { id: 71, url: '/staff-master', menu_children: t('nav.staffMaster') },
         { id: 72, url: '/store-master', menu_children: t('nav.storeMaster') },
         { id: 73, url: '/room-master', menu_children: t('nav.roomMaster') },
+        { id: 74, url: '/room-area-master', menu_children: t('nav.roomAreaMaster') },
       ],
     },
     { id: 12, item: t('auth.logout'), onClick: handleLogout },
@@ -108,7 +109,7 @@ export function Header() {
               </div>
               <div className="flex flex-col">
                 <div className="h-[2.8rem] flex items-center">
-                  <span className="text-[2rem] font-bold text-white tracking-wider">
+                  <span className="text-[2rem] font-medium text-white tracking-wider">
                     {t('common.appName')}
                   </span>
                 </div>
@@ -131,9 +132,8 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/dashboard' ? 'bg-[#666666]' : 'bg-[#204172]'
-                }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/dashboard' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                 onClick={() => navigate({ to: '/dashboard' })}
               >
                 <DashboardIcon
@@ -142,7 +142,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-bold text-[1.2rem]',
+                  'font-medium text-[1.4rem]',
                   location.pathname === '/dashboard' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -155,9 +155,8 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
-                }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                 onClick={() => navigate({ to: '/reservations' })}
               >
                 <ReservationIcon
@@ -168,7 +167,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-bold text-[1.2rem]',
+                  'font-medium text-[1.4rem]',
                   location.pathname === '/reservations' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -181,9 +180,8 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
-                }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                 onClick={() => navigate({ to: '/rooms' })}
               >
                 <RoomIcon
@@ -192,7 +190,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-bold text-[1.2rem]',
+                  'font-medium text-[1.4rem]',
                   location.pathname === '/rooms' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -205,9 +203,8 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
-                }`}
+                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                 onClick={() => navigate({ to: '/clients' })}
               >
                 <SearchIconSvg
@@ -216,7 +213,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-bold text-[1.2rem]',
+                  'font-medium text-[1.4rem]',
                   location.pathname === '/clients' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -230,9 +227,8 @@ export function Header() {
             <div className="flex flex-col justify-center items-center gap-2">
               <DrawerTrigger className="flex justify-center items-start h-full">
                 <div
-                  className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                    activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
-                  }`}
+                  className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
+                    }`}
                   id="open-side-bar-trigger"
                   onClick={() => handleClick('menu')}
                 >
@@ -251,7 +247,7 @@ export function Header() {
                       className="[&[data-state=open]_.plus-icon]:hidden border-white/40"
                     >
                       {item.children ? (
-                        <AccordionTrigger className="group relative w-[23.2rem] h-[3.6rem] font-bold text-[1.4rem] text-white [&>svg]:hover:text-white hover:no-underline leading-[3.6rem]">
+                        <AccordionTrigger className="group relative w-[23.2rem] h-[3.6rem] font-medium text-[1.4rem] text-white [&>svg]:hover:text-white hover:no-underline leading-[3.6rem]">
                           <span className="z-20 ml-2">{item.item}</span>
                           <span className="z-10 absolute inset-0 bg-[#204172] w-0 group-hover:w-full h-full transition-all duration-[10ms] ease-in-out" />
                           <svg
@@ -278,7 +274,7 @@ export function Header() {
                           to={item.url}
                           onClick={item.id === 12 ? item?.onClick : undefined}
                         >
-                          <AccordionTrigger className="group relative w-[23.2rem] h-[3.6rem] font-bold text-[1.4rem] text-white [&>svg]:hover:text-white hover:no-underline leading-[3.6rem]">
+                          <AccordionTrigger className="group relative w-[23.2rem] h-[3.6rem] font-medium text-[1.4rem] text-white [&>svg]:hover:text-white hover:no-underline leading-[3.6rem]">
                             <span className="z-20 ml-2 flex items-center gap-2">
                               {item.id === 12 && <LogOut size={16} className="shrink-0" />}
                               {item.item}
@@ -290,7 +286,7 @@ export function Header() {
 
                       {item.children?.map((child: MenuChild) => (
                         <Link to={child.url} key={child.id}>
-                          <AccordionContent className="group relative w-[23.2rem] h-[3.6rem] font-bold text-[1.4rem] text-white hover:no-underline leading-[3.6rem]">
+                          <AccordionContent className="group relative w-[23.2rem] h-[3.6rem] font-medium text-[1.4rem] text-white hover:no-underline leading-[3.6rem]">
                             <span className="z-5 ml-5">{child.menu_children}</span>
                             <span className="z-[-1] absolute inset-0 bg-[#204172] w-0 group-hover:w-full h-full transition-all duration-[10ms] ease-in-out" />
                           </AccordionContent>
@@ -300,7 +296,7 @@ export function Header() {
                   ))}
                 </Accordion>
               </DrawerContent>
-              <div className="font-bold text-[1.2rem] text-white">{t('header.menu')}</div>
+              <div className="font-medium text-[1.4rem] text-white">{t('header.menu')}</div>
             </div>
           </Drawer>
         </div>

@@ -133,15 +133,24 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
     setIsCalendarOpen(false)
   }
 
-  // Handle year selection - navigate to month selection view (don't set date yet)
+  // Handle year selection - update year and continue to month selection
   const handleYearSelect = (selectedDate: Date) => {
-    setActiveStartDate(selectedDate)
+    const currentDate = dateTime instanceof Date ? dateTime : new Date()
+    const newDate = new Date(currentDate)
+    newDate.setFullYear(selectedDate.getFullYear())
+    handleDateChange(newDate)
+    // Continue to month selection view
     setCalendarView('year')
   }
 
-  // Handle month selection - navigate to day selection view (don't set date yet)
+  // Handle month selection - update month and continue to day selection
   const handleMonthSelect = (selectedDate: Date) => {
-    setActiveStartDate(selectedDate)
+    const currentDate = dateTime instanceof Date ? dateTime : new Date()
+    const newDate = new Date(currentDate)
+    newDate.setFullYear(selectedDate.getFullYear())
+    newDate.setMonth(selectedDate.getMonth())
+    handleDateChange(newDate)
+    // Continue to day selection view
     setCalendarView('month')
   }
 

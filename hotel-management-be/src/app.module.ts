@@ -20,6 +20,7 @@ import { IdentificationModule } from '@modules/identification/identification.mod
 import { ReservationModule } from '@modules/reservation/reservation.module';
 import { CountryModule } from '@modules/country/country.module';
 import { UploadModule } from '@modules/upload/upload.module';
+import { FacilityRoomTypeModule } from '@modules/facility-room-type/facility-room-type.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -84,6 +85,7 @@ import { AppService } from './app.service';
     ReservationModule,
     CountryModule,
     UploadModule,
+    FacilityRoomTypeModule,
   ],
   controllers: [AppController],
   providers: [

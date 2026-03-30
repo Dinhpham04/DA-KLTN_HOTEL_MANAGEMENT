@@ -238,6 +238,25 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
     }
   }
 
+  const isItemChanged = (item: IdentificationFormItem, original?: Identification): boolean => {
+    if (!original) return true
+    const origDate = original.expirationDate
+      ? dayjs(original.expirationDate).format('YYYY-MM-DD')
+      : ''
+    const newDate = item.expirationDate
+      ? dayjs(item.expirationDate).format('YYYY-MM-DD')
+      : ''
+    return (
+      item.identificationType !== original.identificationType ||
+      (item.identificationTypeInput ?? '') !== (original.identificationTypeInput ?? '') ||
+      item.identificationNumber !== (original.identificationNumber ?? '') ||
+      newDate !== origDate ||
+      (original.active ? 1 : 0) !== item.active ||
+      item.fileImg !== null ||
+      item.imagePath !== original.imagePath
+    )
+  }
+
   const form = useForm<TypeFormSchemaIdentifications>({
     mode: 'all',
     reValidateMode: 'onSubmit',
@@ -251,7 +270,15 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
   })
 
   useEffect(() => {
-    function onScrollHandle() {
+    function onScrollHandle(e: Event) {
+      // Don't hide modal if interacting with calendar
+      const target = e.target as HTMLElement
+      if (
+        target.closest('.react-datetime-picker__calendar') ||
+        target.closest('.react-calendar')
+      ) {
+        return
+      }
       setIsHidden?.(true)
     }
 
@@ -348,7 +375,12 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
       if (clientId) {
         for (const item of newData) {
           if (item.identificationId) {
-            // Update existing
+            // Chỉ update nếu dữ liệu thực sự thay đổi
+            const originalItem = identification?.find(
+              (orig) => orig.identificationId === item.identificationId
+            )
+            if (!isItemChanged(item, originalItem)) continue
+
             updateMutation.mutate({
               identificationId: item.identificationId,
               identificationType: item.identificationType,
@@ -432,7 +464,14 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                             <div className="flex">
                               <CustomRadio
                                 value={`${field.value}`}
-                                onValueChange={(value) => field.onChange(Number.parseInt(value))}
+                                onValueChange={(value) => {
+                                  field.onChange(Number.parseInt(value))
+                                  // Reset identificationTypeInput when selecting non-"other" option
+                                  if (value !== IdentificationsConst.other.value) {
+                                    form.setValue(`identifications.${index}.identificationTypeInput`, '')
+                                    form.clearErrors(`identifications.${index}.identificationTypeInput`)
+                                  }
+                                }}
                                 className="flex"
                               >
                                 {typeDummyArr.map((item, radioIndex) => (
@@ -624,11 +663,8 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                                   <CustomDatePicker
                                     disable={readonly}
                                     change={onChange}
-                                    value={value as string | Date | null}
+                                    value={value}
                                     format="yyyy/MM/dd"
-                                    className={cn(
-                                      'flex-1 [&>div]:px-4 w-[19rem] h-16 [&_input::placeholder]:text-black text-2xl cursor-pointer react-date-picker__calendar-button'
-                                    )}
                                   />
                                 </FormControl>
                                 <FormMessage className="text-red-500 text-xl" />
@@ -648,7 +684,7 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                 <div className="flex gap-[2rem]">
                   <NButton
                     type="button"
-                    disabled={isUploading}
+                    disabled={isUploading || !form.formState.isDirty}
                     onClick={() => {
                       onSubmit(form.getValues())
                     }}

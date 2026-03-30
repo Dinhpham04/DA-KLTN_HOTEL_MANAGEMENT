@@ -23,6 +23,7 @@ import CustomSelect from '@/components/common/CustomSelect'
 import type { Option } from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
+import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import {
   Form,
   FormControl,
@@ -311,7 +312,7 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
 
 function ClientCreatePage() {
   useDocumentTitle('Tạo khách hàng')
@@ -323,6 +324,7 @@ function ClientCreatePage() {
   const [loadingCountry, setLoadingCountry] = useState<boolean>(true)
   const [countryOption, setCountryOption] = useState<Option[]>([])
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState<boolean>(false)
+  const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
   const { data: dataCountries } = useGetCountries()
 
@@ -536,6 +538,31 @@ function ClientCreatePage() {
                             </FormItem>
                           )}
                         />
+
+                        <div className="flex items-center my-4">
+                          <span className="flex items-center min-w-[15rem] font-bold text-[1.6rem] mr-[7.5rem]">
+                            Giấy tờ tùy thân
+                          </span>
+                          <CustomDialog
+                            size="medium"
+                            opened={isIdentificationOpen}
+                            changeOnOpened={setIsIdentificationOpen}
+                            trigger={
+                              <NButton
+                                type="button"
+                                className="bg-[#efefef] w-[14rem] text-[1.6rem]"
+                              >
+                                <span>Thiết lập</span>
+                              </NButton>
+                            }
+                            title="Cài đặt giấy tờ tùy thân"
+                            content={
+                              <IdentificationSettingModal
+                                closeModal={() => setIsIdentificationOpen(false)}
+                              />
+                            }
+                          />
+                        </div>
                       </div>
 
                       {/* Advertising checkbox */}

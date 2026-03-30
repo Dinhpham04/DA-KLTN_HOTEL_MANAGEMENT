@@ -70,7 +70,8 @@
     "storeMaster": "Quản lý cơ sở",
     "roomMaster": "Quản lý phòng",
     "reports": "Báo cáo",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "roomAreaMaster": "Quản lý diện tích phòng"
   },
   "dashboard": {
     "title": "Tổng quan",

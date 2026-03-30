@@ -1,8 +1,6 @@
-import { DialogClose } from '@radix-ui/react-dialog'
 import { Link, createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import { toast } from 'react-toastify'
 
 import {
   CustomAccordion,
@@ -22,11 +20,8 @@ import { DataType, Sex, StayDurationAutoFlag, UgFlag, UsedMessyLevel } from '@/c
 import { cn } from '@/lib/utils'
 import { calculateAge, isEmpty } from '@/misc/type-guard.misc'
 
-import { useDeleteClient } from '@/hooks/mutations/useDeleteClient'
-import { useReactivateClient, useSuspendClient } from '@/hooks/mutations/useSuspendClient'
 import { useGetClientById } from '@/hooks/queries/useGetClientById'
 import { useGetIdentifications } from '@/hooks/queries/useGetIdentifications'
-import { ClientDataStatus } from '@/types/client'
 
 export const Route = createLazyFileRoute('/_authenticated/clients/$clientId/detail')({
   component: ClientDetailPage,
@@ -37,8 +32,7 @@ function ClientDetailPage() {
   const { clientId } = useParams({ from: '/_authenticated/clients/$clientId/detail' })
   const clientIdNum = Number(clientId)
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [isSuspendOpen, setIsSuspendOpen] = useState(false)
+
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
   const { data: client, isLoading, refetch } = useGetClientById({ clientId: clientIdNum })
@@ -47,37 +41,6 @@ function ClientDetailPage() {
     enabled: !!clientIdNum,
   })
 
-  const deleteClientMutation = useDeleteClient({
-    onSuccess: () => {
-      toast.success('Xóa khách hàng thành công')
-      navigate({ to: '/clients' })
-    },
-    onError: () => {
-      toast.error('Có lỗi xảy ra khi xóa khách hàng')
-    },
-  })
-
-  const suspendMutation = useSuspendClient({
-    onSuccess: () => {
-      toast.success('Tạm ngưng khách hàng thành công')
-      refetch()
-      setIsSuspendOpen(false)
-    },
-    onError: () => {
-      toast.error('Có lỗi xảy ra')
-    },
-  })
-
-  const reactivateMutation = useReactivateClient({
-    onSuccess: () => {
-      toast.success('Kích hoạt lại khách hàng thành công')
-      refetch()
-      setIsSuspendOpen(false)
-    },
-    onError: () => {
-      toast.error('Có lỗi xảy ra')
-    },
-  })
 
   if (isLoading) {
     return <Loading />
@@ -94,23 +57,10 @@ function ClientDetailPage() {
     )
   }
 
-  const isSuspended = client.dataStatus === ClientDataStatus.SUSPENDED
 
   // Dynamic label based on data type
   const typeTitleOption: string[] = ['Không xác định', 'Họ tên', 'Tên công ty', 'Tên công ty']
 
-  const handleDelete = () => {
-    deleteClientMutation.mutate(clientIdNum)
-    setIsDeleteOpen(false)
-  }
-
-  const handleSuspendToggle = () => {
-    if (isSuspended) {
-      reactivateMutation.mutate(clientIdNum)
-    } else {
-      suspendMutation.mutate(clientIdNum)
-    }
-  }
 
   return (
     <div className="box-border flex flex-col gap-[2rem] py-[2rem] common-container">
@@ -158,8 +108,8 @@ function ClientDetailPage() {
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                             Giấy tờ tùy thân
                           </td>
-                          <td className="py-[1rem] border border-black" colSpan={3}>
-                            <div className="flex justify-between gap-[1.3rem] pr-[2rem] h-[100%]">
+                          <td className=" border border-black" colSpan={3}>
+                            <div className="flex justify-between gap-[1.3rem] pr-[2rem] h-[80%]">
                               <div className="flex items-center">
                                 {client.expirationDateLast
                                   ? `Hạn: ${dayjs(client.expirationDateLast).format('YYYY/MM/DD')}`
@@ -170,7 +120,7 @@ function ClientDetailPage() {
                                 opened={isIdentificationOpen}
                                 changeOnOpened={setIsIdentificationOpen}
                                 trigger={
-                                  <NButton className="bg-[#efefef] sm:w-[8rem] text-lg sm:text-2xl">
+                                  <NButton className="bg-[#efefef] sm:w-[8rem] text-[1.6rem] sm:text-2xl">
                                     <span>Xem</span>
                                   </NButton>
                                 }
@@ -282,12 +232,12 @@ function ClientDetailPage() {
                           <td className="border border-black">
                             {client.ugFlag !== undefined
                               ? UgFlag[
-                                  typeof client.ugFlag === 'boolean'
-                                    ? client.ugFlag
-                                      ? 1
-                                      : 0
-                                    : client.ugFlag
-                                ]
+                              typeof client.ugFlag === 'boolean'
+                                ? client.ugFlag
+                                  ? 1
+                                  : 0
+                                : client.ugFlag
+                              ]
                               : ''}
                           </td>
                           <td className="!border-0" />
@@ -391,77 +341,6 @@ function ClientDetailPage() {
               </CustomAccordionItem>
             </CustomAccordion>
           </section>
-
-          {/* Action Buttons at the bottom */}
-          <div className="flex justify-center gap-4">
-            <NButton onClick={() => navigate({ to: '/clients' })}>Quay lại</NButton>
-
-            <CustomDialog
-              opened={isSuspendOpen}
-              changeOnOpened={setIsSuspendOpen}
-              customClass="text-center [&_svg]:hidden"
-              size="max"
-              trigger={
-                <NButton className={isSuspended ? 'bg-[#8BD08E]' : 'bg-red-400'}>
-                  {isSuspended ? 'Kích hoạt lại' : 'Tạm ngưng'}
-                </NButton>
-              }
-              title={isSuspended ? 'Xác nhận kích hoạt lại' : 'Xác nhận tạm ngưng'}
-              content={
-                <div className="p-4">
-                  <p>
-                    {isSuspended
-                      ? 'Bạn có chắc chắn muốn kích hoạt lại khách hàng này?'
-                      : 'Bạn có chắc chắn muốn tạm ngưng khách hàng này?'}
-                  </p>
-                  <div className="flex justify-center gap-4 mt-4">
-                    <DialogClose onClick={handleSuspendToggle}>
-                      <div
-                        className={cn(
-                          'mx-4 w-[12.4rem] btn btn-default',
-                          isSuspended ? 'bg-[#8BD08E]' : 'bg-red-400'
-                        )}
-                      >
-                        <span>{isSuspended ? 'Kích hoạt lại' : 'Tạm ngưng'}</span>
-                      </div>
-                    </DialogClose>
-                    <DialogClose>
-                      <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
-                        <span>Hủy</span>
-                      </div>
-                    </DialogClose>
-                  </div>
-                </div>
-              }
-            />
-
-            <CustomDialog
-              opened={isDeleteOpen}
-              changeOnOpened={setIsDeleteOpen}
-              customClass="text-center [&_svg]:hidden"
-              size="max"
-              trigger={<NButton className="bg-red-500">Xóa</NButton>}
-              title="Xác nhận xóa"
-              content={
-                <div className="p-4">
-                  <p>Bạn có chắc chắn muốn xóa khách hàng này?</p>
-                  <p className="text-sm text-gray-500 mt-1">Hành động này không thể hoàn tác.</p>
-                  <div className="flex justify-center gap-4 mt-4">
-                    <DialogClose onClick={handleDelete}>
-                      <div className="bg-red-500 mx-4 w-[12.4rem] btn btn-default text-white">
-                        <span>Xóa</span>
-                      </div>
-                    </DialogClose>
-                    <DialogClose>
-                      <div className="bg-[#eee] mx-4 w-[12.4rem] btn btn-default">
-                        <span>Hủy</span>
-                      </div>
-                    </DialogClose>
-                  </div>
-                </div>
-              }
-            />
-          </div>
         </>
       ) : (
         <div className="flex flex-col items-center justify-center h-64">
