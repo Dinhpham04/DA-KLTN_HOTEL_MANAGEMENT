@@ -652,6 +652,141 @@ async function main(): Promise<void> {
   }
 
   // ═════════════════════════════════════════════════════
+  // ─── Parkings (Bãi đỗ ô tô) ────────────────────────
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding parkings...');
+
+  // Only for facilities with parkingFlag=true: 01 (Bến Thành), 02 (Nguyễn Huệ), 04 (Phú Mỹ Hưng), 06 (Đà Nẵng), 07 (Hội An), 09 (Nha Trang)
+  const parkingsData = [
+    // Facility 01 - Bến Thành (3 chỗ)
+    { parentFacilityId: f('01').facilityId, number: '1', heightLimit: 1.8, notice: 'Xe nhỏ ưu tiên', orderNum: 1 },
+    { parentFacilityId: f('01').facilityId, number: '2', heightLimit: 1.8, notice: null, orderNum: 2 },
+    { parentFacilityId: f('01').facilityId, number: '3', heightLimit: 1.8, notice: 'Hai bên là tường gạch', orderNum: 3 },
+    // Facility 02 - Nguyễn Huệ (2 chỗ)
+    { parentFacilityId: f('02').facilityId, number: '1', heightLimit: 2.0, notice: null, orderNum: 1 },
+    { parentFacilityId: f('02').facilityId, number: '2', heightLimit: 2.0, notice: 'Góc hẹp, xe nhỏ ưu tiên', orderNum: 2 },
+    // Facility 04 - Phú Mỹ Hưng (3 chỗ)
+    { parentFacilityId: f('04').facilityId, number: '1', heightLimit: 2.5, notice: null, orderNum: 1 },
+    { parentFacilityId: f('04').facilityId, number: '2', heightLimit: 2.5, notice: null, orderNum: 2 },
+    { parentFacilityId: f('04').facilityId, number: '3', heightLimit: 2.5, notice: 'Xe lớn không vào được', orderNum: 3 },
+    // Facility 06 - Đà Nẵng (2 chỗ)
+    { parentFacilityId: f('06').facilityId, number: '1', heightLimit: 3.0, notice: null, orderNum: 1 },
+    { parentFacilityId: f('06').facilityId, number: '2', heightLimit: 3.0, notice: 'Bên trái tòa nhà, chỉ xe ô tô nhỏ', orderNum: 2 },
+    // Facility 07 - Hội An (1 chỗ)
+    { parentFacilityId: f('07').facilityId, number: '1', heightLimit: 2.0, notice: 'Cách tòa nhà 5 phút đi bộ', orderNum: 1 },
+    // Facility 09 - Nha Trang (1 chỗ)
+    { parentFacilityId: f('09').facilityId, number: '1', heightLimit: 2.5, notice: null, orderNum: 1 },
+  ];
+
+  const parkings: Awaited<ReturnType<typeof prisma.parking.create>>[] = [];
+  for (const data of parkingsData) {
+    let parking = await prisma.parking.findFirst({
+      where: { parentFacilityId: data.parentFacilityId, number: data.number, deletedAt: null },
+    });
+    if (!parking) {
+      parking = await prisma.parking.create({
+        data: { ...data, createdStaffId: admin.staffId },
+      });
+    }
+    parkings.push(parking);
+    console.log(`  Parking: #${parking.number} @ Facility ${parking.parentFacilityId} (ID: ${parking.parkingId})`);
+  }
+
+  // ═════════════════════════════════════════════════════
+  // ─── Parking Rents (Giá thuê bãi đỗ theo loại lưu trú)
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding parking rents...');
+
+  // Create rents for each parking × each stay type
+  // Prices in VND: short-stay expensive, long-stay cheaper per day
+  const parkingRentPricing: { parkingIdx: number; facilityNo: string; rents: Record<string, number> }[] = [
+    // Facility 01 - Bến Thành
+    { parkingIdx: 0, facilityNo: '01', rents: { A: 50000, B: 45000, C: 40000, D: 35000, E: 30000, F: 25000, G: 20000 } },
+    { parkingIdx: 1, facilityNo: '01', rents: { A: 50000, B: 45000, C: 40000, D: 35000, E: 30000, F: 25000, G: 20000 } },
+    { parkingIdx: 2, facilityNo: '01', rents: { A: 50000, B: 45000, C: 40000, D: 35000, E: 30000, F: 25000, G: 20000 } },
+    // Facility 02 - Nguyễn Huệ
+    { parkingIdx: 3, facilityNo: '02', rents: { A: 60000, B: 55000, C: 50000, D: 45000, E: 40000, F: 35000, G: 30000 } },
+    { parkingIdx: 4, facilityNo: '02', rents: { A: 60000, B: 55000, C: 50000, D: 45000, E: 40000, F: 35000, G: 30000 } },
+    // Facility 04 - Phú Mỹ Hưng
+    { parkingIdx: 5, facilityNo: '04', rents: { A: 70000, B: 65000, C: 60000, D: 55000, E: 50000, F: 45000, G: 40000 } },
+    { parkingIdx: 6, facilityNo: '04', rents: { A: 70000, B: 65000, C: 60000, D: 55000, E: 50000, F: 45000, G: 40000 } },
+    { parkingIdx: 7, facilityNo: '04', rents: { A: 70000, B: 65000, C: 60000, D: 55000, E: 50000, F: 45000, G: 40000 } },
+    // Facility 06 - Đà Nẵng
+    { parkingIdx: 8, facilityNo: '06', rents: { A: 40000, B: 35000, C: 30000, D: 25000, E: 20000, F: 18000, G: 15000 } },
+    { parkingIdx: 9, facilityNo: '06', rents: { A: 40000, B: 35000, C: 30000, D: 25000, E: 20000, F: 18000, G: 15000 } },
+    // Facility 07 - Hội An
+    { parkingIdx: 10, facilityNo: '07', rents: { A: 30000, B: 25000, C: 20000, D: 18000, E: 15000, F: 12000, G: 10000 } },
+    // Facility 09 - Nha Trang
+    { parkingIdx: 11, facilityNo: '09', rents: { A: 45000, B: 40000, C: 35000, D: 30000, E: 25000, F: 20000, G: 18000 } },
+  ];
+
+  // Build stayType lookup by short name
+  const stByShort: Record<string, (typeof stayTypes)[0]> = {};
+  for (const st of stayTypes) {
+    stByShort[st.stayTypeNameShort] = st;
+  }
+
+  let parkingRentCount = 0;
+  for (const pr of parkingRentPricing) {
+    const parking = parkings[pr.parkingIdx];
+    const facilityId = f(pr.facilityNo).facilityId;
+    for (const [shortName, rent] of Object.entries(pr.rents)) {
+      const stayType = stByShort[shortName];
+      if (!stayType) continue;
+      const existing = await prisma.parkingRent.findFirst({
+        where: { parkingId: parking.parkingId, facilityId, stayTypeId: stayType.stayTypeId, deletedAt: null },
+      });
+      if (!existing) {
+        await prisma.parkingRent.create({
+          data: {
+            parkingId: parking.parkingId,
+            facilityId,
+            stayTypeId: stayType.stayTypeId,
+            unit: 0,
+            rent,
+            createdStaffId: admin.staffId,
+          },
+        });
+        parkingRentCount++;
+      }
+    }
+  }
+  console.log(`  ParkingRents created: ${parkingRentCount}`);
+
+  // ═════════════════════════════════════════════════════
+  // ─── Bicycle Parkings (Bãi đỗ xe đạp) ──────────────
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding bicycle parkings...');
+
+  // Only for facilities with bicycleParkingFlag=true: 02 (Nguyễn Huệ), 04 (Phú Mỹ Hưng), 06 (Đà Nẵng), 08 (Hà Nội)
+  const bicycleParkingsData = [
+    // Facility 02 - Nguyễn Huệ (2 chỗ)
+    { parentFacilityId: f('02').facilityId, number: '001', notice: null, orderNum: 1 },
+    { parentFacilityId: f('02').facilityId, number: '002', notice: null, orderNum: 2 },
+    // Facility 04 - Phú Mỹ Hưng (3 chỗ)
+    { parentFacilityId: f('04').facilityId, number: '001', notice: null, orderNum: 1 },
+    { parentFacilityId: f('04').facilityId, number: '002', notice: null, orderNum: 2 },
+    { parentFacilityId: f('04').facilityId, number: '003', notice: 'Không bán', orderNum: 3 },
+    // Facility 06 - Đà Nẵng (2 chỗ)
+    { parentFacilityId: f('06').facilityId, number: '001', notice: null, orderNum: 1 },
+    { parentFacilityId: f('06').facilityId, number: '002', notice: 'Xe đạp và xe máy chuyên dụng', orderNum: 2 },
+    // Facility 08 - Hà Nội (1 chỗ)
+    { parentFacilityId: f('08').facilityId, number: '001', notice: null, orderNum: 1 },
+  ];
+
+  for (const data of bicycleParkingsData) {
+    const existing = await prisma.bicycleParking.findFirst({
+      where: { parentFacilityId: data.parentFacilityId, number: data.number, deletedAt: null },
+    });
+    if (!existing) {
+      const bp = await prisma.bicycleParking.create({
+        data: { ...data, createdStaffId: admin.staffId },
+      });
+      console.log(`  BicycleParking: #${bp.number} @ Facility ${bp.parentFacilityId} (ID: ${bp.bicycleParkingId})`);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════
   // ─── Clients ────────────────────────────────────────
   // ═════════════════════════════════════════════════════
   console.log('\nSeeding clients...');
@@ -947,6 +1082,9 @@ async function main(): Promise<void> {
   console.log('  Facilities:        10 (HCM x5, Đà Nẵng, Hội An, Hà Nội, Nha Trang, Cần Thơ)');
   console.log('  Rooms:             41 (distributed across 9 active facilities)');
   console.log('  FacilityRoomTypes: ~30 (with acreage data for key types)');
+  console.log('  Parkings:          12 (across 6 facilities with parkingFlag)');
+  console.log('  ParkingRents:      84 (12 parkings × 7 stay types)');
+  console.log('  BicycleParkings:    8 (across 4 facilities with bicycleParkingFlag)');
   console.log('  Clients:            5 (3 VN, 1 US, 1 KR)');
   console.log('  Reservations:       6 (1 Pending, 2 Confirmed, 1 Checked-in, 1 Checked-out, 1 Cancelled)');
   console.log('  Occupiers:          3 (co-guests)');
