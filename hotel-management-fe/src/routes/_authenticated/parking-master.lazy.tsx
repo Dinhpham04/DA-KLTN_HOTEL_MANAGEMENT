@@ -692,7 +692,6 @@ function ParkingMasterPage() {
   useDocumentTitle('Quản lý bãi đỗ xe')
 
   const [parkingData, setParkingData] = useState<Parking[]>([])
-  const [facilitiesOptions, setFacilitiesOptions] = useState<SelectOption[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [addAtIndex, setAddAtIndex] = useState<number>()
 
@@ -721,17 +720,18 @@ function ParkingMasterPage() {
   })
 
   // --- Fetch facilities ---
-  const { isLoading: facilityLoading } = useGetFacilities({
-    onSuccess(facilities) {
-      const opts = facilities
+  const { isLoading: facilityLoading, data: facilitiesResponse } = useGetFacilities()
+
+  const facilitiesOptions = useMemo(
+    () =>
+      (facilitiesResponse?.data ?? [])
         .filter((f) => f.parkingFlag)
         .map((f) => ({
           value: String(f.facilityId),
           label: f.facilityName,
-        }))
-      setFacilitiesOptions(opts)
-    },
-  })
+        })),
+    [facilitiesResponse],
+  )
 
   // --- Fetch parkings ---
   const {
@@ -741,10 +741,16 @@ function ParkingMasterPage() {
   } = useGetParkings({
     params: queryParams.facilityId ? { facilityId: queryParams.facilityId } : undefined,
     enabled: !!queryParams.facilityId,
-    onSuccess(parkings) {
-      setParkingData(parkings)
-    },
   })
+
+
+
+  useEffect(() => {
+    if (parkingsData) {
+      console.log('Fetched parkings:', parkingsData)
+      setParkingData(parkingsData)
+    }
+  }, [parkingsData])
 
   // --- Mutations ---
   const { mutate: createParking, isPending: isCreating } = useCreateParking({

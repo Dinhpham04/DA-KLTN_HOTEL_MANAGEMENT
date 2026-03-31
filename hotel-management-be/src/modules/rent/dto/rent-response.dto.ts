@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 interface RentItemEntity {
   stayTypeId: number;
-  dataStatus: number;
+  dataStatus: number | null;
   dayRent: number | null;
   monthRent: bigint | number | null;
   dayRentOver3: number | null;

@@ -530,7 +530,6 @@ function BicycleParkingMasterPage() {
   useDocumentTitle('Quản lý bãi đỗ xe đạp')
 
   const [bicycleParkingData, setBicycleParkingData] = useState<BicycleParking[]>([])
-  const [facilitiesOptions, setFacilitiesOptions] = useState<SelectOption[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [addAtIndex, setAddAtIndex] = useState<number>()
 
@@ -562,17 +561,18 @@ function BicycleParkingMasterPage() {
   })
 
   // --- Fetch facilities ---
-  const { isLoading: facilityLoading } = useGetFacilities({
-    onSuccess(facilities) {
-      const opts = facilities
+  const { isLoading: facilityLoading, data: facilitiesResponse } = useGetFacilities()
+
+  const facilitiesOptions = useMemo(
+    () =>
+      (facilitiesResponse?.data ?? [])
         .filter((f) => f.bicycleParkingFlag)
         .map((f) => ({
           value: String(f.facilityId),
           label: f.facilityName,
-        }))
-      setFacilitiesOptions(opts)
-    },
-  })
+        })),
+    [facilitiesResponse],
+  )
 
   // --- Fetch bicycle parkings ---
   const {
@@ -582,10 +582,13 @@ function BicycleParkingMasterPage() {
   } = useGetBicycleParkings({
     params: queryParams.facilityId ? { facilityId: queryParams.facilityId } : undefined,
     enabled: !!queryParams.facilityId,
-    onSuccess(bicycleParkings) {
-      setBicycleParkingData(bicycleParkings)
-    },
   })
+
+  useEffect(() => {
+    if (bicycleParkingsData) {
+      setBicycleParkingData(bicycleParkingsData)
+    }
+  }, [bicycleParkingsData])
 
   // --- Mutations ---
   const { mutate: createBicycleParking, isPending: isCreating } = useCreateBicycleParking({

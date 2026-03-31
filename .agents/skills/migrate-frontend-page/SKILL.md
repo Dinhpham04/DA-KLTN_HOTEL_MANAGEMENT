@@ -177,7 +177,8 @@ Split source hooks into query/mutation hooks:
 // src/hooks/queries/useGetFeatures.ts
 // src/hooks/mutations/useCreateFeature.ts
 
-// QUAN TRỌNG: Đảm bảo callback types đúng
+// QUAN TRỌNG: Đảm bảo callback types đúng cho useMutation
+// (LƯU Ý: React Query v5 ĐÃ LOẠI BỎ onSuccess/onError trong useQuery. Chỉ được dùng cho useMutation!)
 interface UseCreateFeatureParams {
   onSuccess?: (data: unknown) => void  // Trả về data nếu cần
   onError?: (error: unknown) => void
@@ -245,25 +246,33 @@ import { Sex, UsedMessyLevel } from '@/constants/common'  // ← Xóa nếu khô
 import { ClientDataType, SexType } from '@/types/client'  // ← Xóa nếu không dùng
 ```
 
-**2. Type Mismatches**
+**2. Type Mismatches & Ép Kiểu**
 ```typescript
 // Sai: fax có thể là null
 fax: data.fax,
 
 // Đúng: Convert null → undefined
 fax: data.fax ?? undefined,
+
+// TUYỆT ĐỐI CẤM: Lách luật TypeScript bằng "as unknown as Type"
+const client = data as unknown as Client // ⛔ Không được phép
+
+// Đúng: Xử lý type chuẩn DTO từ backend lúc fetch hoặc map dữ liệu cẩn thận
 ```
 
-**3. Callback Types**
+**3. Callback Types (Cho Mutations)**
 ```typescript
 // Sai: onSuccess không có param
 onSuccess?: () => void
 
-// Đúng: onSuccess cần data
+// Đúng: onSuccess cần param data để dễ mở rộng
 onSuccess?: (data: unknown) => void
 ```
 
-**4. Locale in DatePicker**
+**4. Anti-Pattern của React Query v5**
+Tuyệt đối KHÔNG ĐƯỢC tự chế/truyền tham số `onSuccess`, `onError` vào các api gọi data (như `useGetFeatures({ onSuccess })`) rồi nhét vào `queryFn`. Cách làm này sẽ gây bug khi dữ liệu lấy từ cache. Thay vào đó hãy dùng trực tiếp `data` ra từ hook.
+
+**5. Locale in DatePicker**
 ```typescript
 // Sai: useState không cần thiết
 const [locale, setLocale] = useState('vi-VN')

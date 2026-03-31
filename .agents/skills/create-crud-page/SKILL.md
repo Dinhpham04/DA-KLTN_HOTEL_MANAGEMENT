@@ -104,28 +104,29 @@ function FeaturePage() {
   })
 
   // Queries & Mutations
-  const { data, isLoading } = useGetFeatures({})
+  // LƯU Ý v5: Không dùng onSuccess hay onError ở useGetFeatures (queries)
+  const { data, isPending } = useGetFeatures({})
 
   const createMutation = useCreateFeature({
     onSuccess: () => {
       toast.success(t('feature.messages.createSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['features'] })
       handleCloseDialog()
+      return queryClient.invalidateQueries({ queryKey: ['features'] })
     },
   })
 
   const updateMutation = useUpdateFeature({
     onSuccess: () => {
       toast.success(t('feature.messages.updateSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['features'] })
       handleCloseDialog()
+      return queryClient.invalidateQueries({ queryKey: ['features'] })
     },
   })
 
   const deleteMutation = useDeleteFeature({
     onSuccess: () => {
       toast.success(t('feature.messages.deleteSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['features'] })
+      return queryClient.invalidateQueries({ queryKey: ['features'] })
     },
   })
 

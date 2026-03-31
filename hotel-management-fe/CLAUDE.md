@@ -88,6 +88,8 @@ export const featureApi = {
 
 ### 2. Query Hook Pattern
 
+**Note on React Query v5**: Do NOT use `onSuccess` or `onError` callbacks for `useQuery`. They are removed in v5. Read data directly from the hook or use `useEffect` if you absolutely must synchronize local state.
+
 ```typescript
 // src/hooks/queries/useGet{Feature}s.ts
 import { useQuery } from '@tanstack/react-query'
@@ -96,23 +98,14 @@ import type { Feature, FeatureFilterParams } from '@/types/feature'
 
 interface UseGetFeaturesParams {
   params?: FeatureFilterParams
-  onSuccess?: (data: Feature[]) => void
-  onError?: (error: unknown) => void
 }
 
-export function useGetFeatures({ params, onSuccess, onError }: UseGetFeaturesParams) {
+export function useGetFeatures({ params }: UseGetFeaturesParams = {}) {
   return useQuery({
     queryKey: ['features', params],
     queryFn: async () => {
-      try {
-        const response = await featureApi.getAll(params)
-        // Normalize response if needed
-        onSuccess?.(response.data)
-        return response.data
-      } catch (error) {
-        onError?.(error)
-        throw error
-      }
+      const response = await featureApi.getAll(params)
+      return response.data
     },
   })
 }
@@ -135,6 +128,7 @@ export function useCreateFeature({ onSuccess, onError }: UseCreateFeatureParams)
   return useMutation({
     mutationKey: ['create-feature'],
     mutationFn: (data: CreateFeatureBody) => featureApi.create(data),
+    // LƯU Ý v5: Hãy return Promise (vd: queryClient.invalidateQueries(...)) trong onSuccess để UI đợi load data
     onSuccess,
     onError,
   })
@@ -472,6 +466,7 @@ formatCurrency(1000000) // "1.000.000 ₫"
 10. Skip form validation with Zod
 11. Modify files in `src/components/ui/` (shadcn components)
 12. Import from `src/` - use `@/` alias
+13. Tuyệt đối KHÔNG LÁCH LUẬT TypeScript (vd: `như as unknown as Type`). Bắt buộc code theo strict mode.
 
 ---
 

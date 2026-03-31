@@ -1,7 +1,7 @@
 import apiClient from '@/lib/axios'
 import type {
-  BicycleParking,
   BicycleParkingFilterParams,
+  BicycleParkingListResponse,
   CreateBicycleParkingBody,
   UpdateBicycleParkingBody,
   UpdateBicycleParkingOrderBody,
@@ -9,7 +9,7 @@ import type {
 
 export const bicycleParkingApi = {
   getBicycleParkings: (params?: BicycleParkingFilterParams) =>
-    apiClient.get<BicycleParking[]>('/bicycle-parkings', { params }),
+    apiClient.get<BicycleParkingListResponse>('/bicycle-parkings', { params }),
 
   createBicycleParking: (data: CreateBicycleParkingBody) =>
     apiClient.post('/bicycle-parkings', data),
