@@ -29,6 +29,12 @@ export function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+export const formatValue = (value?: string, x?: number, character?: string) => {
+  if (!value) return ''
+  const re = `\\d(?=(\\d{${x || 3}})+$)`
+  return value.replace(new RegExp(re, 'g'), `$&${character || ','}`)
+}
+
 export function getApiErrorMessage(
   error: unknown,
   fallback: string,

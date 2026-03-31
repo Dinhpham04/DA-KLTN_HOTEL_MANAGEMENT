@@ -21,6 +21,9 @@ import { ReservationModule } from '@modules/reservation/reservation.module';
 import { CountryModule } from '@modules/country/country.module';
 import { UploadModule } from '@modules/upload/upload.module';
 import { FacilityRoomTypeModule } from '@modules/facility-room-type/facility-room-type.module';
+import { StayTypeModule } from '@modules/stay-type/stay-type.module';
+import { ParkingModule } from '@modules/parking/parking.module';
+import { BicycleParkingModule } from '@modules/bicycle-parking/bicycle-parking.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -86,6 +89,9 @@ import { AppService } from './app.service';
     CountryModule,
     UploadModule,
     FacilityRoomTypeModule,
+    StayTypeModule,
+    ParkingModule,
+    BicycleParkingModule,
   ],
   controllers: [AppController],
   providers: [
