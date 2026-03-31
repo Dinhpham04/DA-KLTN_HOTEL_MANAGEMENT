@@ -71,7 +71,9 @@
     "roomMaster": "Quản lý phòng",
     "reports": "Báo cáo",
     "settings": "Cài đặt",
-    "roomAreaMaster": "Quản lý diện tích phòng"
+    "roomAreaMaster": "Quản lý diện tích phòng",
+    "parkingMaster": "Quản lý bãi đỗ xe",
+    "bicycleMaster": "Quản lý bãi đỗ xe đạp"
   },
   "dashboard": {
     "title": "Tổng quan",
