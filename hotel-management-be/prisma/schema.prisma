@@ -103,6 +103,11 @@ model Staff {
   bicycleParkingsUpdated    BicycleParking[]   @relation("BicycleParkingUpdatedBy")
   bicycleParkingsDeleted    BicycleParking[]   @relation("BicycleParkingDeletedBy")
 
+  // Phase 7: Rent
+  rentsCreated              Rent[]             @relation("RentCreatedBy")
+  rentsUpdated              Rent[]             @relation("RentUpdatedBy")
+  rentsDeleted              Rent[]             @relation("RentDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -250,6 +255,7 @@ model RoomType {
 
   rooms             Room[]
   facilityRoomTypes FacilityRoomType[]
+  rents             Rent[]
 
   @@index([roomClassId], map: "room_types_room_class_id_idx")
   @@index([createdStaffId], map: "room_types_created_staff_id_idx")
@@ -331,6 +337,7 @@ model StayType {
 
   reserves            Reserve[]
   parkingRents        ParkingRent[]
+  rents               Rent[]
 
   @@index([createdStaffId], map: "stay_types_created_staff_id_idx")
   @@index([updatedStaffId], map: "stay_types_updated_staff_id_idx")
@@ -408,6 +415,54 @@ model ParkingRent {
   @@index([deletedStaffId], map: "parking_rents_deleted_staff_id_idx")
 
   @@map("parking_rents")
+}
+
+// ─── Rent (Room Pricing per Stay Type) ──────────────
+
+model Rent {
+  rentId              Int       @id @default(autoincrement()) @map("rent_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  depositFlag         Int       @default(0) @map("deposit_flag") @db.SmallInt
+  roomTypeId          Int       @map("room_type_id")
+  stayTypeId          Int       @map("stay_type_id")
+  depositPay          BigInt?   @map("deposit_pay")
+  depositPayOver3     BigInt?   @map("deposit_pay_over3")
+  dayRent             Int?      @map("day_rent")
+  monthRent           BigInt?   @map("month_rent")
+  dayRentOver3        Int?      @map("day_rent_over3")
+  monthRentOver3      BigInt?   @map("month_rent_over3")
+  dayCleanFee         Int?      @map("day_clean_fee")
+  monthCleanFee       BigInt?   @map("month_clean_fee")
+  dayCleanFeeOver3    Int?      @map("day_clean_fee_over3")
+  monthCleanFeeOver3  BigInt?   @map("month_clean_fee_over3")
+  dayMainteFee        Int?      @map("day_mainte_fee")
+  monthMainteFee      BigInt?   @map("month_mainte_fee")
+  dayUtilityFee       Int?      @map("day_utility_fee")
+  monthUtilityFee     BigInt?   @map("month_utility_fee")
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  roomType            RoomType  @relation(fields: [roomTypeId], references: [roomTypeId])
+  stayType            StayType  @relation(fields: [stayTypeId], references: [stayTypeId])
+  createdBy           Staff     @relation("RentCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("RentUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("RentDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([roomTypeId], map: "rents_room_type_id_idx")
+  @@index([stayTypeId], map: "rents_stay_type_id_idx")
+  @@index([depositFlag], map: "rents_deposit_flag_idx")
+  @@index([createdStaffId], map: "rents_created_staff_id_idx")
+  @@index([updatedStaffId], map: "rents_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "rents_deleted_staff_id_idx")
+  @@index([dataStatus], map: "rents_data_status_idx")
+
+  @@map("rents")
 }
 
 // ─── Bicycle Parking (Bicycle Parking Spot) ─────────

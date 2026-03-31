@@ -24,6 +24,7 @@ import { FacilityRoomTypeModule } from '@modules/facility-room-type/facility-roo
 import { StayTypeModule } from '@modules/stay-type/stay-type.module';
 import { ParkingModule } from '@modules/parking/parking.module';
 import { BicycleParkingModule } from '@modules/bicycle-parking/bicycle-parking.module';
+import { RentModule } from '@modules/rent/rent.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -92,6 +93,7 @@ import { AppService } from './app.service';
     StayTypeModule,
     ParkingModule,
     BicycleParkingModule,
+    RentModule,
   ],
   controllers: [AppController],
   providers: [

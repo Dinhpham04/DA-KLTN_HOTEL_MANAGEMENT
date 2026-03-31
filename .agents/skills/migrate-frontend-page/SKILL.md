@@ -232,6 +232,7 @@ Convert source page → target page. **Copy Y HỆT UI layout và style, CHỈ t
 6. **Logic Separation**: Di chuyển business logic ra custom hooks
 
 7. **i18n**: <!-- Replace inline text → `t('feature.key')` --> Tạm thời replace inline Japanese text → inline Vietnamese text (hardcode).
+8. **Add routes**: Nếu page mới, thêm route vào menu ở `src/components/layouts/Header.tsx`
 
 ### Step 9: Fix Common Issues
 
