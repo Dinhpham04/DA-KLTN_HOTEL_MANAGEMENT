@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     update: {},
     create: {
       staffType: 1, // ADMIN
-      staffName: 'Quan Tri Vien',
+      staffName: 'Quản Trị Viên',
       staffNameEn: 'System Admin',
       staffNameShort: 'Admin',
       sex: 9,
@@ -48,9 +48,9 @@ async function main(): Promise<void> {
     update: {},
     create: {
       staffType: 2, // MANAGER
-      staffName: 'Nguyen Van Binh',
+      staffName: 'Nguyễn Văn Bình',
       staffNameEn: 'Nguyen Van Binh',
-      staffNameShort: 'Binh',
+      staffNameShort: 'Bình',
       sex: 1,
       mail: 'manager@hotel.com',
       loginPassword: managerPassword,
@@ -71,9 +71,9 @@ async function main(): Promise<void> {
   const staffMembers = [
     {
       staffType: 3, // STAFF
-      staffName: 'Tran Thi Cam',
+      staffName: 'Trần Thị Cẩm',
       staffNameEn: 'Tran Thi Cam',
-      staffNameShort: 'Cam',
+      staffNameShort: 'Cẩm',
       sex: 2,
       mail: 'cam.tran@hotel.com',
       tel: '0902345678',
@@ -81,9 +81,9 @@ async function main(): Promise<void> {
     },
     {
       staffType: 3,
-      staffName: 'Le Van Duc',
+      staffName: 'Lê Văn Đức',
       staffNameEn: 'Le Van Duc',
-      staffNameShort: 'Duc',
+      staffNameShort: 'Đức',
       sex: 1,
       mail: 'duc.le@hotel.com',
       tel: '0903456789',
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
     },
     {
       staffType: 3,
-      staffName: 'Pham Thi Em',
+      staffName: 'Phạm Thị Em',
       staffNameEn: 'Pham Thi Em',
       staffNameShort: 'Em',
       sex: 2,
@@ -123,9 +123,9 @@ async function main(): Promise<void> {
   const partTimeMembers = [
     {
       staffType: 4, // PART_TIME
-      staffName: 'Hoang Van Phuc',
+      staffName: 'Hoàng Văn Phúc',
       staffNameEn: 'Hoang Van Phuc',
-      staffNameShort: 'Phuc',
+      staffNameShort: 'Phúc',
       sex: 1,
       mail: 'phuc.hoang@hotel.com',
       tel: '0385678901',
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
     },
     {
       staffType: 4,
-      staffName: 'Vo Thi Giang',
+      staffName: 'Võ Thị Giang',
       staffNameEn: 'Vo Thi Giang',
       staffNameShort: 'Giang',
       sex: 2,
@@ -165,9 +165,9 @@ async function main(): Promise<void> {
     update: {},
     create: {
       staffType: 3,
-      staffName: 'Nguyen Van Hung',
+      staffName: 'Nguyễn Văn Hùng',
       staffNameEn: 'Nguyen Van Hung',
-      staffNameShort: 'Hung',
+      staffNameShort: 'Hùng',
       sex: 1,
       mail: 'inactive@hotel.com',
       loginPassword: staffPassword,
@@ -185,12 +185,12 @@ async function main(): Promise<void> {
   console.log('\nSeeding countries...');
 
   const countriesData = [
-    { countryName: 'Viet Nam', countryNameEn: 'Vietnam', code: 'VN', orderNum: 1 },
-    { countryName: 'Nhat Ban', countryNameEn: 'Japan', code: 'JP', orderNum: 2 },
-    { countryName: 'Hoa Ky', countryNameEn: 'United States', code: 'US', orderNum: 3 },
-    { countryName: 'Trung Quoc', countryNameEn: 'China', code: 'CN', orderNum: 4 },
-    { countryName: 'Han Quoc', countryNameEn: 'South Korea', code: 'KR', orderNum: 5 },
-    { countryName: 'Thai Lan', countryNameEn: 'Thailand', code: 'TH', orderNum: 6 },
+    { countryName: 'Việt Nam', countryNameEn: 'Vietnam', code: 'VN', orderNum: 1 },
+    { countryName: 'Nhật Bản', countryNameEn: 'Japan', code: 'JP', orderNum: 2 },
+    { countryName: 'Hoa Kỳ', countryNameEn: 'United States', code: 'US', orderNum: 3 },
+    { countryName: 'Trung Quốc', countryNameEn: 'China', code: 'CN', orderNum: 4 },
+    { countryName: 'Hàn Quốc', countryNameEn: 'South Korea', code: 'KR', orderNum: 5 },
+    { countryName: 'Thái Lan', countryNameEn: 'Thailand', code: 'TH', orderNum: 6 },
     { countryName: 'Campuchia', countryNameEn: 'Cambodia', code: 'KH', orderNum: 7 },
   ];
 
@@ -208,71 +208,17 @@ async function main(): Promise<void> {
 
   const [countryVN, , countryUS, , countryKR] = countries;
 
-  // ─── Facilities ─────────────────────────────────────
-  console.log('\nSeeding facilities...');
-
-  const facilitiesData = [
-    {
-      facilityNo: '001',
-      facilityType: 1,
-      facilityName: 'Khach san Saigon Central',
-      facilityNameEn: 'Saigon Central Hotel',
-      zipCode: '700000',
-      address: '123 Nguyen Hue, Phuong Ben Nghe, Quan 1, TP. Ho Chi Minh',
-      addressEn: '123 Nguyen Hue, Ben Nghe Ward, District 1, Ho Chi Minh City',
-      keyFunction: true,
-      parkingFlag: true,
-      deliveryboxFlag: true,
-      orderNum: 1,
-      colorOption: '#4A90D9',
-    },
-    {
-      facilityNo: '002',
-      facilityType: 1,
-      facilityName: 'Khach san Saigon Riverside',
-      facilityNameEn: 'Saigon Riverside Hotel',
-      zipCode: '700000',
-      address: '45 Ton Duc Thang, Phuong Ben Nghe, Quan 1, TP. Ho Chi Minh',
-      addressEn: '45 Ton Duc Thang, Ben Nghe Ward, District 1, Ho Chi Minh City',
-      keyFunction: true,
-      parkingFlag: false,
-      bicycleParkingFlag: true,
-      orderNum: 2,
-      colorOption: '#50C878',
-    },
-    {
-      facilityNo: '003',
-      facilityType: 2,
-      facilityName: 'Kho luu tru Tan Binh',
-      facilityNameEn: 'Tan Binh Storage Center',
-      zipCode: '700000',
-      address: '78 Cong Hoa, Phuong 4, Quan Tan Binh, TP. Ho Chi Minh',
-      addressEn: '78 Cong Hoa, Ward 4, Tan Binh District, Ho Chi Minh City',
-      orderNum: 3,
-    },
-  ];
-
-  const facilities = [];
-  for (const data of facilitiesData) {
-    let facility = await prisma.facility.findFirst({ where: { facilityNo: data.facilityNo } });
-    if (!facility) {
-      facility = await prisma.facility.create({
-        data: { ...data, createdBy: { connect: { staffId: admin.staffId } } },
-      });
-    }
-    facilities.push(facility);
-    console.log(`  Facility: ${facility.facilityName} (ID: ${facility.facilityId})`);
-  }
-
-  const [facility1, facility2] = facilities;
-
-  // ─── Room Classes ───────────────────────────────────
+  // ═════════════════════════════════════════════════════
+  // ─── Room Classes (5 classes, based on original SQL) ─
+  // ═════════════════════════════════════════════════════
   console.log('\nSeeding room classes...');
 
   const roomClassesData = [
-    { roomClassName: 'Standard', orderNum: 1 },
-    { roomClassName: 'Deluxe', orderNum: 2 },
-    { roomClassName: 'Suite', orderNum: 3 },
+    { roomClassName: 'E-FLAT', orderNum: 1 },
+    { roomClassName: 'SINGLE', orderNum: 2 },
+    { roomClassName: 'TWIN', orderNum: 3 },
+    { roomClassName: 'FAMILY', orderNum: 4 },
+    { roomClassName: 'SUITE', orderNum: 5 },
   ];
 
   const roomClasses = [];
@@ -287,47 +233,36 @@ async function main(): Promise<void> {
     console.log(`  RoomClass: ${rc.roomClassName} (ID: ${rc.roomClassId})`);
   }
 
-  const [roomClassStandard, roomClassDeluxe, roomClassSuite] = roomClasses;
+  const [rcEFlat, rcSingle, rcTwin, rcFamily, rcSuite] = roomClasses;
 
-  // ─── Room Types ─────────────────────────────────────
+  // ═════════════════════════════════════════════════════
+  // ─── Room Types (17 types, based on original SQL) ────
+  // ═════════════════════════════════════════════════════
   console.log('\nSeeding room types...');
 
   const roomTypesData = [
-    {
-      roomClassId: roomClassStandard.roomClassId,
-      roomTypeName: 'Phong Don',
-      roomTypeNameShort: 'SGL',
-      acreage: 18,
-      orderNum: 1,
-    },
-    {
-      roomClassId: roomClassStandard.roomClassId,
-      roomTypeName: 'Phong Doi',
-      roomTypeNameShort: 'DBL',
-      acreage: 25,
-      orderNum: 2,
-    },
-    {
-      roomClassId: roomClassDeluxe.roomClassId,
-      roomTypeName: 'Phong Twin',
-      roomTypeNameShort: 'TWN',
-      acreage: 30,
-      orderNum: 3,
-    },
-    {
-      roomClassId: roomClassDeluxe.roomClassId,
-      roomTypeName: 'Deluxe Doi',
-      roomTypeNameShort: 'DDBL',
-      acreage: 35,
-      orderNum: 4,
-    },
-    {
-      roomClassId: roomClassSuite.roomClassId,
-      roomTypeName: 'Phong Suite',
-      roomTypeNameShort: 'STE',
-      acreage: 50,
-      orderNum: 5,
-    },
+    // E-FLAT class
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: '', roomTypeNameShort: 'EF(8)', acreage: 15, orderNum: 4, orderNumDeposit: 4 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: '', roomTypeNameShort: 'EF', acreage: 14, orderNum: 3, orderNumDeposit: 3 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'L', roomTypeNameShort: 'EF-L', acreage: 16, orderNum: 2, orderNumDeposit: 2 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'LL', roomTypeNameShort: 'EF-LL', acreage: 17, orderNum: 3, orderNumDeposit: 3 },
+    // SINGLE class
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'SA', acreage: null, orderNum: 1, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'SB', acreage: null, orderNum: 2, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'SC', acreage: null, orderNum: 3, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại D', roomTypeNameShort: 'SD', acreage: null, orderNum: 4, orderNumDeposit: null },
+    // TWIN class
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'TA', acreage: null, orderNum: 5, orderNumDeposit: 2 },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'TB', acreage: null, orderNum: 6, orderNumDeposit: 1 },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'TC', acreage: null, orderNum: 7, orderNumDeposit: null },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại D', roomTypeNameShort: 'TD', acreage: null, orderNum: 8, orderNumDeposit: 4 },
+    // FAMILY class
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'FA', acreage: null, orderNum: 9, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'FB', acreage: null, orderNum: 11, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'FC', acreage: null, orderNum: 12, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại S', roomTypeNameShort: 'FS', acreage: null, orderNum: 13, orderNumDeposit: 0 },
+    // SUITE class
+    { roomClassId: rcSuite.roomClassId, roomTypeName: '', roomTypeNameShort: 'OS', acreage: null, orderNum: 12, orderNumDeposit: 1 },
   ];
 
   const roomTypes = [];
@@ -343,34 +278,302 @@ async function main(): Promise<void> {
       });
     }
     roomTypes.push(rt);
-    console.log(`  RoomType: ${rt.roomTypeName} (ID: ${rt.roomTypeId})`);
+    console.log(`  RoomType: ${rt.roomTypeNameShort} (ID: ${rt.roomTypeId})`);
   }
 
-  const [roomTypeSingle, roomTypeDouble, roomTypeTwin, roomTypeDeluxeDouble, roomTypeSuiteRoom] =
-    roomTypes;
+  // Build a lookup map by short name for easy reference
+  const rtByShort: Record<string, (typeof roomTypes)[0]> = {};
+  for (const rt of roomTypes) {
+    rtByShort[rt.roomTypeNameShort] = rt;
+  }
 
-  // ─── Rooms ──────────────────────────────────────────
+  // ═════════════════════════════════════════════════════
+  // ─── Stay Types (7 types, translated from Japanese) ──
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding stay types...');
+
+  const stayTypesData = [
+    { stayContractTypeId: 1, stayTypeName: '1-6 đêm', stayTypeNameEn: '1-6 nights', stayTypeNameShort: 'A', orderNum: 1 },
+    { stayContractTypeId: 1, stayTypeName: '7 đêm - dưới 1 tháng', stayTypeNameEn: '7 nights - under 1 month', stayTypeNameShort: 'B', orderNum: 2 },
+    { stayContractTypeId: 1, stayTypeName: 'Thanh toán theo tuần', stayTypeNameEn: 'Weekly payment', stayTypeNameShort: 'C', orderNum: 3 },
+    { stayContractTypeId: 1, stayTypeName: '1 tháng trở lên', stayTypeNameEn: '1 month or more', stayTypeNameShort: 'D', orderNum: 4 },
+    { stayContractTypeId: 1, stayTypeName: '1-3 tháng', stayTypeNameEn: '1-3 months', stayTypeNameShort: 'E', orderNum: 5 },
+    { stayContractTypeId: 1, stayTypeName: '3-7 tháng', stayTypeNameEn: '3-7 months', stayTypeNameShort: 'F', orderNum: 6 },
+    { stayContractTypeId: 1, stayTypeName: 'Trên 7 tháng', stayTypeNameEn: 'Over 7 months', stayTypeNameShort: 'G', orderNum: 7 },
+  ];
+
+  const stayTypes = [];
+  for (const data of stayTypesData) {
+    let st = await prisma.stayType.findFirst({ where: { stayTypeNameShort: data.stayTypeNameShort } });
+    if (!st) {
+      st = await prisma.stayType.create({
+        data: { ...data, createdBy: { connect: { staffId: admin.staffId } } },
+      });
+    }
+    stayTypes.push(st);
+    console.log(`  StayType: ${st.stayTypeName} [${st.stayTypeNameShort}] (ID: ${st.stayTypeId})`);
+  }
+
+  // ═════════════════════════════════════════════════════
+  // ─── Facilities (10 facilities, Vietnamese data) ─────
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding facilities...');
+
+  const facilitiesData = [
+    {
+      facilityNo: '01',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Số 1 Bến Thành',
+      facilityNameEn: 'No.1 Ben Thanh',
+      zipCode: '700000',
+      address: '123 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh',
+      addressEn: '123 Le Loi, Ben Thanh Ward, District 1, Ho Chi Minh City',
+      keyFunction: false,
+      sharePlaceFlag: true,
+      parkingFlag: true,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      orderNum: 1,
+      colorOption: '#3a84f2',
+    },
+    {
+      facilityNo: '02',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Số 2 Nguyễn Huệ',
+      facilityNameEn: 'No.2 Nguyen Hue',
+      zipCode: '700000',
+      address: '45 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+      addressEn: '45 Nguyen Hue, Ben Nghe Ward, District 1, Ho Chi Minh City',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: true,
+      bicycleParkingFlag: true,
+      deliveryboxFlag: false,
+      orderNum: 2,
+      colorOption: '#ce8403',
+    },
+    {
+      facilityNo: '03',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Số 3 Hai Bà Trưng',
+      facilityNameEn: 'No.3 Hai Ba Trung',
+      zipCode: '700000',
+      address: '78 Hai Bà Trưng, Phường Tân Định, Quận 1, TP. Hồ Chí Minh',
+      addressEn: '78 Hai Ba Trung, Tan Dinh Ward, District 1, Ho Chi Minh City',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: false,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      memo: 'Không hút thuốc',
+      orderNum: 3,
+      colorOption: '#ff4294',
+    },
+    {
+      facilityNo: '04',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Phú Mỹ Hưng',
+      facilityNameEn: 'Phu My Hung Building',
+      zipCode: '700000',
+      address: '15 Nguyễn Lương Bằng, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh',
+      addressEn: '15 Nguyen Luong Bang, Tan Phu Ward, District 7, Ho Chi Minh City',
+      keyFunction: true,
+      sharePlaceFlag: false,
+      parkingFlag: true,
+      bicycleParkingFlag: true,
+      deliveryboxFlag: true,
+      orderNum: 4,
+      colorOption: '#00ff2a',
+    },
+    {
+      facilityNo: '05',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Thủ Đức',
+      facilityNameEn: 'Thu Duc Building',
+      zipCode: '700000',
+      address: '200 Võ Văn Ngân, Phường Bình Thọ, TP. Thủ Đức, TP. Hồ Chí Minh',
+      addressEn: '200 Vo Van Ngan, Binh Tho Ward, Thu Duc City, Ho Chi Minh City',
+      keyFunction: false,
+      sharePlaceFlag: true,
+      parkingFlag: false,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      orderNum: 5,
+      colorOption: '#805bd7',
+    },
+    {
+      facilityNo: '06',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Đà Nẵng Beach',
+      facilityNameEn: 'Da Nang Beach Building',
+      zipCode: '550000',
+      address: '88 Võ Nguyên Giáp, Phường Phước Mỹ, Quận Sơn Trà, TP. Đà Nẵng',
+      addressEn: '88 Vo Nguyen Giap, Phuoc My Ward, Son Tra District, Da Nang City',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: true,
+      bicycleParkingFlag: true,
+      deliveryboxFlag: true,
+      orderNum: 6,
+      colorOption: '#ffd29e',
+    },
+    {
+      facilityNo: '07',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Hội An',
+      facilityNameEn: 'Hoi An Building',
+      zipCode: '560000',
+      address: '30 Trần Hưng Đạo, Phường Sơn Phong, TP. Hội An, Quảng Nam',
+      addressEn: '30 Tran Hung Dao, Son Phong Ward, Hoi An City, Quang Nam',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: true,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      memo: 'Cho phép thú cưng',
+      orderNum: 7,
+      colorOption: '#bdf2ff',
+    },
+    {
+      facilityNo: '08',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Hà Nội Old Quarter',
+      facilityNameEn: 'Ha Noi Old Quarter',
+      zipCode: '100000',
+      address: '15 Hàng Bài, Phường Tràng Tiền, Quận Hoàn Kiếm, TP. Hà Nội',
+      addressEn: '15 Hang Bai, Trang Tien Ward, Hoan Kiem District, Ha Noi City',
+      keyFunction: true,
+      sharePlaceFlag: false,
+      parkingFlag: false,
+      bicycleParkingFlag: true,
+      deliveryboxFlag: true,
+      memo: 'Nam giới chuyên dụng',
+      orderNum: 8,
+      colorOption: '#e66f00',
+    },
+    {
+      facilityNo: '09',
+      facilityType: 1,
+      dataStatus: 1,
+      facilityName: 'Tòa nhà Nha Trang',
+      facilityNameEn: 'Nha Trang Building',
+      zipCode: '650000',
+      address: '55 Trần Phú, Phường Lộc Thọ, TP. Nha Trang, Khánh Hòa',
+      addressEn: '55 Tran Phu, Loc Tho Ward, Nha Trang City, Khanh Hoa',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: true,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      orderNum: 9,
+      colorOption: '#6185b8',
+    },
+    {
+      facilityNo: '10',
+      facilityType: 1,
+      dataStatus: 0, // Inactive facility for testing
+      facilityName: 'Tòa nhà Cần Thơ (Ngừng hoạt động)',
+      facilityNameEn: 'Can Tho Building (Inactive)',
+      zipCode: '900000',
+      address: '10 Hòa Bình, Phường An Hòa, Quận Ninh Kiều, TP. Cần Thơ',
+      addressEn: '10 Hoa Binh, An Hoa Ward, Ninh Kieu District, Can Tho City',
+      keyFunction: false,
+      sharePlaceFlag: false,
+      parkingFlag: false,
+      bicycleParkingFlag: false,
+      deliveryboxFlag: false,
+      orderNum: 10,
+      colorOption: '#b5b5b5',
+    },
+  ];
+
+  const facilities: Awaited<ReturnType<typeof prisma.facility.create>>[] = [];
+  for (const data of facilitiesData) {
+    let facility = await prisma.facility.findFirst({ where: { facilityNo: data.facilityNo } });
+    if (!facility) {
+      facility = await prisma.facility.create({
+        data: { ...data, createdBy: { connect: { staffId: admin.staffId } } },
+      });
+    }
+    facilities.push(facility);
+    console.log(`  Facility: ${facility.facilityName} [${facility.facilityNo}] (ID: ${facility.facilityId})`);
+  }
+
+  // ═════════════════════════════════════════════════════
+  // ─── Rooms (~40 rooms distributed across facilities) ─
+  // ═════════════════════════════════════════════════════
   console.log('\nSeeding rooms...');
 
+  const f = (no: string) => facilities.find((f) => f.facilityNo === no)!;
+  const rt = (short: string) => rtByShort[short];
+
   const roomsData = [
-    // Saigon Central - Standard Single
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeSingle.roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: '1234', orderNum: 1 },
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeSingle.roomTypeId, roomNumber: '102', roomStatus: 1, mailboxPassword: '1235', orderNum: 2 },
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeSingle.roomTypeId, roomNumber: '103', roomStatus: 2, mailboxPassword: '1236', orderNum: 3 },
-    // Saigon Central - Standard Double
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeDouble.roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: '2234', orderNum: 4 },
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeDouble.roomTypeId, roomNumber: '202', roomStatus: 3, mailboxPassword: '2235', orderNum: 5 },
-    // Saigon Central - Deluxe Twin
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeTwin.roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: '3234', orderNum: 6 },
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeTwin.roomTypeId, roomNumber: '302', roomStatus: 1, mailboxPassword: '3235', orderNum: 7 },
-    // Saigon Central - Suite
-    { facilityId: facility1.facilityId, roomTypeId: roomTypeSuiteRoom.roomTypeId, roomNumber: '501', roomStatus: 1, mailboxPassword: '5234', orderNum: 8 },
-    // Saigon Riverside - Standard Single
-    { facilityId: facility2.facilityId, roomTypeId: roomTypeSingle.roomTypeId, roomNumber: 'R101', roomStatus: 1, mailboxPassword: 'R123', orderNum: 9 },
-    { facilityId: facility2.facilityId, roomTypeId: roomTypeSingle.roomTypeId, roomNumber: 'R102', roomStatus: 2, mailboxPassword: 'R124', orderNum: 10 },
-    // Saigon Riverside - Deluxe Double
-    { facilityId: facility2.facilityId, roomTypeId: roomTypeDeluxeDouble.roomTypeId, roomNumber: 'R201', roomStatus: 1, mailboxPassword: 'R223', orderNum: 11 },
-    { facilityId: facility2.facilityId, roomTypeId: roomTypeDeluxeDouble.roomTypeId, roomNumber: 'R202', roomStatus: 1, mailboxPassword: 'R224', orderNum: 12 },
+    // Facility 01 - Bến Thành (7 rooms)
+    { facilityId: f('01').facilityId, roomTypeId: rt('SA').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'bt1234', orderNum: 1 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('SA').roomTypeId, roomNumber: '102', roomStatus: 1, mailboxPassword: 'bt1235', orderNum: 2 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('SB').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'bt2234', orderNum: 3 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('SB').roomTypeId, roomNumber: '202', roomStatus: 1, mailboxPassword: 'bt2235', orderNum: 4 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('TA').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'bt3234', orderNum: 5 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('FA').roomTypeId, roomNumber: '401', roomStatus: 1, mailboxPassword: 'bt4234', orderNum: 6 },
+    { facilityId: f('01').facilityId, roomTypeId: rt('OS').roomTypeId, roomNumber: '501', roomStatus: 1, mailboxPassword: 'bt5234', orderNum: 7 },
+
+    // Facility 02 - Nguyễn Huệ (6 rooms)
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'nh1234', orderNum: 1 },
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF').roomTypeId, roomNumber: '102', roomStatus: 1, mailboxPassword: 'nh1235', orderNum: 2 },
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF-L').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'nh2234', orderNum: 3 },
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF-L').roomTypeId, roomNumber: '202', roomStatus: 2, mailboxPassword: 'nh2235', orderNum: 4 },
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF-LL').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'nh3234', orderNum: 5 },
+    { facilityId: f('02').facilityId, roomTypeId: rt('EF(8)').roomTypeId, roomNumber: '302', roomStatus: 1, mailboxPassword: 'nh3235', orderNum: 6 },
+
+    // Facility 03 - Hai Bà Trưng (5 rooms)
+    { facilityId: f('03').facilityId, roomTypeId: rt('SC').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'hb1234', orderNum: 1 },
+    { facilityId: f('03').facilityId, roomTypeId: rt('SC').roomTypeId, roomNumber: '102', roomStatus: 1, mailboxPassword: 'hb1235', orderNum: 2 },
+    { facilityId: f('03').facilityId, roomTypeId: rt('SD').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'hb2234', orderNum: 3 },
+    { facilityId: f('03').facilityId, roomTypeId: rt('TB').roomTypeId, roomNumber: '301', roomStatus: 3, mailboxPassword: 'hb3234', orderNum: 4 },
+    { facilityId: f('03').facilityId, roomTypeId: rt('TC').roomTypeId, roomNumber: '302', roomStatus: 1, mailboxPassword: 'hb3235', orderNum: 5 },
+
+    // Facility 04 - Phú Mỹ Hưng (5 rooms)
+    { facilityId: f('04').facilityId, roomTypeId: rt('SA').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'pm1234', orderNum: 1 },
+    { facilityId: f('04').facilityId, roomTypeId: rt('SB').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'pm2234', orderNum: 2 },
+    { facilityId: f('04').facilityId, roomTypeId: rt('TD').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'pm3234', orderNum: 3 },
+    { facilityId: f('04').facilityId, roomTypeId: rt('FB').roomTypeId, roomNumber: '401', roomStatus: 1, mailboxPassword: 'pm4234', orderNum: 4 },
+    { facilityId: f('04').facilityId, roomTypeId: rt('FC').roomTypeId, roomNumber: '501', roomStatus: 1, mailboxPassword: 'pm5234', orderNum: 5 },
+
+    // Facility 05 - Thủ Đức (4 rooms)
+    { facilityId: f('05').facilityId, roomTypeId: rt('EF').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'td1234', orderNum: 1 },
+    { facilityId: f('05').facilityId, roomTypeId: rt('EF-L').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'td2234', orderNum: 2 },
+    { facilityId: f('05').facilityId, roomTypeId: rt('SA').roomTypeId, roomNumber: '301', roomStatus: 4, mailboxPassword: 'td3234', orderNum: 3 },
+    { facilityId: f('05').facilityId, roomTypeId: rt('TA').roomTypeId, roomNumber: '401', roomStatus: 1, mailboxPassword: 'td4234', orderNum: 4 },
+
+    // Facility 06 - Đà Nẵng (4 rooms)
+    { facilityId: f('06').facilityId, roomTypeId: rt('SB').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'dn1234', orderNum: 1 },
+    { facilityId: f('06').facilityId, roomTypeId: rt('SC').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'dn2234', orderNum: 2 },
+    { facilityId: f('06').facilityId, roomTypeId: rt('TA').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'dn3234', orderNum: 3 },
+    { facilityId: f('06').facilityId, roomTypeId: rt('FA').roomTypeId, roomNumber: '401', roomStatus: 5, mailboxPassword: 'dn4234', orderNum: 4 },
+
+    // Facility 07 - Hội An (3 rooms)
+    { facilityId: f('07').facilityId, roomTypeId: rt('EF').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'ha1234', orderNum: 1 },
+    { facilityId: f('07').facilityId, roomTypeId: rt('EF-L').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'ha2234', orderNum: 2 },
+    { facilityId: f('07').facilityId, roomTypeId: rt('EF-LL').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'ha3234', orderNum: 3 },
+
+    // Facility 08 - Hà Nội (4 rooms)
+    { facilityId: f('08').facilityId, roomTypeId: rt('SA').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'hn1234', orderNum: 1 },
+    { facilityId: f('08').facilityId, roomTypeId: rt('SB').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'hn2234', orderNum: 2 },
+    { facilityId: f('08').facilityId, roomTypeId: rt('TB').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'hn3234', orderNum: 3 },
+    { facilityId: f('08').facilityId, roomTypeId: rt('OS').roomTypeId, roomNumber: '401', roomStatus: 1, mailboxPassword: 'hn4234', orderNum: 4 },
+
+    // Facility 09 - Nha Trang (3 rooms)
+    { facilityId: f('09').facilityId, roomTypeId: rt('SC').roomTypeId, roomNumber: '101', roomStatus: 1, mailboxPassword: 'nt1234', orderNum: 1 },
+    { facilityId: f('09').facilityId, roomTypeId: rt('TD').roomTypeId, roomNumber: '201', roomStatus: 1, mailboxPassword: 'nt2234', orderNum: 2 },
+    { facilityId: f('09').facilityId, roomTypeId: rt('FS').roomTypeId, roomNumber: '301', roomStatus: 1, mailboxPassword: 'nt3234', orderNum: 3 },
   ];
 
   const rooms = [];
@@ -384,77 +587,118 @@ async function main(): Promise<void> {
       });
     }
     rooms.push(room);
-    console.log(`  Room: ${room.roomNumber} (ID: ${room.roomId})`);
+    console.log(`  Room: ${room.roomNumber} @ Facility ${data.facilityId} (ID: ${room.roomId})`);
   }
 
-  // ─── Stay Types ─────────────────────────────────────
-  console.log('\nSeeding stay types...');
+  // ═════════════════════════════════════════════════════
+  // ─── Facility Room Types (pivot: acreage per facility+room_type)
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding facility room types...');
 
-  const stayTypesData = [
-    { stayContractTypeId: 1, stayTypeName: 'Luu tru theo tuan', stayTypeNameEn: 'Weekly Stay', stayTypeNameShort: 'WK', orderNum: 1 },
-    { stayContractTypeId: 1, stayTypeName: 'Luu tru 2 tuan', stayTypeNameEn: 'Bi-Weekly Stay', stayTypeNameShort: 'BWK', orderNum: 2 },
-    { stayContractTypeId: 2, stayTypeName: 'Luu tru theo thang', stayTypeNameEn: 'Monthly Stay', stayTypeNameShort: 'MN', orderNum: 3 },
-    { stayContractTypeId: 2, stayTypeName: 'Luu tru dai han', stayTypeNameEn: 'Long-term Stay', stayTypeNameShort: 'LT', orderNum: 4 },
-  ];
+  // Create facility_room_type entries for each facility with the room types it uses
+  const facilityRoomTypesData: { facilityId: number; roomTypeId: number; acreage: string | null }[] = [];
 
-  const stayTypes = [];
-  for (const data of stayTypesData) {
-    let st = await prisma.stayType.findFirst({ where: { stayTypeNameShort: data.stayTypeNameShort } });
-    if (!st) {
-      st = await prisma.stayType.create({
-        data: { ...data, createdBy: { connect: { staffId: admin.staffId } } },
+  // For each room, ensure a FacilityRoomType exists
+  const seenFacilityRoomType = new Set<string>();
+  for (const room of roomsData) {
+    const key = `${room.facilityId}-${room.roomTypeId}`;
+    if (!seenFacilityRoomType.has(key)) {
+      seenFacilityRoomType.add(key);
+      facilityRoomTypesData.push({
+        facilityId: room.facilityId,
+        roomTypeId: room.roomTypeId,
+        acreage: null,
       });
     }
-    stayTypes.push(st);
-    console.log(`  StayType: ${st.stayTypeName} (ID: ${st.stayTypeId})`);
   }
 
-  // ─── Clients ───────────────────────────────────────
+  // Add some specific acreage values for select facility-room type combinations
+  const acreageOverrides: Record<string, string> = {
+    [`${f('01').facilityId}-${rt('SA').roomTypeId}`]: '18',
+    [`${f('01').facilityId}-${rt('SB').roomTypeId}`]: '22',
+    [`${f('01').facilityId}-${rt('TA').roomTypeId}`]: '30',
+    [`${f('01').facilityId}-${rt('FA').roomTypeId}`]: '36',
+    [`${f('01').facilityId}-${rt('OS').roomTypeId}`]: '52',
+    [`${f('02').facilityId}-${rt('EF').roomTypeId}`]: '14',
+    [`${f('02').facilityId}-${rt('EF-L').roomTypeId}`]: '20',
+    [`${f('02').facilityId}-${rt('EF-LL').roomTypeId}`]: '27',
+    [`${f('02').facilityId}-${rt('EF(8)').roomTypeId}`]: '15',
+    [`${f('04').facilityId}-${rt('SA').roomTypeId}`]: '20',
+    [`${f('04').facilityId}-${rt('TD').roomTypeId}`]: '28',
+    [`${f('04').facilityId}-${rt('FB').roomTypeId}`]: '35',
+    [`${f('06').facilityId}-${rt('TA').roomTypeId}`]: '25',
+    [`${f('06').facilityId}-${rt('FA').roomTypeId}`]: '37',
+    [`${f('08').facilityId}-${rt('OS').roomTypeId}`]: '50',
+  };
+
+  for (const data of facilityRoomTypesData) {
+    const key = `${data.facilityId}-${data.roomTypeId}`;
+    const acreage = acreageOverrides[key] || data.acreage;
+
+    const existing = await prisma.facilityRoomType.findFirst({
+      where: { facilityId: data.facilityId, roomTypeId: data.roomTypeId },
+    });
+    if (!existing) {
+      await prisma.facilityRoomType.create({
+        data: {
+          facilityId: data.facilityId,
+          roomTypeId: data.roomTypeId,
+          acreage,
+          createdStaffId: admin.staffId,
+        },
+      });
+    }
+    console.log(`  FacilityRoomType: Facility ${data.facilityId} + RoomType ${data.roomTypeId} (acreage: ${acreage || '-'})`);
+  }
+
+  // ═════════════════════════════════════════════════════
+  // ─── Clients ────────────────────────────────────────
+  // ═════════════════════════════════════════════════════
   console.log('\nSeeding clients...');
 
   const clientsData = [
     {
       email: 'an.nguyen@gmail.com',
       dataType: 1,
-      clientName: 'Nguyen Van An',
+      clientName: 'Nguyễn Văn An',
       clientNameEn: 'Nguyen Van An',
       sex: 1,
       tel: '0912345678',
       telPhone: '0912345678',
       birthday: new Date('1990-05-15'),
       zipCode: '700000',
-      address1: '100 Le Lai, Phuong Ben Thanh, Quan 1',
-      address2: 'TP. Ho Chi Minh',
+      address1: '100 Lê Lai, Phường Bến Thành, Quận 1',
+      address2: 'TP. Hồ Chí Minh',
       countryId: countryVN.countryId,
     },
     {
       email: 'bich.tran@gmail.com',
       dataType: 1,
-      clientName: 'Tran Thi Bich',
+      clientName: 'Trần Thị Bích',
       clientNameEn: 'Tran Thi Bich',
       sex: 2,
       tel: '0923456789',
       birthday: new Date('1985-11-20'),
       zipCode: '550000',
-      address1: '25 Bach Dang, Hai Chau',
-      address2: 'TP. Da Nang',
+      address1: '25 Bạch Đằng, Hải Châu',
+      address2: 'TP. Đà Nẵng',
       countryId: countryVN.countryId,
     },
     {
       email: 'contact@abctravel.vn',
       dataType: 2,
-      clientName: 'Cong ty ABC Travel',
+      clientName: 'Công ty ABC Travel',
       clientNameEn: 'ABC Travel Company',
-      contactName: 'Le Van Cuong',
+      contactName: 'Lê Văn Cường',
       contactNameEn: 'Le Van Cuong',
-      companyName: 'Cong ty TNHH ABC Travel',
+      companyName: 'Công ty TNHH ABC Travel',
       companyNameEn: 'ABC Travel Co., Ltd',
       sex: 9,
       tel: '02812345678',
       companyTel: '02812345679',
       companyZipCode: '700000',
-      companyAddress1: '200 Hai Ba Trung, Phuong Da Kao, Quan 1',
-      companyAddress2: 'TP. Ho Chi Minh',
+      companyAddress1: '200 Hai Bà Trưng, Phường Đa Kao, Quận 1',
+      companyAddress2: 'TP. Hồ Chí Minh',
       postpaidFlag: true,
       countryId: countryVN.countryId,
     },
@@ -503,11 +747,10 @@ async function main(): Promise<void> {
 
   const reservesData = [
     {
-      // Reservation 1: Confirmed, upcoming
       clientId: client1.clientId,
-      facilityId: facility1.facilityId,
-      roomId: rooms[0].roomId, // Room 101
-      stayTypeId: stayTypes[0].stayTypeId, // Weekly
+      facilityId: f('01').facilityId,
+      roomId: rooms[0].roomId, // Room 101 @ Bến Thành
+      stayTypeId: stayTypes[0].stayTypeId, // 1-6 đêm
       reserveStatus: 2,
       reserveType: 1,
       periodFrom: new Date('2026-04-01'),
@@ -515,16 +758,15 @@ async function main(): Promise<void> {
       confirmFlag: true,
       bookingUnitPrice: 500000,
       deposit: 500000,
-      note: 'Khach yeu cau phong tang cao',
+      note: 'Khách yêu cầu phòng tầng cao',
       chargeStaffId: manager.staffId,
       confirmStaffId: manager.staffId,
     },
     {
-      // Reservation 2: Checked in
       clientId: client2.clientId,
-      facilityId: facility1.facilityId,
-      roomId: rooms[3].roomId, // Room 201
-      stayTypeId: stayTypes[2].stayTypeId, // Monthly
+      facilityId: f('01').facilityId,
+      roomId: rooms[2].roomId, // Room 201 @ Bến Thành
+      stayTypeId: stayTypes[3].stayTypeId, // 1 tháng trở lên
       reserveStatus: 3,
       reserveType: 1,
       periodFrom: new Date('2026-03-01'),
@@ -538,25 +780,23 @@ async function main(): Promise<void> {
       confirmStaffId: manager.staffId,
     },
     {
-      // Reservation 3: Corporate booking, pending
       clientId: client3.clientId,
-      facilityId: facility1.facilityId,
-      roomId: rooms[5].roomId, // Room 301
-      stayTypeId: stayTypes[1].stayTypeId, // Bi-Weekly
+      facilityId: f('01').facilityId,
+      roomId: rooms[4].roomId, // Room 301 @ Bến Thành
+      stayTypeId: stayTypes[1].stayTypeId, // 7 đêm - dưới 1 tháng
       reserveStatus: 1,
       reserveType: 1,
       periodFrom: new Date('2026-04-15'),
       periodTo: new Date('2026-04-29'),
       bookingUnitPrice: 1200000,
-      note: 'Dat phong cho khach doan',
+      note: 'Đặt phòng cho khách đoàn',
       advertisingType: 1,
     },
     {
-      // Reservation 4: Foreign guest, confirmed
       clientId: client4.clientId,
-      facilityId: facility2.facilityId,
-      roomId: rooms[10].roomId, // Room R201
-      stayTypeId: stayTypes[0].stayTypeId, // Weekly
+      facilityId: f('06').facilityId,
+      roomId: rooms[28].roomId, // Room 301 @ Đà Nẵng
+      stayTypeId: stayTypes[0].stayTypeId, // 1-6 đêm
       reserveStatus: 2,
       reserveType: 1,
       periodFrom: new Date('2026-04-10'),
@@ -569,11 +809,10 @@ async function main(): Promise<void> {
       confirmStaffId: manager.staffId,
     },
     {
-      // Reservation 5: Checked out (past)
       clientId: client5.clientId,
-      facilityId: facility2.facilityId,
-      roomId: rooms[8].roomId, // Room R101
-      stayTypeId: stayTypes[0].stayTypeId, // Weekly
+      facilityId: f('08').facilityId,
+      roomId: rooms[34].roomId, // Room 101 @ Hà Nội
+      stayTypeId: stayTypes[0].stayTypeId, // 1-6 đêm
       reserveStatus: 4,
       reserveType: 1,
       periodFrom: new Date('2026-02-01'),
@@ -588,17 +827,16 @@ async function main(): Promise<void> {
       confirmStaffId: manager.staffId,
     },
     {
-      // Reservation 6: Cancelled
       clientId: client1.clientId,
-      facilityId: facility1.facilityId,
-      roomId: rooms[7].roomId, // Room 501
-      stayTypeId: stayTypes[3].stayTypeId, // Long-term
+      facilityId: f('01').facilityId,
+      roomId: rooms[6].roomId, // Room 501 (Suite) @ Bến Thành
+      stayTypeId: stayTypes[4].stayTypeId, // 1-3 tháng
       reserveStatus: 5,
       reserveType: 1,
       periodFrom: new Date('2026-05-01'),
       periodTo: new Date('2026-07-31'),
       bookingUnitPrice: 15000000,
-      cancelReason: 'Khach thay doi ke hoach cong tac',
+      cancelReason: 'Khách thay đổi kế hoạch công tác',
       cancelledAt: new Date('2026-03-10'),
     },
   ];
@@ -633,7 +871,7 @@ async function main(): Promise<void> {
     {
       reserveId: reserves[1].reserveId,
       clientId: client2.clientId,
-      occupierName: 'Tran Van Dung',
+      occupierName: 'Trần Văn Dũng',
       occupierNameEn: 'Tran Van Dung',
       sex: 1,
       tel: '0934567890',
@@ -642,7 +880,7 @@ async function main(): Promise<void> {
     {
       reserveId: reserves[2].reserveId,
       clientId: client3.clientId,
-      occupierName: 'Pham Thi Hoa',
+      occupierName: 'Phạm Thị Hoa',
       occupierNameEn: 'Pham Thi Hoa',
       sex: 2,
       tel: '0945678901',
@@ -651,7 +889,7 @@ async function main(): Promise<void> {
     {
       reserveId: reserves[2].reserveId,
       clientId: client3.clientId,
-      occupierName: 'Vo Van Khanh',
+      occupierName: 'Võ Văn Khánh',
       occupierNameEn: 'Vo Van Khanh',
       sex: 1,
       tel: '0956789012',
@@ -693,22 +931,25 @@ async function main(): Promise<void> {
 
   await prisma.$disconnect();
 
-  console.log('\nSeed completed successfully!');
+  console.log('\n══════════════════════════════════════════');
+  console.log('  Seed completed successfully!');
+  console.log('══════════════════════════════════════════');
   console.log('\nLogin credentials:');
   console.log('  Admin:     admin@hotel.com      / admin123');
   console.log('  Manager:   manager@hotel.com    / manager123');
   console.log('  Staff:     cam.tran@hotel.com   / staff123');
   console.log('  Part-time: phuc.hoang@hotel.com / parttime123');
   console.log('\nSample data:');
-  console.log('  Countries:    7 (VN, JP, US, CN, KR, TH, KH)');
-  console.log('  Facilities:   3 (Saigon Central, Saigon Riverside, Kho Tan Binh)');
-  console.log('  RoomClasses:  3 (Standard, Deluxe, Suite)');
-  console.log('  RoomTypes:    5 (Phong Don, Phong Doi, Phong Twin, Deluxe Doi, Phong Suite)');
-  console.log('  Rooms:        12 (8 Saigon Central + 4 Saigon Riverside)');
-  console.log('  StayTypes:    4 (Tuan, 2 Tuan, Thang, Dai han)');
-  console.log('  Clients:      5 (3 VN, 1 US, 1 KR)');
-  console.log('  Reservations: 6 (1 Pending, 2 Confirmed, 1 Checked-in, 1 Checked-out, 1 Cancelled)');
-  console.log('  Occupiers:    3 (co-guests)');
+  console.log('  Countries:          7 (VN, JP, US, CN, KR, TH, KH)');
+  console.log('  RoomClasses:        5 (E-FLAT, SINGLE, TWIN, FAMILY, SUITE)');
+  console.log('  RoomTypes:         17 (EF, EF-L, EF-LL, EF(8), SA-SD, TA-TD, FA-FC, FS, OS)');
+  console.log('  StayTypes:          7 (1-6 đêm, 7 đêm-1 tháng, Tuần, 1 tháng+, 1-3 tháng, 3-7 tháng, 7+ tháng)');
+  console.log('  Facilities:        10 (HCM x5, Đà Nẵng, Hội An, Hà Nội, Nha Trang, Cần Thơ)');
+  console.log('  Rooms:             41 (distributed across 9 active facilities)');
+  console.log('  FacilityRoomTypes: ~30 (with acreage data for key types)');
+  console.log('  Clients:            5 (3 VN, 1 US, 1 KR)');
+  console.log('  Reservations:       6 (1 Pending, 2 Confirmed, 1 Checked-in, 1 Checked-out, 1 Cancelled)');
+  console.log('  Occupiers:          3 (co-guests)');
 }
 
 main().catch((e: unknown) => {
