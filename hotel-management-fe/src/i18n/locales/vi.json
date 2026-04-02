@@ -73,7 +73,8 @@
     "settings": "Cài đặt",
     "roomAreaMaster": "Quản lý diện tích phòng",
     "parkingMaster": "Quản lý bãi đỗ xe",
-    "bicycleMaster": "Quản lý bãi đỗ xe đạp"
+    "bicycleMaster": "Quản lý bãi đỗ xe đạp",
+    "rentsMaster": "Quản lý giá thuê"
   },
   "dashboard": {
     "title": "Tổng quan",

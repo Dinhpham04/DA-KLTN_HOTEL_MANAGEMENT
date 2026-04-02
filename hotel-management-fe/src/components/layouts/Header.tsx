@@ -67,6 +67,7 @@ export function Header() {
         { id: 74, url: '/room-area-master', menu_children: t('nav.roomAreaMaster') },
         { id: 75, url: '/parking-master', menu_children: t('nav.parkingMaster') },
         { id: 76, url: '/bicycle-parking-master', menu_children: t('nav.bicycleMaster') },
+        { id: 77, url: '/rents-master', menu_children: t('nav.rentsMaster') },
       ],
     },
     { id: 12, item: t('auth.logout'), onClick: handleLogout },

@@ -651,6 +651,305 @@ async function main(): Promise<void> {
     console.log(`  FacilityRoomType: Facility ${data.facilityId} + RoomType ${data.roomTypeId} (acreage: ${acreage || '-'})`);
   }
 
+  // Build stayType lookup by short name (used by rents and parking_rents)
+  const stByShort: Record<string, (typeof stayTypes)[0]> = {};
+  for (const st of stayTypes) {
+    stByShort[st.stayTypeNameShort] = st;
+  }
+
+  // ═════════════════════════════════════════════════════
+  // ─── Rents (Giá phòng theo loại phòng × loại lưu trú) ──
+  // ═════════════════════════════════════════════════════
+  console.log('\nSeeding rents...');
+
+  // Pricing structure per room type × stay type
+  // Short stays (A, B, C): dayRent based, monthRent = 0
+  // Long stays (D, E, F, G): monthRent based, dayRent = 0
+  // Prices in VND, adapted for Vietnamese market
+  interface RentPricing {
+    rtShort: string;
+    depositFlag: number;
+    stays: {
+      stShort: string;
+      depositPay: number | null;
+      dayRent: number;
+      monthRent: number;
+      dayCleanFee: number;
+      monthCleanFee: number;
+      dayMainteFee: number;
+      monthMainteFee: number;
+      dayUtilityFee: number;
+      monthUtilityFee: number;
+    }[];
+  }
+
+  const rentsPricing: RentPricing[] = [
+    // ─── E-FLAT class: Compact rooms (cheapest) ─────────
+    // EF(8) - 8 tatami equivalent
+    {
+      rtShort: 'EF(8)', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 385000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'B', depositPay: null, dayRent: 330000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'C', depositPay: null, dayRent: 310000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 8400000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 8400000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 8250000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 8100000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+      ],
+    },
+    // EF - Standard E-Flat
+    {
+      rtShort: 'EF', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 407000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'B', depositPay: null, dayRent: 352000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'C', depositPay: null, dayRent: 330000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 9000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 9000000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 8850000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 8700000, dayCleanFee: 0, monthCleanFee: 300000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 45000, monthUtilityFee: 60000 },
+      ],
+    },
+    // EF-L - E-Flat Large
+    {
+      rtShort: 'EF-L', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 429000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'B', depositPay: null, dayRent: 418000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'C', depositPay: null, dayRent: 390000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 11250000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 11250000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 10800000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 10200000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 0, monthUtilityFee: 0 },
+      ],
+    },
+    // EF-LL - E-Flat Extra Large
+    {
+      rtShort: 'EF-LL', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 495000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'B', depositPay: null, dayRent: 473000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'C', depositPay: null, dayRent: 450000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 12300000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'E', depositPay: 1000000, dayRent: 0, monthRent: 12300000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'F', depositPay: 1000000, dayRent: 0, monthRent: 11700000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'G', depositPay: 1000000, dayRent: 0, monthRent: 11250000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+      ],
+    },
+    // ─── SINGLE class: Standard rooms ───────────────────
+    // SA - Single A
+    {
+      rtShort: 'SA', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 759000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'B', depositPay: null, dayRent: 660000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'C', depositPay: null, dayRent: 520000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 14700000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'E', depositPay: 5000000, dayRent: 0, monthRent: 14700000, dayCleanFee: 0, monthCleanFee: 1950000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'F', depositPay: 15000000, dayRent: 0, monthRent: 13800000, dayCleanFee: 0, monthCleanFee: 1050000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'G', depositPay: 15000000, dayRent: 0, monthRent: 13350000, dayCleanFee: 0, monthCleanFee: 600000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+      ],
+    },
+    // SB - Single B
+    {
+      rtShort: 'SB', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 792000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'B', depositPay: 1000000, dayRent: 682000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'C', depositPay: null, dayRent: 620000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 18000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'E', depositPay: 1000000, dayRent: 0, monthRent: 18000000, dayCleanFee: 0, monthCleanFee: 1950000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'F', depositPay: 1000000, dayRent: 0, monthRent: 16500000, dayCleanFee: 0, monthCleanFee: 1050000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'G', depositPay: 1000000, dayRent: 0, monthRent: 15300000, dayCleanFee: 0, monthCleanFee: 600000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+      ],
+    },
+    // SC - Single C
+    {
+      rtShort: 'SC', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 825000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'B', depositPay: 1000000, dayRent: 726000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'C', depositPay: null, dayRent: 660000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 18900000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'E', depositPay: 1000000, dayRent: 0, monthRent: 18900000, dayCleanFee: 0, monthCleanFee: 1950000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'F', depositPay: 1000000, dayRent: 0, monthRent: 17100000, dayCleanFee: 0, monthCleanFee: 1050000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'G', depositPay: 1000000, dayRent: 0, monthRent: 15900000, dayCleanFee: 0, monthCleanFee: 600000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+      ],
+    },
+    // SD - Single D (no deposit)
+    {
+      rtShort: 'SD', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 891000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'B', depositPay: null, dayRent: 814000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'C', depositPay: null, dayRent: 740000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 20700000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 20700000, dayCleanFee: 0, monthCleanFee: 1950000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 18600000, dayCleanFee: 0, monthCleanFee: 1050000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 17100000, dayCleanFee: 0, monthCleanFee: 600000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 90000, monthUtilityFee: 210000 },
+      ],
+    },
+    // ─── TWIN class: Double rooms ───────────────────────
+    // TA - Twin A
+    {
+      rtShort: 'TA', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 913000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'B', depositPay: 1000000, dayRent: 803000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'C', depositPay: null, dayRent: 720000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 20400000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'E', depositPay: 1000000, dayRent: 0, monthRent: 20400000, dayCleanFee: 0, monthCleanFee: 2250000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'F', depositPay: 1000000, dayRent: 0, monthRent: 19200000, dayCleanFee: 0, monthCleanFee: 1350000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'G', depositPay: 1000000, dayRent: 0, monthRent: 18000000, dayCleanFee: 0, monthCleanFee: 900000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+      ],
+    },
+    // TB - Twin B
+    {
+      rtShort: 'TB', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 946000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'B', depositPay: null, dayRent: 858000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'C', depositPay: null, dayRent: 770000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 21900000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 21900000, dayCleanFee: 0, monthCleanFee: 2250000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 20100000, dayCleanFee: 0, monthCleanFee: 1350000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 18900000, dayCleanFee: 0, monthCleanFee: 900000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+      ],
+    },
+    // TC - Twin C
+    {
+      rtShort: 'TC', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1045000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'B', depositPay: null, dayRent: 946000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'C', depositPay: null, dayRent: 860000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 24000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 24000000, dayCleanFee: 0, monthCleanFee: 2250000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 21900000, dayCleanFee: 0, monthCleanFee: 1350000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 20400000, dayCleanFee: 0, monthCleanFee: 900000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+      ],
+    },
+    // TD - Twin D
+    {
+      rtShort: 'TD', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1089000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'B', depositPay: 100000, dayRent: 1001000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'C', depositPay: null, dayRent: 910000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 25200000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'E', depositPay: 1200000, dayRent: 0, monthRent: 25200000, dayCleanFee: 0, monthCleanFee: 2250000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 22500000, dayCleanFee: 0, monthCleanFee: 1350000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 21000000, dayCleanFee: 0, monthCleanFee: 900000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 120000, monthUtilityFee: 240000 },
+      ],
+    },
+    // ─── FAMILY class: Large rooms ──────────────────────
+    // FA - Family A
+    {
+      rtShort: 'FA', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1485000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'B', depositPay: null, dayRent: 1375000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'C', depositPay: null, dayRent: 1250000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 34500000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 34500000, dayCleanFee: 0, monthCleanFee: 2550000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 23700000, dayCleanFee: 0, monthCleanFee: 1650000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 21300000, dayCleanFee: 0, monthCleanFee: 1200000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+      ],
+    },
+    // FB - Family B
+    {
+      rtShort: 'FB', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1540000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'B', depositPay: null, dayRent: 1430000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'C', depositPay: null, dayRent: 1300000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 36000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 36000000, dayCleanFee: 0, monthCleanFee: 2550000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 24600000, dayCleanFee: 0, monthCleanFee: 1650000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 22200000, dayCleanFee: 0, monthCleanFee: 1200000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+      ],
+    },
+    // FC - Family C
+    {
+      rtShort: 'FC', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1760000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'B', depositPay: null, dayRent: 1595000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'C', depositPay: null, dayRent: 1450000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 39000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 39000000, dayCleanFee: 0, monthCleanFee: 2550000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 28200000, dayCleanFee: 0, monthCleanFee: 1650000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 25200000, dayCleanFee: 0, monthCleanFee: 1200000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+      ],
+    },
+    // FS - Family Suite
+    {
+      rtShort: 'FS', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1980000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'B', depositPay: null, dayRent: 1760000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'C', depositPay: null, dayRent: 1600000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 42000000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 42000000, dayCleanFee: 0, monthCleanFee: 2550000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 31500000, dayCleanFee: 0, monthCleanFee: 1650000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 28800000, dayCleanFee: 0, monthCleanFee: 1200000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 150000, monthUtilityFee: 270000 },
+      ],
+    },
+    // ─── SUITE class: Premium ───────────────────────────
+    // OS - Suite
+    {
+      rtShort: 'OS', depositFlag: 0,
+      stays: [
+        { stShort: 'A', depositPay: null, dayRent: 1980000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'B', depositPay: null, dayRent: 2277000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'C', depositPay: null, dayRent: 2200000, monthRent: 0, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'D', depositPay: null, dayRent: 0, monthRent: 62100000, dayCleanFee: 0, monthCleanFee: 0, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'E', depositPay: null, dayRent: 0, monthRent: 62100000, dayCleanFee: 0, monthCleanFee: 2550000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'F', depositPay: null, dayRent: 0, monthRent: 50700000, dayCleanFee: 0, monthCleanFee: 1650000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+        { stShort: 'G', depositPay: null, dayRent: 0, monthRent: 42750000, dayCleanFee: 0, monthCleanFee: 1200000, dayMainteFee: 0, monthMainteFee: 0, dayUtilityFee: 225000, monthUtilityFee: 330000 },
+      ],
+    },
+  ];
+
+  let rentCount = 0;
+  for (const rp of rentsPricing) {
+    const roomType = rtByShort[rp.rtShort];
+    if (!roomType) {
+      console.warn(`  Warning: RoomType ${rp.rtShort} not found, skipping rent`);
+      continue;
+    }
+    for (const s of rp.stays) {
+      const stayType = stByShort[s.stShort];
+      if (!stayType) continue;
+      const existing = await prisma.rent.findFirst({
+        where: { roomTypeId: roomType.roomTypeId, stayTypeId: stayType.stayTypeId, deletedAt: null },
+      });
+      if (!existing) {
+        await prisma.rent.create({
+          data: {
+            depositFlag: rp.depositFlag,
+            roomTypeId: roomType.roomTypeId,
+            stayTypeId: stayType.stayTypeId,
+            depositPay: s.depositPay,
+            dayRent: s.dayRent,
+            monthRent: BigInt(s.monthRent),
+            dayCleanFee: s.dayCleanFee,
+            monthCleanFee: BigInt(s.monthCleanFee),
+            dayMainteFee: s.dayMainteFee,
+            monthMainteFee: BigInt(0),
+            dayUtilityFee: s.dayUtilityFee,
+            monthUtilityFee: BigInt(s.monthUtilityFee),
+            createdStaffId: admin.staffId,
+          },
+        });
+        rentCount++;
+      }
+    }
+    console.log(`  Rent: ${rp.rtShort} × 7 stay types`);
+  }
+  console.log(`  Total rents created: ${rentCount}`);
+
   // ═════════════════════════════════════════════════════
   // ─── Parkings (Bãi đỗ ô tô) ────────────────────────
   // ═════════════════════════════════════════════════════
@@ -720,11 +1019,6 @@ async function main(): Promise<void> {
     { parkingIdx: 11, facilityNo: '09', rents: { A: 45000, B: 40000, C: 35000, D: 30000, E: 25000, F: 20000, G: 18000 } },
   ];
 
-  // Build stayType lookup by short name
-  const stByShort: Record<string, (typeof stayTypes)[0]> = {};
-  for (const st of stayTypes) {
-    stByShort[st.stayTypeNameShort] = st;
-  }
 
   let parkingRentCount = 0;
   for (const pr of parkingRentPricing) {
@@ -1082,6 +1376,7 @@ async function main(): Promise<void> {
   console.log('  Facilities:        10 (HCM x5, Đà Nẵng, Hội An, Hà Nội, Nha Trang, Cần Thơ)');
   console.log('  Rooms:             41 (distributed across 9 active facilities)');
   console.log('  FacilityRoomTypes: ~30 (with acreage data for key types)');
+  console.log('  Rents:            119 (17 room types × 7 stay types)');
   console.log('  Parkings:          12 (across 6 facilities with parkingFlag)');
   console.log('  ParkingRents:      84 (12 parkings × 7 stay types)');
   console.log('  BicycleParkings:    8 (across 4 facilities with bicycleParkingFlag)');
