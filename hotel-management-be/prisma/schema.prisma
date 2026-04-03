@@ -73,8 +73,11 @@ model Staff {
   reservesUpdated         Reserve[]         @relation("ReserveUpdatedBy")
   reservesDeleted         Reserve[]         @relation("ReserveDeletedBy")
   reservesCharge          Reserve[]         @relation("ReserveChargeStaff")
+  reservesCharge2         Reserve[]         @relation("ReserveChargeStaff2")
   reservesCheckinRecep    Reserve[]         @relation("ReserveCheckinReceptionist")
+  reservesDiContact       Reserve[]         @relation("ReserveDiContactStaff")
   reservesCheckoutRecep   Reserve[]         @relation("ReserveCheckoutReceptionist")
+  reservesCheckoutRecep2  Reserve[]         @relation("ReserveCheckoutReceptionist2")
   reservesConfirmStaff    Reserve[]         @relation("ReserveConfirmStaff")
   reserveOccupiersCreated ReserveOccupier[] @relation("ReserveOccupierCreatedBy")
   reserveOccupiersUpdated ReserveOccupier[] @relation("ReserveOccupierUpdatedBy")
@@ -107,6 +110,11 @@ model Staff {
   rentsCreated              Rent[]             @relation("RentCreatedBy")
   rentsUpdated              Rent[]             @relation("RentUpdatedBy")
   rentsDeleted              Rent[]             @relation("RentDeletedBy")
+
+  // Phase 8: UsageStatus
+  usageStatusesCreated      UsageStatus[]      @relation("UsageStatusCreatedBy")
+  usageStatusesUpdated      UsageStatus[]      @relation("UsageStatusUpdatedBy")
+  usageStatusesDeleted      UsageStatus[]      @relation("UsageStatusDeletedBy")
 
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
@@ -188,6 +196,7 @@ model Facility {
   parkings            Parking[]
   parkingRents        ParkingRent[]
   bicycleParkings     BicycleParking[]
+  usageStatuses       UsageStatus[]
 
   @@index([facilityNo], map: "facilities_facility_no_idx")
   @@index([createdStaffId], map: "facilities_created_staff_id_idx")
@@ -300,6 +309,7 @@ model Room {
   deletedBy           Staff?    @relation("RoomDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   reserves            Reserve[]
+  usageStatuses       UsageStatus[]
 
   @@index([facilityId], map: "rooms_facility_id_idx")
   @@index([roomTypeId], map: "rooms_room_type_id_idx")
@@ -564,6 +574,7 @@ model Client {
 
 model Reserve {
   reserveId               Int       @id @default(autoincrement()) @map("reserve_id")
+  parentReserveId         Int?      @map("parent_reserve_id")
   clientId                Int?      @map("client_id")
   facilityId              Int?      @map("facility_id")
   roomId                  Int?      @map("room_id")
@@ -572,26 +583,115 @@ model Reserve {
   reserveStatus           Int       @default(1) @map("reserve_status") @db.SmallInt
   reserveType             Int?      @map("reserve_type") @db.SmallInt
   deleteStatus            Int?      @map("delete_status") @db.SmallInt
-  periodFrom              DateTime? @map("period_from")
-  periodTo                DateTime? @map("period_to")
+
+  // Flags
+  draftFlag               Boolean   @default(false) @map("draft_flag")
+  memoFlag                Boolean   @default(false) @map("memo_flag")
+  rakutenFlag             Boolean   @default(false) @map("rakuten_flag")
+  eternityDraft           Boolean   @default(false) @map("eternity_draft")
+  hasSeen                 Boolean   @default(false) @map("has_seen")
+  originalFlag            Boolean   @default(false) @map("original_flag")
+  autoExtendFlag          Boolean   @default(false) @map("auto_extend_flag")
+  campaignPriceFlag       Boolean   @default(false) @map("campaign_price_flag")
   confirmFlag             Boolean   @default(false) @map("confirm_flag")
   checkinFlag             Boolean   @default(false) @map("checkin_flag")
+  directcheckinFlag       Boolean   @default(false) @map("directcheckin_flag")
+  petFlag                 Boolean   @default(false) @map("pet_flag")
+  futonFlag               Boolean   @default(false) @map("futon_flag")
+  deliveryboxFlag         Boolean   @default(false) @map("deliverybox_flag")
+  disableReservation      Boolean   @default(false) @map("disable_reservation")
+  preDeliveryKeyFlag      Boolean   @default(false) @map("pre_delivery_key_flag")
+  isKeyInCompleted        Boolean   @default(false) @map("is_key_in_completed")
+  contactedFlag           Boolean?  @map("contacted_flag")
+  keyReturnFlag           Boolean?  @map("key_return_flag")
+
+  // Period
+  periodFrom              DateTime? @map("period_from")
+  periodTo                DateTime? @map("period_to")
+  originalPeriodFrom      DateTime? @map("original_period_from")
+  originalPeriodTo        DateTime? @map("original_period_to")
+  periodBefore            DateTime? @map("period_before")
+  periodType              String?   @map("period_type") @db.VarChar(32)
+  expiredDate             Int?      @map("expired_date") @db.SmallInt
+  noreserveCountBefore    Int?      @map("noreserve_count_before") @db.SmallInt
+  noreserveCountAfter     Int?      @map("noreserve_count_after") @db.SmallInt
+
+  // Dates
   checkedInAt             DateTime? @map("checked_in_at")
   checkoutAt              DateTime? @map("checkout_at")
+  earlyExitDatetime       DateTime? @map("early_exit_datetime")
+  checkinDate             DateTime? @map("checkin_date")
+  lastStayDate            DateTime? @map("last_stay_date")
+  paymentDueDate          DateTime? @map("payment_due_date")
+  cancelledAt             DateTime? @map("cancelled_at")
+  checkKeysDatetime       DateTime? @map("check_keys_datetime") @db.Date
+  keyReturnDatetime       DateTime? @map("key_return_datetime")
+
+  // Pricing
   bookingUnitPrice        Int?      @map("booking_unit_price")
   adjustmentUnitPrice     Int?      @map("adjustment_unit_price")
   deposit                 Int?
+
+  // Room move
+  movedFacilityId         Int?      @map("moved_facility_id")
+  movedRoomId             Int?      @map("moved_room_id")
+  timeExtendNum           Int?      @map("time_extend_num") @db.SmallInt
+  extensionTime           Int?      @map("extension_time") @db.SmallInt
+
+  // Key management
+  rentalKeys              Int?      @map("rental_keys") @db.SmallInt
+  returnKeys              Int?      @map("return_keys") @db.SmallInt
+  keyReturnContactType    Int?      @map("key_return_contact_type") @db.SmallInt
+
+  // Direct check-in
+  directcheckinType       Int?      @map("directcheckin_type") @db.SmallInt
+  directcheckinNote       String?   @map("directcheckin_note") @db.VarChar(256)
+  keyboxId                Int?      @map("keybox_id")
+  keyboxPassword          String?   @map("keybox_password") @db.VarChar(32)
+
+  // Substitute room
+  substituteReserveId     Int?      @map("substitute_reserve_id")
+  substituteFacilityId    Int?      @map("substitute_facility_id")
+  substituteRoomId        Int?      @map("substitute_room_id")
+  substituteRoomFrom      DateTime? @map("substitute_room_from")
+  substituteRoomTo        DateTime? @map("substitute_room_to")
+  substituteRoomNote      String?   @map("substitute_room_note") @db.VarChar(1024)
+
+  // Pet details
+  dogCount                Int?      @map("dog_count") @db.SmallInt
+  catCount                Int?      @map("cat_count") @db.SmallInt
+  otherCount              Int?      @map("other_count") @db.SmallInt
+  petNote                 String?   @map("pet_note") @db.VarChar(256)
+
+  // Deliverybox
+  deliveryboxCardNumber   String?   @map("deliverybox_card_number") @db.VarChar(16)
+  boxUsagePeriodType      Int?      @map("box_usage_period_type") @db.SmallInt
+  boxUsageStartDate       DateTime? @map("box_usage_start_date") @db.Date
+  boxUsageEndDate         DateTime? @map("box_usage_end_date") @db.Date
+
+  // Notes & announcements
   note                    String?   @db.VarChar(256)
   memo                    String?   @db.Text
-  advertisingType         Int?      @map("advertising_type") @db.SmallInt
+  overdueDebtNote         String?   @map("overdue_debt_note") @db.Text
+  amendment               String?   @db.VarChar(128)
   cancelReason            String?   @map("cancel_reason") @db.VarChar(512)
-  cancelledAt             DateTime? @map("cancelled_at")
-  petFlag                 Boolean   @default(false) @map("pet_flag")
+  announcement            String?   @db.VarChar(1024)
+  requestAnnouncement     String?   @map("request_announcement") @db.VarChar(1024)
+  saleAnnouncement        String?   @map("sale_announcement") @db.VarChar(1024)
+  noticeComment           String?   @map("notice_comment") @db.VarChar(1024)
+  surveyAnswer            String?   @map("survey_answer") @db.Text
+
+  // Misc
+  advertisingType         Int?      @map("advertising_type") @db.SmallInt
+  roomDirtyLevel          Int?      @map("room_dirty_level") @db.SmallInt
 
   // Staff references
   chargeStaffId           Int?      @map("charge_staff_id")
+  chargeStaffId2          Int?      @map("charge_staff_id2")
   checkinReceptionistId   Int?      @map("checkin_receptionist_id")
+  diContactStaffId        Int?      @map("di_contact_staff_id")
   checkoutReceptionistId  Int?      @map("checkout_receptionist_id")
+  checkoutReceptionistId2 Int?      @map("checkout_receptionist_id_2")
   confirmStaffId          Int?      @map("confirm_staff_id")
 
   // Audit
@@ -603,20 +703,27 @@ model Reserve {
   deletedAt               DateTime? @map("deleted_at")
 
   // Relations
+  parentReserve           Reserve?  @relation("ReserveParent", fields: [parentReserveId], references: [reserveId])
+  childReserves           Reserve[] @relation("ReserveParent")
   client                  Client?   @relation(fields: [clientId], references: [clientId])
   facility                Facility? @relation(fields: [facilityId], references: [facilityId])
   room                    Room?     @relation(fields: [roomId], references: [roomId])
   stayType                StayType? @relation(fields: [stayTypeId], references: [stayTypeId])
   chargeStaff             Staff?    @relation("ReserveChargeStaff", fields: [chargeStaffId], references: [staffId])
+  chargeStaff2            Staff?    @relation("ReserveChargeStaff2", fields: [chargeStaffId2], references: [staffId])
   checkinReceptionist     Staff?    @relation("ReserveCheckinReceptionist", fields: [checkinReceptionistId], references: [staffId])
+  diContactStaff          Staff?    @relation("ReserveDiContactStaff", fields: [diContactStaffId], references: [staffId])
   checkoutReceptionist    Staff?    @relation("ReserveCheckoutReceptionist", fields: [checkoutReceptionistId], references: [staffId])
+  checkoutReceptionist2   Staff?    @relation("ReserveCheckoutReceptionist2", fields: [checkoutReceptionistId2], references: [staffId])
   confirmStaff            Staff?    @relation("ReserveConfirmStaff", fields: [confirmStaffId], references: [staffId])
   createdBy               Staff     @relation("ReserveCreatedBy", fields: [createdStaffId], references: [staffId])
   updatedBy               Staff?    @relation("ReserveUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy               Staff?    @relation("ReserveDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   reserveOccupiers        ReserveOccupier[]
+  usageStatuses           UsageStatus[]
 
+  @@index([parentReserveId], map: "reserves_parent_reserve_id_idx")
   @@index([clientId], map: "reserves_client_id_idx")
   @@index([facilityId], map: "reserves_facility_id_idx")
   @@index([roomId], map: "reserves_room_id_idx")
@@ -625,8 +732,11 @@ model Reserve {
   @@index([periodFrom], map: "reserves_period_from_idx")
   @@index([periodTo], map: "reserves_period_to_idx")
   @@index([chargeStaffId], map: "reserves_charge_staff_id_idx")
+  @@index([chargeStaffId2], map: "reserves_charge_staff_id2_idx")
   @@index([checkinReceptionistId], map: "reserves_checkin_receptionist_id_idx")
+  @@index([diContactStaffId], map: "reserves_di_contact_staff_id_idx")
   @@index([checkoutReceptionistId], map: "reserves_checkout_receptionist_id_idx")
+  @@index([checkoutReceptionistId2], map: "reserves_checkout_receptionist_id_2_idx")
   @@index([confirmStaffId], map: "reserves_confirm_staff_id_idx")
   @@index([createdStaffId], map: "reserves_created_staff_id_idx")
   @@index([updatedStaffId], map: "reserves_updated_staff_id_idx")
@@ -670,6 +780,55 @@ model ReserveOccupier {
   @@index([deletedStaffId], map: "reserve_occupiers_deleted_staff_id_idx")
 
   @@map("reserve_occupiers")
+}
+
+// ─── UsageStatus (Reserve ↔ Area/Facility/Room link) ─
+
+model UsageStatus {
+  usageStatusId       Int       @id @default(autoincrement()) @map("usage_status_id")
+  reserveId           Int?      @map("reserve_id")
+  constructionId      Int?      @map("construction_id")
+  areaId              Int       @map("area_id")
+  facilityId          Int?      @map("facility_id")
+  roomId              Int?      @map("room_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  target              String    @db.VarChar(32)
+  periodFrom          DateTime? @map("period_from")
+  periodTo            DateTime? @map("period_to")
+  reserveStatus       Int       @map("reserve_status") @db.SmallInt
+  // 1=確定(Yellow), 2=マンスリー(Red), 3=未確定, 4=英語サイト
+  substituteFlag      Boolean   @default(false) @map("substitute_flag")
+  roomMovedFlag       Boolean   @default(false) @map("room_moved_flag")
+  directCheckinFlag   Boolean   @default(false) @map("direct_checkin_flag")
+  campaignPriceFlag   Boolean   @default(false) @map("campaign_price_flag")
+  extensionFlag       Boolean   @default(false) @map("extension_flag")
+  note                String    @default("") @db.Text
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  reserve             Reserve?  @relation(fields: [reserveId], references: [reserveId])
+  facility            Facility? @relation(fields: [facilityId], references: [facilityId])
+  room                Room?     @relation(fields: [roomId], references: [roomId])
+  createdBy           Staff     @relation("UsageStatusCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("UsageStatusUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("UsageStatusDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([reserveId], map: "usage_statuses_reserve_id_idx")
+  @@index([areaId], map: "usage_statuses_area_id_idx")
+  @@index([facilityId], map: "usage_statuses_facility_id_idx")
+  @@index([roomId], map: "usage_statuses_room_id_idx")
+  @@index([constructionId], map: "usage_statuses_construction_id_idx")
+  @@index([createdStaffId], map: "usage_statuses_created_staff_id_idx")
+  @@index([updatedStaffId], map: "usage_statuses_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "usage_statuses_deleted_staff_id_idx")
+
+  @@map("usage_statuses")
 }
 
 // ─── Identification (Client ID Documents) ────────────

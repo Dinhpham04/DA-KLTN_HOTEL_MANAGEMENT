@@ -12,6 +12,11 @@ export class ReservationRepository {
     facility: true,
     room: { include: { roomType: { include: { roomClass: true } } } },
     stayType: true,
+    chargeStaff: true,
+    chargeStaff2: true,
+    checkinReceptionist: true,
+    checkoutReceptionist: true,
+    confirmStaff: true,
   } as const;
 
   async findAll(filter: ReservationFilterDto) {
@@ -19,9 +24,15 @@ export class ReservationRepository {
 
     if (filter.dataStatus !== undefined) where.dataStatus = filter.dataStatus;
     if (filter.reserveStatus !== undefined) where.reserveStatus = filter.reserveStatus;
+    if (filter.deleteStatus !== undefined) where.deleteStatus = filter.deleteStatus;
     if (filter.clientId !== undefined) where.clientId = filter.clientId;
     if (filter.facilityId !== undefined) where.facilityId = filter.facilityId;
     if (filter.roomId !== undefined) where.roomId = filter.roomId;
+    if (filter.stayTypeId !== undefined) where.stayTypeId = filter.stayTypeId;
+    if (filter.chargeStaffId !== undefined) where.chargeStaffId = filter.chargeStaffId;
+    if (filter.checkinFlag !== undefined) where.checkinFlag = filter.checkinFlag;
+    if (filter.confirmFlag !== undefined) where.confirmFlag = filter.confirmFlag;
+    if (filter.draftFlag !== undefined) where.draftFlag = filter.draftFlag;
 
     if (filter.periodFrom || filter.periodTo) {
       where.AND = [];
@@ -41,6 +52,7 @@ export class ReservationRepository {
       where.OR = [
         { note: { contains: filter.search, mode: 'insensitive' } },
         { client: { clientName: { contains: filter.search, mode: 'insensitive' } } },
+        { client: { clientNameEn: { contains: filter.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -64,7 +76,16 @@ export class ReservationRepository {
   async findById(id: number) {
     return this.prisma.reserve.findFirst({
       where: { reserveId: id, deletedAt: null },
-      include: this.includeRelations,
+      include: {
+        ...this.includeRelations,
+        reserveOccupiers: {
+          where: { deletedAt: null },
+          orderBy: { orderNum: 'asc' },
+        },
+        usageStatuses: {
+          where: { deletedAt: null },
+        },
+      },
     });
   }
 
@@ -100,12 +121,38 @@ export class ReservationRepository {
       where: {
         roomId,
         deletedAt: null,
-        reserveStatus: { notIn: [5] }, // Exclude CANCELLED
+        deleteStatus: null, // Only non-cancelled/deleted
         periodFrom: { lt: periodTo },
         periodTo: { gt: periodFrom },
         ...(excludeReserveId !== undefined && { NOT: { reserveId: excludeReserveId } }),
       },
     });
     return !!overlapping;
+  }
+
+  // ─── UsageStatus methods ──────────────────────────
+
+  async createUsageStatus(data: Prisma.UsageStatusCreateInput) {
+    return this.prisma.usageStatus.create({ data });
+  }
+
+  async updateUsageStatusByReserveId(
+    reserveId: number,
+    data: Prisma.UsageStatusUpdateInput,
+  ) {
+    return this.prisma.usageStatus.updateMany({
+      where: { reserveId, deletedAt: null },
+      data,
+    });
+  }
+
+  async softDeleteUsageStatusByReserveId(reserveId: number, staffId: number) {
+    return this.prisma.usageStatus.updateMany({
+      where: { reserveId, deletedAt: null },
+      data: {
+        deletedAt: new Date(),
+        deletedStaffId: staffId,
+      },
+    });
   }
 }

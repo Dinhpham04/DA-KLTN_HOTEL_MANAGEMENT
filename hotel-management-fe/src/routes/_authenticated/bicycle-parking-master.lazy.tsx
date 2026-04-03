@@ -15,12 +15,10 @@ import {
   TableBody,
   TableCell,
   TableFormRow,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/common/CustomTableForm'
 import Loading from '@/components/common/Loading'
-import { SelectDownSVG } from '@/components/svgs/SelectDownSVG'
 import { DialogClose } from '@/components/ui/dialog'
 import { FormField, FormMessage } from '@/components/ui/form'
 import { NButton } from '@/components/ui/new-button'
@@ -28,7 +26,6 @@ import { cn, getApiErrorMessage } from '@/lib/utils'
 
 import { useCreateBicycleParking } from '@/hooks/mutations/useCreateBicycleParking'
 import { useUpdateBicycleParking } from '@/hooks/mutations/useUpdateBicycleParking'
-import { useUpdateBicycleParkingOrder } from '@/hooks/mutations/useUpdateBicycleParkingOrder'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetBicycleParkings } from '@/hooks/queries/useGetBicycleParkings'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
@@ -140,8 +137,9 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
             <>
               <CustomSelect
                 option={facilitiesOptions}
-                selected={value?.label}
+                selected={value?.value}
                 change={onChange}
+                customClassMain={cn('min-w-[18.5rem] sm:h-[3.6rem] h-[2rem]')}
               />
               <FormMessage className="text-[1.4rem] text-red-500 whitespace-nowrap" />
             </>
@@ -156,7 +154,7 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
             <>
               <CustomInput
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
+                  'h-full border-transparent text-center focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
@@ -191,7 +189,7 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
             <>
               <CustomInput
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
+                  'h-full border-transparent min-w-[15rem] text-center focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
@@ -210,7 +208,7 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
       <TableCell className="px-3 py-2 border border-black h-14 font-bold text-center" />
       <TableCell className="p-0 border border-black h-14 font-bold text-center">
         <div className="flex justify-center items-center gap-4 px-2 h-full">
-          <NButton type="submit" className="bg-gray w-[4.5rem] h-[3rem]" variant="default">
+          <NButton type="submit" variant="default">
             <span className="!px-1 font-bold text-[1.4rem]">Lưu</span>
           </NButton>
         </div>
@@ -240,10 +238,6 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
   facilitiesOptions,
   stayTypeOptions,
   onUpdate,
-  move,
-  createAtIndex,
-  index,
-  totalLength,
   bicycleParkingSchema,
 }) => {
   const isSuspended = bicycleParking.dataStatus === 0
@@ -276,7 +270,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
             <>
               <CustomSelect
                 disable={isSuspended}
-                customClassMain={cn('w-[18.5rem] sm:h-[3.6rem] h-[2rem] disabled:opacity-100', {
+                customClassMain={cn('min-w-[18.5rem] sm:h-[3.6rem] h-[2rem] disabled:opacity-100', {
                   'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                     form.formState.errors.parent_facility_id,
                   '!bg-gray-400': isSuspended,
@@ -344,7 +338,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
               <CustomInput
                 disabled={isSuspended}
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] text-center disabled:!bg-white disabled:!opacity-100 font-medium',
+                  'h-full border-transparent focus:outline min-w-[15rem] focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] text-center disabled:!bg-white disabled:!opacity-100 font-medium',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
@@ -379,8 +373,8 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
         })}
       >
         {!isSuspended ? (
-          <div className="flex flex-col justify-start gap-4 px-2 h-full">
-            <NButton type="submit" className="bg-gray w-[4.5rem] h-[3rem]" variant="default">
+          <div className="flex flex-col justify-center items-center gap-4 px-2 h-full">
+            <NButton type="submit" variant="default">
               <span className="!px-1 font-bold text-[1.4rem]">Cập nhật</span>
             </NButton>
             <CustomDialog
@@ -391,7 +385,6 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
                 <NButton
                   type="button"
                   variant="default"
-                  className="bg-gray w-[8rem] h-[3rem]"
                 >
                   <span className="!px-1 font-bold text-[1.4rem]">Tạm dừng</span>
                 </NButton>
@@ -439,7 +432,6 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
             trigger={
               <NButton
                 type="button"
-                className="bg-gray px-0 w-auto min-w-fit h-auto btn btn-default"
                 variant="default"
               >
                 <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
@@ -482,40 +474,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
           />
         )}
       </TableCell>
-      <TableCell
-        className={cn('p-4 border border-black font-bold text-center', {
-          '!bg-gray-400': isSuspended,
-        })}
-      >
-        <div className="flex justify-between items-center gap-4 h-full">
-          <div className="flex gap-[.5rem]">
-            <NButton
-              className="bg-gray w-auto h-auto aspect-square"
-              type="button"
-              disabled={totalLength - 1 === index}
-              onClick={() => move(index, index + 1)}
-            >
-              <SelectDownSVG fill="currentColor" />
-            </NButton>
-            <NButton
-              className="bg-gray w-auto h-auto aspect-square"
-              type="button"
-              disabled={index === 0}
-              onClick={() => move(index, index - 1)}
-            >
-              <SelectDownSVG fill="currentColor" className="rotate-180" />
-            </NButton>
-          </div>
-          <NButton
-            type="button"
-            className="bg-gray w-[8rem] h-[3rem]"
-            variant="default"
-            onClick={() => createAtIndex(index + 1)}
-          >
-            <span className="!px-1 font-bold text-[1.4rem]">Thêm hàng</span>
-          </NButton>
-        </div>
-      </TableCell>
+
     </TableFormRow>
   )
 }
@@ -574,6 +533,15 @@ function BicycleParkingMasterPage() {
     [facilitiesResponse],
   )
 
+  // Auto-select first facility on initial load
+  useEffect(() => {
+    if (facilitiesOptions.length > 0 && !queryParams.facilityId) {
+      const first = facilitiesOptions[0]
+      filterMethods.setValue('facility_id', first)
+      setQueryParams({ facilityId: Number(first.value) })
+    }
+  }, [facilitiesOptions])
+
   // --- Fetch bicycle parkings ---
   const {
     refetch: refetchBicycleParkings,
@@ -611,15 +579,6 @@ function BicycleParkingMasterPage() {
     },
   })
 
-  const { mutate: updateOrder, isPending: isOrderUpdating } = useUpdateBicycleParkingOrder({
-    onSuccess() {
-      refetchBicycleParkings()
-      toast.success('Cập nhật thứ tự thành công')
-    },
-    onError(error) {
-      toast.error(getApiErrorMessage(error, 'Có lỗi xảy ra khi cập nhật thứ tự'))
-    },
-  })
 
   // --- Refetch when query params change ---
   useEffect(() => {
@@ -687,16 +646,11 @@ function BicycleParkingMasterPage() {
     setAddAtIndex(index)
   }
 
-  const handleUpdateOrder = () => {
-    const ids = bicycleParkingData.map((p) => p.bicycleParkingId)
-    updateOrder({ ids })
-  }
 
   const isPageLoading =
     bicycleParkingsLoading ||
     isCreating ||
     isUpdating ||
-    isOrderUpdating ||
     stayTypesLoading ||
     facilityLoading
 
@@ -720,40 +674,30 @@ function BicycleParkingMasterPage() {
           <div className="flex sm:flex-row flex-col justify-between items-baseline gap-[2rem] w-full overflow-auto">
             <FormProvider {...filterMethods}>
               <div className="flex items-baseline gap-[2rem]">
-                <h3 className="font-bold text-[1.6rem] text-center">Lọc theo cửa hàng:</h3>
-                <form
-                  onSubmit={filterMethods.handleSubmit(onSubmitFilter)}
-                  className="flex items-start gap-[2rem]"
-                >
-                  <div className="w-full">
-                    <FormField
-                      control={filterMethods.control}
-                      name="facility_id"
-                      render={({ field }) => (
-                        <>
-                          <CustomSelect
-                            option={facilitiesOptions}
-                            change={field.onChange}
-                            selected={field.value?.value}
-                            customClassMain={cn('w-[19rem] h-[4rem]', {
-                              'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
-                                filterMethods.formState.errors?.facility_id,
-                            })}
-                          />
-                          <FormMessage className="text-[1.6rem] text-red-500 whitespace-nowrap" />
-                        </>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <NButton
-                      type="submit"
-                      className="bg-gray w-[5rem] h-[4rem] font-bold text-[1.6rem] text-black hover:text-white"
-                    >
-                      Tìm
-                    </NButton>
-                  </div>
-                </form>
+                <h3 className="font-bold text-[1.6rem] min-w-[13rem] text-left">Lọc theo cơ sở:</h3>
+                <div className="w-full">
+                  <FormField
+                    control={filterMethods.control}
+                    name="facility_id"
+                    render={({ field }) => (
+                      <>
+                        <CustomSelect
+                          option={facilitiesOptions}
+                          change={(value) => {
+                            onSubmitFilter({ facility_id: value })
+                          }}
+                          selected={field.value?.value}
+                          customClassMain={cn('min-w-[21rem] h-[4rem]', {
+                            'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                              filterMethods.formState.errors?.facility_id,
+                          })}
+                        />
+                        <FormMessage className="text-[1.6rem] text-red-500 whitespace-nowrap" />
+                      </>
+                    )}
+                  />
+                </div>
+
               </div>
             </FormProvider>
             <div className="flex items-center gap-[2rem]">
@@ -762,25 +706,8 @@ function BicycleParkingMasterPage() {
                   type="button"
                   disabled={!queryParams.facilityId}
                   onClick={() => createBicycleParkingAtIndex(0)}
-                  className={cn(
-                    'bg-gray h-[4rem] w-[16rem] font-bold !text-[1.4rem]',
-                    !queryParams.facilityId ? 'opacity-[0.5] cursor-not-allowed' : '',
-                  )}
                 >
-                  Thêm hàng đầu tiên
-                </NButton>
-              </div>
-              <div>
-                <NButton
-                  type="button"
-                  onClick={handleUpdateOrder}
-                  className={cn(
-                    'bg-gray h-[4rem] w-[16rem] font-bold !text-[1.4rem]',
-                    !bicycleParkingsData?.length ? 'opacity-[0.5] cursor-not-allowed' : '',
-                  )}
-                  disabled={!bicycleParkingsData?.length}
-                >
-                  Cập nhật thứ tự
+                  Thêm
                 </NButton>
               </div>
             </div>
@@ -803,37 +730,42 @@ function BicycleParkingMasterPage() {
               style={{ minWidth: `${minTableWidth}rem` }}
             >
               <TableHeader className="top-0 z-[3] sticky bg-gray text-[1.6rem]">
-                <TableRow>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Cửa hàng
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center">
+                <tr>
+                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle px-2">
+                    Cơ sở
+                  </th>
+                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2">
                     Số chỗ đậu
-                  </TableHead>
+                  </th>
+                  <th
+                    colSpan={stayTypeOptions.length}
+                    className="border-r border-b border-black border-l h-14 font-bold text-center align-middle px-2"
+                  >
+                    Loại hình lưu trú
+                  </th>
+                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[15rem] h-14 font-bold text-center align-middle px-2">
+                    Ghi chú
+                  </th>
+                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle px-2">
+                    Ngày cập nhật
+                  </th>
+                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2">
+                    Người cập nhật
+                  </th>
+                  <th rowSpan={2} className="border-r border-b border-black border-l w-[20rem] h-14 font-bold text-center align-middle px-2">
+                    Thao tác
+                  </th>
+                </tr>
+                <tr>
                   {stayTypeOptions.map((opt) => (
-                    <TableHead
+                    <th
                       key={opt.value}
-                      className="border-r border-black border-l min-w-[14rem] h-14 font-bold text-center whitespace-nowrap"
+                      className="border-r border-b border-black border-l min-w-[14rem] h-14 font-bold text-center align-middle px-4 whitespace-nowrap"
                     >
                       {opt.label}
-                    </TableHead>
+                    </th>
                   ))}
-                  <TableHead className="border-r border-black border-l min-w-[15rem] h-14 font-bold text-center">
-                    Ghi chú
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[10rem] h-14 font-bold text-center">
-                    Ngày cập nhật
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center">
-                    Người cập nhật
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Thao tác
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Sắp xếp
-                  </TableHead>
-                </TableRow>
+                </tr>
               </TableHeader>
               <TableBody className="z-[2]">
                 {!bicycleParkingData.length && !isAdding ? (

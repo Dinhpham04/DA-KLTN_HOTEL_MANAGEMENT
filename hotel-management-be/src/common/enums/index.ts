@@ -79,3 +79,24 @@ export enum AdvertisingType {
   ENGLISH_SITE = 5,
   OTHER = 9,
 }
+
+export enum DirectCheckinType {
+  VISIT = 1,
+  SIX_BUILDING = 2,
+  DIRECT_IN = 3,
+  YCAT = 4,
+  ROOM_DELIVERY = 5,
+}
+
+export enum KeyReturnContactType {
+  BRING = 1,
+  TEL = 2,
+  EARLY_EXIT = 3,
+}
+
+export enum UsageStatusReserveStatus {
+  CONFIRMED = 1,
+  MONTHLY = 2,
+  TENTATIVE = 3,
+  ENGLISH_SITE = 4,
+}

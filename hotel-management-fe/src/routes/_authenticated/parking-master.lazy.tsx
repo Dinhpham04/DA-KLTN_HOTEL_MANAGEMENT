@@ -15,12 +15,10 @@ import {
   TableBody,
   TableCell,
   TableFormRow,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/common/CustomTableForm'
 import Loading from '@/components/common/Loading'
-import { SelectDownSVG } from '@/components/svgs/SelectDownSVG'
 import { DialogClose } from '@/components/ui/dialog'
 import { FormField, FormMessage } from '@/components/ui/form'
 import { NButton } from '@/components/ui/new-button'
@@ -28,7 +26,6 @@ import { cn, formatValue, getApiErrorMessage } from '@/lib/utils'
 
 import { useCreateParking } from '@/hooks/mutations/useCreateParking'
 import { useUpdateParking } from '@/hooks/mutations/useUpdateParking'
-import { useUpdateParkingOrder } from '@/hooks/mutations/useUpdateParkingOrder'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetParkings } from '@/hooks/queries/useGetParkings'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
@@ -189,14 +186,10 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
           render={({ field: { value, onChange } }) => (
             <>
               <CustomSelect
-                // customClassMain={cn('w-full h-14', {
-                //   'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
-                //     form.formState.errors?.parent_facility_id,
-                // })}
-                // customClassArrow="w-[2.6rem]"
                 option={facilitiesOptions}
-                selected={value?.label}
+                selected={value?.value}
                 change={onChange}
+                customClassMain={cn('w-[18.5rem] sm:h-[3.6rem] h-[2rem]')}
               />
               <FormMessage className="text-[1.4rem] text-red-500 whitespace-nowrap" />
             </>
@@ -211,7 +204,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
             <>
               <CustomInput
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
+                  'h-full border-transparent focus:outline focus:outline-1 text-center focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
@@ -226,7 +219,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
           )}
         />
       </TableCell>
-      <TableCell className="p-4 border border-black font-bold text-left">
+      <TableCell className="p-4 border border-black font-bold text-center">
         <FormField
           control={form.control}
           name="height_limit"
@@ -234,7 +227,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
             <>
               <CustomInput
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
+                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium text-center',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.height_limit,
@@ -247,7 +240,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
                   onChange(rawValue)
                 }}
               />
-              <FormMessage className="text-[1.4rem] text-red-500" />
+              <FormMessage className="text-[1.1rem] text-red-500" />
             </>
           )}
         />
@@ -291,7 +284,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
             <>
               <CustomInput
                 className={cn(
-                  'h-full border-transparent focus:outline focus:outline-1 focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
+                  'h-full border-transparent focus:outline focus:outline-1 text-center focus:outline-gray-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gray-300 w-full text-[1.4rem] font-medium',
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
@@ -342,10 +335,6 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
   stayTypeOptions,
   stayTypes,
   onUpdate,
-  move,
-  createAtIndex,
-  index,
-  totalLength,
   parkingSchema,
 }) => {
   const isSuspended = parking.dataStatus === 0
@@ -537,8 +526,8 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
         })}
       >
         {!isSuspended ? (
-          <div className="flex flex-col justify-start gap-4 px-2 h-full">
-            <NButton type="submit" className="bg-gray w-[4.5rem] h-[3rem]" variant="default">
+          <div className="flex flex-col justify-center items-center gap-4 px-2 h-full">
+            <NButton type="submit" variant="default">
               <span className="!px-1 font-bold text-[1.4rem]">Cập nhật</span>
             </NButton>
             <CustomDialog
@@ -549,7 +538,6 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                 <NButton
                   type="button"
                   variant="default"
-                  className="bg-gray w-[8rem] h-[3rem]"
                 >
                   <span className="!px-1 font-bold text-[1.4rem]">Tạm dừng</span>
                 </NButton>
@@ -644,40 +632,6 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
           />
         )}
       </TableCell>
-      <TableCell
-        className={cn('p-4 border border-black font-bold text-center', {
-          '!bg-gray-400': isSuspended,
-        })}
-      >
-        <div className="flex justify-between items-center gap-4 h-full">
-          <div className="flex gap-[.5rem]">
-            <NButton
-              className="bg-gray w-auto h-auto aspect-square"
-              type="button"
-              disabled={totalLength - 1 === index}
-              onClick={() => move(index, index + 1)}
-            >
-              <SelectDownSVG fill="currentColor" />
-            </NButton>
-            <NButton
-              className="bg-gray w-auto h-auto aspect-square"
-              type="button"
-              disabled={index === 0}
-              onClick={() => move(index, index - 1)}
-            >
-              <SelectDownSVG fill="currentColor" className="rotate-180" />
-            </NButton>
-          </div>
-          <NButton
-            type="button"
-            className="bg-gray w-[8rem] h-[3rem]"
-            variant="default"
-            onClick={() => createAtIndex(index + 1)}
-          >
-            <span className="!px-1 font-bold text-[1.4rem]">Thêm hàng</span>
-          </NButton>
-        </div>
-      </TableCell>
     </TableFormRow>
   )
 }
@@ -733,6 +687,14 @@ function ParkingMasterPage() {
     [facilitiesResponse],
   )
 
+  useEffect(() => {
+    if (facilitiesOptions.length > 0 && !queryParams.facilityId) {
+      const firstOption = facilitiesOptions[0];
+      filterMethods.setValue('facility_id', firstOption);
+      setQueryParams({ facilityId: Number(firstOption.value) });
+    }
+  }, [facilitiesOptions])
+
   // --- Fetch parkings ---
   const {
     refetch: refetchParkings,
@@ -773,15 +735,6 @@ function ParkingMasterPage() {
     },
   })
 
-  const { mutate: updateOrder, isPending: isOrderUpdating } = useUpdateParkingOrder({
-    onSuccess() {
-      refetchParkings()
-      toast.success('Cập nhật thứ tự thành công')
-    },
-    onError(error) {
-      toast.error(getApiErrorMessage(error, 'Có lỗi xảy ra khi cập nhật thứ tự'))
-    },
-  })
 
   // --- Refetch when query params change ---
   useEffect(() => {
@@ -856,13 +809,9 @@ function ParkingMasterPage() {
     setAddAtIndex(index)
   }
 
-  const handleUpdateOrder = () => {
-    const ids = parkingData.map((p) => p.parkingId)
-    updateOrder({ ids })
-  }
 
   const isPageLoading =
-    parkingsLoading || isCreating || isUpdating || isOrderUpdating || stayTypesLoading || facilityLoading
+    parkingsLoading || isCreating || isUpdating || stayTypesLoading || facilityLoading
 
   const lastOrderNum = parkingData.length > 0
     ? Math.max(...parkingData.map((p) => p.orderNum))
@@ -883,40 +832,29 @@ function ParkingMasterPage() {
           <div className="flex sm:flex-row flex-col justify-between items-baseline gap-[2rem] w-full overflow-auto">
             <FormProvider {...filterMethods}>
               <div className="flex items-baseline gap-[2rem]">
-                <h3 className="font-bold text-[1.6rem] text-center">Lọc theo cửa hàng:</h3>
-                <form
-                  onSubmit={filterMethods.handleSubmit(onSubmitFilter)}
-                  className="flex items-start gap-[2rem]"
-                >
-                  <div className="w-full">
-                    <FormField
-                      control={filterMethods.control}
-                      name="facility_id"
-                      render={({ field }) => (
-                        <>
-                          <CustomSelect
-                            option={facilitiesOptions}
-                            change={field.onChange}
-                            selected={field.value?.value}
-                            customClassMain={cn('w-[19rem] h-[4rem]', {
-                              'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
-                                filterMethods.formState.errors?.facility_id,
-                            })}
-                          />
-                          <FormMessage className="text-[1.6rem] text-red-500 whitespace-nowrap" />
-                        </>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <NButton
-                      type="submit"
-                      className="bg-gray w-[5rem] h-[4rem] font-bold text-[1.6rem] text-black hover:text-white"
-                    >
-                      Tìm
-                    </NButton>
-                  </div>
-                </form>
+                <h3 className="font-bold text-[1.6rem] min-w-[16rem] text-start">Lọc theo cơ sở:</h3>
+                <div className="w-full">
+                  <FormField
+                    control={filterMethods.control}
+                    name="facility_id"
+                    render={({ field }) => (
+                      <>
+                        <CustomSelect
+                          option={facilitiesOptions}
+                          change={(value) => {
+                            onSubmitFilter({ facility_id: value })
+                          }}
+                          selected={field.value?.value}
+                          customClassMain={cn('w-[22rem] h-[4rem]', {
+                            'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
+                              filterMethods.formState.errors?.facility_id,
+                          })}
+                        />
+                        <FormMessage className="text-[1.6rem] text-red-500 whitespace-nowrap" />
+                      </>
+                    )}
+                  />
+                </div>
               </div>
             </FormProvider>
             <div className="flex items-center gap-[2rem]">
@@ -930,20 +868,7 @@ function ParkingMasterPage() {
                     !queryParams.facilityId ? 'opacity-[0.5] cursor-not-allowed' : '',
                   )}
                 >
-                  Thêm hàng đầu tiên
-                </NButton>
-              </div>
-              <div>
-                <NButton
-                  type="button"
-                  onClick={handleUpdateOrder}
-                  className={cn(
-                    'bg-gray h-[4rem] w-[16rem] font-bold !text-[1.4rem]',
-                    !parkingsData?.length ? 'opacity-[0.5] cursor-not-allowed' : '',
-                  )}
-                  disabled={!parkingsData?.length}
-                >
-                  Cập nhật thứ tự
+                  Thêm
                 </NButton>
               </div>
             </div>
@@ -966,40 +891,42 @@ function ParkingMasterPage() {
               style={{ minWidth: `${minTableWidth}rem` }}
             >
               <TableHeader className="top-0 z-[3] sticky bg-gray text-[1.6rem]">
-                <TableRow>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Cửa hàng
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center">
+                <tr>
+                  <th rowSpan={2} className="border-r border-black border-l w-[20rem] h-14 font-bold text-center  align-middle">
+                    Cơ sở
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle">
                     Số chỗ đậu
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center">
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle">
                     Giới hạn chiều cao (m)
-                  </TableHead>
+                  </th>
+                  <th colSpan={stayTypes.length} className="border-r border-black border-l h-14 font-bold text-center">
+                    Loại hình lưu trú
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l min-w-[20rem] h-14 font-bold text-center align-middle">
+                    Ghi chú
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle">
+                    Ngày cập nhật
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle">
+                    Người cập nhật
+                  </th>
+                  <th rowSpan={2} className="border-r border-black border-l w-[20rem] h-14 font-bold text-center align-middle">
+                    Thao tác
+                  </th>
+                </tr>
+                <tr>
                   {stayTypeOptions.map((opt) => (
-                    <TableHead
+                    <th
                       key={opt.value}
-                      className="border-r border-black border-l min-w-[14rem] h-14 font-bold text-center whitespace-nowrap"
+                      className="border-r border-black border-l px-4 min-w-[14rem] h-14 font-bold text-center align-middle whitespace-nowrap"
                     >
                       {opt.label}
-                    </TableHead>
+                    </th>
                   ))}
-                  <TableHead className="border-r border-black border-l min-w-[15rem] h-14 font-bold text-center">
-                    Ghi chú
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[10rem] h-14 font-bold text-center">
-                    Ngày cập nhật
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center">
-                    Người cập nhật
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Thao tác
-                  </TableHead>
-                  <TableHead className="border-r border-black border-l w-[20rem] h-14 font-bold text-center">
-                    Sắp xếp
-                  </TableHead>
-                </TableRow>
+                </tr>
               </TableHeader>
               <TableBody className="z-[2]">
                 {!parkingData.length && !isAdding ? (

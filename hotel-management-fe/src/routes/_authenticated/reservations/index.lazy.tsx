@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { DialogClose } from '@radix-ui/react-dialog'
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createLazyFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +34,7 @@ import {
 import type { Reservation, ReservationFilterParams } from '@/types/reservation'
 import { DeleteStatus, ReserveStatus } from '@/types/reservation'
 
-export const Route = createFileRoute('/_authenticated/reservations')({
+export const Route = createLazyFileRoute('/_authenticated/reservations/')({
   component: ReservationsPage,
 })
 
@@ -241,7 +241,12 @@ function ReservationsPage() {
 
   return (
     <div className="w-full p-4 lg:p-8 space-y-6">
-      <h2 className="text-[2.4rem] font-bold">{t('reservation.title')}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-[2.4rem] font-bold">{t('reservation.title')}</h2>
+        <Link to="/reservations/create">
+          <NButton type="button">Tạo đặt phòng</NButton>
+        </Link>
+      </div>
 
       {/* ─── Search Form ─────────────────────────────────── */}
       <FormProvider {...methods}>

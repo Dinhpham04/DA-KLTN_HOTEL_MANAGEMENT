@@ -1,23 +1,29 @@
 import apiClient from '@/lib/axios'
-import type { PaginatedResponse, PaginationParams, Reservation } from '@/types'
+import type {
+  CreateReservationBody,
+  ReservationFilterParams,
+  UpdateReservationBody,
+} from '@/types/reservation'
 
 export const reservationApi = {
-  getList: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Reservation>>('/reservations', { params }),
+  getList: (params?: ReservationFilterParams) =>
+    apiClient.get<unknown>('/reservations', { params }),
 
-  getById: (id: number) => apiClient.get<Reservation>(`/reservations/${id}`),
+  getById: (id: number) => apiClient.get<unknown>(`/reservations/${id}`),
 
-  create: (data: Partial<Reservation>) => apiClient.post<Reservation>('/reservations', data),
+  create: (data: CreateReservationBody) => apiClient.post('/reservations', data),
 
-  update: (id: number, data: Partial<Reservation>) =>
-    apiClient.patch<Reservation>(`/reservations/${id}`, data),
+  update: ({ reserveId, ...data }: UpdateReservationBody) =>
+    apiClient.patch(`/reservations/${reserveId}`, data),
 
   delete: (id: number) => apiClient.delete(`/reservations/${id}`),
 
-  checkIn: (id: number) => apiClient.post<Reservation>(`/reservations/${id}/check-in`),
+  confirm: (id: number) => apiClient.post(`/reservations/${id}/confirm`),
 
-  checkOut: (id: number) => apiClient.post<Reservation>(`/reservations/${id}/check-out`),
+  checkIn: (id: number) => apiClient.post(`/reservations/${id}/check-in`),
 
-  cancel: (id: number, reason?: string) =>
-    apiClient.post<Reservation>(`/reservations/${id}/cancel`, { reason }),
+  checkOut: (id: number) => apiClient.post(`/reservations/${id}/check-out`),
+
+  cancel: (id: number, cancelReason?: string) =>
+    apiClient.post(`/reservations/${id}/cancel`, { cancelReason }),
 }

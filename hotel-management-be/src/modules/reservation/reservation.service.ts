@@ -7,7 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { IPaginated, ERROR_MESSAGES, RESERVATION_EVENTS } from '@common/index';
-import { ReserveStatus } from '@common/enums/index';
+import { ReserveStatus, DeleteStatus } from '@common/enums/index';
 import { ReservationRepository } from './reservation.repository';
 import { ClientRepository } from '@modules/client/client.repository';
 import {
@@ -79,8 +79,13 @@ export class ReservationService {
       await this.ensureNoOverlap(dto.roomId, periodFrom, periodTo);
     }
 
+    // Determine initial reserveStatus from flags
+    const initialStatus = dto.confirmFlag
+      ? ReserveStatus.CONFIRMED
+      : ReserveStatus.PENDING;
+
     const data: Prisma.ReserveCreateInput = {
-      reserveStatus: ReserveStatus.PENDING,
+      reserveStatus: initialStatus,
       periodFrom,
       periodTo,
       reserveType: dto.reserveType,
@@ -89,8 +94,27 @@ export class ReservationService {
       deposit: dto.deposit,
       note: dto.note,
       memo: dto.memo,
+      amendment: dto.amendment,
       advertisingType: dto.advertisingType,
       petFlag: dto.petFlag ?? false,
+      dogCount: dto.dogCount,
+      catCount: dto.catCount,
+      otherCount: dto.otherCount,
+      petNote: dto.petNote,
+      draftFlag: dto.draftFlag ?? false,
+      memoFlag: dto.memoFlag ?? false,
+      confirmFlag: dto.confirmFlag ?? false,
+      directcheckinFlag: dto.directcheckinFlag ?? false,
+      directcheckinType: dto.directcheckinType,
+      directcheckinNote: dto.directcheckinNote,
+      futonFlag: dto.futonFlag ?? false,
+      deliveryboxFlag: dto.deliveryboxFlag ?? false,
+      deliveryboxCardNumber: dto.deliveryboxCardNumber,
+      campaignPriceFlag: dto.campaignPriceFlag ?? false,
+      autoExtendFlag: dto.autoExtendFlag ?? false,
+      announcement: dto.announcement,
+      requestAnnouncement: dto.requestAnnouncement,
+      saleAnnouncement: dto.saleAnnouncement,
       client: { connect: { clientId: dto.clientId } },
       ...(dto.facilityId !== undefined && {
         facility: { connect: { facilityId: dto.facilityId } },
@@ -103,6 +127,12 @@ export class ReservationService {
       }),
       ...(dto.chargeStaffId !== undefined && {
         chargeStaff: { connect: { staffId: dto.chargeStaffId } },
+      }),
+      ...(dto.chargeStaffId2 !== undefined && {
+        chargeStaff2: { connect: { staffId: dto.chargeStaffId2 } },
+      }),
+      ...(dto.diContactStaffId !== undefined && {
+        diContactStaff: { connect: { staffId: dto.diContactStaffId } },
       }),
       createdBy: { connect: { staffId: currentStaffId } },
       updatedBy: { connect: { staffId: currentStaffId } },
@@ -167,8 +197,38 @@ export class ReservationService {
       ...(dto.deposit !== undefined && { deposit: dto.deposit }),
       ...(dto.note !== undefined && { note: dto.note }),
       ...(dto.memo !== undefined && { memo: dto.memo }),
+      ...(dto.overdueDebtNote !== undefined && { overdueDebtNote: dto.overdueDebtNote }),
+      ...(dto.amendment !== undefined && { amendment: dto.amendment }),
       ...(dto.advertisingType !== undefined && { advertisingType: dto.advertisingType }),
       ...(dto.petFlag !== undefined && { petFlag: dto.petFlag }),
+      ...(dto.dogCount !== undefined && { dogCount: dto.dogCount }),
+      ...(dto.catCount !== undefined && { catCount: dto.catCount }),
+      ...(dto.otherCount !== undefined && { otherCount: dto.otherCount }),
+      ...(dto.petNote !== undefined && { petNote: dto.petNote }),
+      ...(dto.draftFlag !== undefined && { draftFlag: dto.draftFlag }),
+      ...(dto.memoFlag !== undefined && { memoFlag: dto.memoFlag }),
+      ...(dto.confirmFlag !== undefined && { confirmFlag: dto.confirmFlag }),
+      ...(dto.autoExtendFlag !== undefined && { autoExtendFlag: dto.autoExtendFlag }),
+      ...(dto.campaignPriceFlag !== undefined && { campaignPriceFlag: dto.campaignPriceFlag }),
+      ...(dto.disableReservation !== undefined && { disableReservation: dto.disableReservation }),
+      ...(dto.directcheckinFlag !== undefined && { directcheckinFlag: dto.directcheckinFlag }),
+      ...(dto.directcheckinType !== undefined && { directcheckinType: dto.directcheckinType }),
+      ...(dto.directcheckinNote !== undefined && { directcheckinNote: dto.directcheckinNote }),
+      ...(dto.contactedFlag !== undefined && { contactedFlag: dto.contactedFlag }),
+      ...(dto.rentalKeys !== undefined && { rentalKeys: dto.rentalKeys }),
+      ...(dto.returnKeys !== undefined && { returnKeys: dto.returnKeys }),
+      ...(dto.keyReturnContactType !== undefined && { keyReturnContactType: dto.keyReturnContactType }),
+      ...(dto.keyReturnFlag !== undefined && { keyReturnFlag: dto.keyReturnFlag }),
+      ...(dto.futonFlag !== undefined && { futonFlag: dto.futonFlag }),
+      ...(dto.deliveryboxFlag !== undefined && { deliveryboxFlag: dto.deliveryboxFlag }),
+      ...(dto.deliveryboxCardNumber !== undefined && { deliveryboxCardNumber: dto.deliveryboxCardNumber }),
+      ...(dto.roomDirtyLevel !== undefined && { roomDirtyLevel: dto.roomDirtyLevel }),
+      ...(dto.announcement !== undefined && { announcement: dto.announcement }),
+      ...(dto.requestAnnouncement !== undefined && { requestAnnouncement: dto.requestAnnouncement }),
+      ...(dto.saleAnnouncement !== undefined && { saleAnnouncement: dto.saleAnnouncement }),
+      ...(dto.noticeComment !== undefined && { noticeComment: dto.noticeComment }),
+      ...(dto.earlyExitDatetime !== undefined && { earlyExitDatetime: new Date(dto.earlyExitDatetime) }),
+      ...(dto.paymentDueDate !== undefined && { paymentDueDate: new Date(dto.paymentDueDate) }),
       ...(dto.clientId !== undefined && {
         client: { connect: { clientId: dto.clientId } },
       }),
@@ -183,6 +243,12 @@ export class ReservationService {
       }),
       ...(dto.chargeStaffId !== undefined && {
         chargeStaff: { connect: { staffId: dto.chargeStaffId } },
+      }),
+      ...(dto.chargeStaffId2 !== undefined && {
+        chargeStaff2: { connect: { staffId: dto.chargeStaffId2 } },
+      }),
+      ...(dto.diContactStaffId !== undefined && {
+        diContactStaff: { connect: { staffId: dto.diContactStaffId } },
       }),
       updatedBy: { connect: { staffId: currentStaffId } },
     };
@@ -226,6 +292,7 @@ export class ReservationService {
       reserveStatus: ReserveStatus.CHECKED_IN,
       checkinFlag: true,
       checkedInAt: new Date(),
+      checkinDate: new Date(),
       checkinReceptionist: { connect: { staffId: currentStaffId } },
       updatedBy: { connect: { staffId: currentStaffId } },
     });
@@ -247,6 +314,7 @@ export class ReservationService {
     const reserve = await this.reservationRepository.update(id, {
       reserveStatus: ReserveStatus.CHECKED_OUT,
       checkoutAt: new Date(),
+      lastStayDate: new Date(),
       checkoutReceptionist: { connect: { staffId: currentStaffId } },
       updatedBy: { connect: { staffId: currentStaffId } },
     });
@@ -273,7 +341,7 @@ export class ReservationService {
 
     const reserve = await this.reservationRepository.update(id, {
       reserveStatus: ReserveStatus.CANCELLED,
-      deleteStatus: 2, // CANCELLED
+      deleteStatus: DeleteStatus.CANCELLED,
       cancelReason: dto.cancelReason,
       cancelledAt: new Date(),
       updatedBy: { connect: { staffId: currentStaffId } },
@@ -297,6 +365,9 @@ export class ReservationService {
     if (!existing) throw new NotFoundException(ERROR_MESSAGES.NOT_FOUND);
 
     await this.reservationRepository.softDelete(id, currentStaffId);
+
+    // Soft delete associated usage statuses
+    await this.reservationRepository.softDeleteUsageStatusByReserveId(id, currentStaffId);
 
     // Decrement client use count
     if (existing.clientId) {

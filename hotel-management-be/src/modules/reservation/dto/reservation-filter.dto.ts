@@ -1,5 +1,5 @@
-import { IsInt, IsOptional, IsString, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, IsDateString, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '@common/dto/pagination.dto';
 
@@ -33,11 +33,47 @@ export class ReservationFilterDto extends PaginationDto {
   @IsInt()
   roomId?: number;
 
+  @ApiPropertyOptional({ description: 'Filter by stay type ID' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  stayTypeId?: number;
+
   @ApiPropertyOptional({ description: 'Filter by data status (0=Unavailable, 1=Available, 2=Hidden)' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   dataStatus?: number;
+
+  @ApiPropertyOptional({ description: 'Filter by delete status (1=Deleted, 2=Cancelled, 3=NoShow)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  deleteStatus?: number;
+
+  @ApiPropertyOptional({ description: 'Filter by checkin flag' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === '1')
+  @IsBoolean()
+  checkinFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter by confirm flag' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === '1')
+  @IsBoolean()
+  confirmFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter by draft flag' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === '1')
+  @IsBoolean()
+  draftFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter by charge staff ID' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  chargeStaffId?: number;
 
   @ApiPropertyOptional({ description: 'Period from (ISO 8601 datetime)' })
   @IsOptional()
