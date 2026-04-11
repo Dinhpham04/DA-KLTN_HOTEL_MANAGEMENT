@@ -15,8 +15,7 @@ export function useUpsertFacilityRoomTypes({
 
   return useMutation({
     mutationKey: ['upsert-facility-room-types'],
-    mutationFn: (data: UpsertFacilityRoomTypeBody) =>
-      facilityRoomTypeApi.upsertMatrix(data),
+    mutationFn: (data: UpsertFacilityRoomTypeBody) => facilityRoomTypeApi.upsertMatrix(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facility-room-types'] })
       onSuccess?.()

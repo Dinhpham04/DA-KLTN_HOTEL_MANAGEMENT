@@ -312,7 +312,7 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
 
 function ClientCreatePage() {
   useDocumentTitle('Tạo khách hàng')

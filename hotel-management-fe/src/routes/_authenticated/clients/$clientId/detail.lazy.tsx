@@ -32,7 +32,6 @@ function ClientDetailPage() {
   const { clientId } = useParams({ from: '/_authenticated/clients/$clientId/detail' })
   const clientIdNum = Number(clientId)
 
-
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
   const { data: client, isLoading, refetch } = useGetClientById({ clientId: clientIdNum })
@@ -40,7 +39,6 @@ function ClientDetailPage() {
     clientId: clientIdNum,
     enabled: !!clientIdNum,
   })
-
 
   if (isLoading) {
     return <Loading />
@@ -57,10 +55,8 @@ function ClientDetailPage() {
     )
   }
 
-
   // Dynamic label based on data type
   const typeTitleOption: string[] = ['Không xác định', 'Họ tên', 'Tên công ty', 'Tên công ty']
-
 
   return (
     <div className="box-border flex flex-col gap-[2rem] py-[2rem] common-container">
@@ -232,12 +228,12 @@ function ClientDetailPage() {
                           <td className="border border-black">
                             {client.ugFlag !== undefined
                               ? UgFlag[
-                              typeof client.ugFlag === 'boolean'
-                                ? client.ugFlag
-                                  ? 1
-                                  : 0
-                                : client.ugFlag
-                              ]
+                                  typeof client.ugFlag === 'boolean'
+                                    ? client.ugFlag
+                                      ? 1
+                                      : 0
+                                    : client.ugFlag
+                                ]
                               : ''}
                           </td>
                           <td className="!border-0" />

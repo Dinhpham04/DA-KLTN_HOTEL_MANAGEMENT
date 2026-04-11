@@ -5,9 +5,7 @@ import type {
 } from '@/types/facility-room-type'
 
 export const facilityRoomTypeApi = {
-  getMatrix: () =>
-    apiClient.get<FacilityRoomTypeMatrixResponse>('/facility-room-types'),
+  getMatrix: () => apiClient.get<FacilityRoomTypeMatrixResponse>('/facility-room-types'),
 
-  upsertMatrix: (data: UpsertFacilityRoomTypeBody) =>
-    apiClient.post('/facility-room-types', data),
+  upsertMatrix: (data: UpsertFacilityRoomTypeBody) => apiClient.post('/facility-room-types', data),
 }

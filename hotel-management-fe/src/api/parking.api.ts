@@ -1,8 +1,8 @@
 import apiClient from '@/lib/axios'
 import type {
   CreateParkingBody,
-  ParkingListResponse,
   ParkingFilterParams,
+  ParkingListResponse,
   UpdateParkingBody,
   UpdateParkingOrderBody,
 } from '@/types/parking'

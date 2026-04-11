@@ -1,13 +1,7 @@
 import { CustomInput } from '@/components/common/CustomInput'
 import Loading from '@/components/common/Loading'
 import { NButton } from '@/components/ui/new-button'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useUpsertFacilityRoomTypes } from '@/hooks/mutations/useUpsertFacilityRoomTypes'
 import { useGetFacilityRoomTypes } from '@/hooks/queries/useGetFacilityRoomTypes'
 import { cn } from '@/lib/utils'
@@ -97,7 +91,7 @@ function RoomAreaMasterPage() {
 
       upsertMatrix(body)
     },
-    [matrixData, acreageValues, upsertMatrix],
+    [matrixData, acreageValues, upsertMatrix]
   )
 
   if (isLoading) {
@@ -114,11 +108,7 @@ function RoomAreaMasterPage() {
 
         {/* Action Buttons */}
         <div className="flex justify-end mt-[2.4rem]">
-          <NButton
-            type="submit"
-            disabled={isPending}
-            className=" bg-[#eeeeee]"
-          >
+          <NButton type="submit" disabled={isPending} className=" bg-[#eeeeee]">
             Cập nhật
           </NButton>
         </div>
@@ -136,7 +126,9 @@ function RoomAreaMasterPage() {
                     key={col.roomTypeId}
                     className="top-0 z-10 sticky border-t bg-[#EEEEEE] border-r border-b border-black w-[8rem] h-14 font-bold text-center"
                   >
-                    <span title={col.roomTypeName ?? col.roomTypeNameShort}>{col.roomTypeNameShort}</span>
+                    <span title={col.roomTypeName ?? col.roomTypeNameShort}>
+                      {col.roomTypeNameShort}
+                    </span>
                   </TableHead>
                 ))}
               </TableRow>
@@ -183,7 +175,7 @@ function FacilityRow({ facility, acreageValues, onChange }: FacilityRowProps) {
           <CustomInput
             className={cn(
               'border border-transparent focus:border-black focus:outline-none w-full text-center',
-              !rt.isExists && 'bg-gray-300',
+              !rt.isExists && 'bg-gray-300'
             )}
             value={acreageValues[rt.roomTypeId] ?? ''}
             onChange={(e) => onChange(facility.facilityId, rt.roomTypeId, e.target.value)}

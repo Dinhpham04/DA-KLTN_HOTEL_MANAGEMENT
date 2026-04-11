@@ -1,9 +1,5 @@
 import { facilityApi } from '@/api/facility.api'
-import type {
-  Facility,
-  FacilityFilterParams,
-  PaginatedFacilityResponse,
-} from '@/types/facility'
+import type { Facility, FacilityFilterParams, PaginatedFacilityResponse } from '@/types/facility'
 import { useQuery } from '@tanstack/react-query'
 
 interface UseGetFacilitiesParams {

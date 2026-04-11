@@ -4,8 +4,8 @@ import dayjs from 'dayjs'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
-import { z } from 'zod'
 import { useDocumentTitle } from 'usehooks-ts'
+import { z } from 'zod'
 
 import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
@@ -26,8 +26,8 @@ import { cn, getApiErrorMessage } from '@/lib/utils'
 
 import { useCreateBicycleParking } from '@/hooks/mutations/useCreateBicycleParking'
 import { useUpdateBicycleParking } from '@/hooks/mutations/useUpdateBicycleParking'
-import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetBicycleParkings } from '@/hooks/queries/useGetBicycleParkings'
+import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
 
 import type { BicycleParking } from '@/types/bicycle-parking'
@@ -158,7 +158,7 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
-                  },
+                  }
                 )}
                 placeholder="Số chỗ đậu"
                 value={value}
@@ -193,7 +193,7 @@ const CreateBicycleParkingRow: React.FC<CreateBicycleParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
-                  },
+                  }
                 )}
                 placeholder="Ghi chú"
                 value={value == null ? '' : value}
@@ -300,7 +300,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
-                  },
+                  }
                 )}
                 placeholder="Số chỗ đậu"
                 value={value}
@@ -342,7 +342,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
-                  },
+                  }
                 )}
                 placeholder="Ghi chú"
                 value={value == null ? '' : value}
@@ -382,10 +382,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
               size="medium"
               customClassContent="max-w-[50rem]"
               trigger={
-                <NButton
-                  type="button"
-                  variant="default"
-                >
+                <NButton type="button" variant="default">
                   <span className="!px-1 font-bold text-[1.4rem]">Tạm dừng</span>
                 </NButton>
               }
@@ -406,7 +403,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
                           data_status: 0,
                           order_num: bicycleParking.orderNum,
                         },
-                        1,
+                        1
                       )
                     }
                   >
@@ -430,10 +427,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
             size="medium"
             customClassContent="max-w-[50rem]"
             trigger={
-              <NButton
-                type="button"
-                variant="default"
-              >
+              <NButton type="button" variant="default">
                 <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
                   Kích hoạt lại
                 </span>
@@ -456,7 +450,7 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
                         data_status: 1,
                         order_num: bicycleParking.orderNum,
                       },
-                      2,
+                      2
                     )
                   }
                 >
@@ -474,7 +468,6 @@ const UpdateBicycleParkingRow: React.FC<UpdateBicycleParkingRowProps> = ({
           />
         )}
       </TableCell>
-
     </TableFormRow>
   )
 }
@@ -503,12 +496,12 @@ function BicycleParkingMasterPage() {
         value: String(st.stayTypeId),
         label: st.stayTypeName,
       })),
-    [stayTypes],
+    [stayTypes]
   )
 
   const bicycleParkingSchema = useMemo(
     () => buildBicycleParkingSchema(stayTypeOptions),
-    [stayTypeOptions],
+    [stayTypeOptions]
   )
 
   // --- Filter form ---
@@ -530,7 +523,7 @@ function BicycleParkingMasterPage() {
           value: String(f.facilityId),
           label: f.facilityName,
         })),
-    [facilitiesResponse],
+    [facilitiesResponse]
   )
 
   // Auto-select first facility on initial load
@@ -579,7 +572,6 @@ function BicycleParkingMasterPage() {
     },
   })
 
-
   // --- Refetch when query params change ---
   useEffect(() => {
     if (queryParams.facilityId) {
@@ -592,7 +584,7 @@ function BicycleParkingMasterPage() {
   const moveBicycleParkingRow = (index1: number, index2: number) => {
     setBicycleParkingData((prev) => {
       const updated = [...prev]
-        ;[updated[index1], updated[index2]] = [updated[index2], updated[index1]]
+      ;[updated[index1], updated[index2]] = [updated[index2], updated[index1]]
       return updated
     })
   }
@@ -604,7 +596,7 @@ function BicycleParkingMasterPage() {
 
   const transformData = (
     data: TypeBicycleParkingSchema,
-    isUpdate?: boolean,
+    isUpdate?: boolean
   ): {
     bicycleParkingId?: number
     parentFacilityId: number
@@ -614,14 +606,13 @@ function BicycleParkingMasterPage() {
     dataStatus?: number
   } => {
     const originalBicycleParking = bicycleParkingData.find(
-      (item) => item.bicycleParkingId === Number(data.bicycle_parking_id),
+      (item) => item.bicycleParkingId === Number(data.bicycle_parking_id)
     )
 
     return {
       bicycleParkingId: isUpdate ? Number(data.bicycle_parking_id) : undefined,
       parentFacilityId: Number(data.parent_facility_id?.value),
-      number:
-        isUpdate && originalBicycleParking?.number === data.number ? null : data.number,
+      number: isUpdate && originalBicycleParking?.number === data.number ? null : data.number,
       notice: data.notice,
       orderNum: isUpdate ? data.order_num : (addAtIndex ?? 0) + 1,
       dataStatus: isUpdate ? data.data_status : undefined,
@@ -646,18 +637,11 @@ function BicycleParkingMasterPage() {
     setAddAtIndex(index)
   }
 
-
   const isPageLoading =
-    bicycleParkingsLoading ||
-    isCreating ||
-    isUpdating ||
-    stayTypesLoading ||
-    facilityLoading
+    bicycleParkingsLoading || isCreating || isUpdating || stayTypesLoading || facilityLoading
 
   const lastOrderNum =
-    bicycleParkingData.length > 0
-      ? Math.max(...bicycleParkingData.map((p) => p.orderNum))
-      : 0
+    bicycleParkingData.length > 0 ? Math.max(...bicycleParkingData.map((p) => p.orderNum)) : 0
 
   // Calculate dynamic min table width based on stay types count
   const minTableWidth = 105 + stayTypes.length * 15 // base rem + each stay type col
@@ -697,7 +681,6 @@ function BicycleParkingMasterPage() {
                     )}
                   />
                 </div>
-
               </div>
             </FormProvider>
             <div className="flex items-center gap-[2rem]">
@@ -725,16 +708,22 @@ function BicycleParkingMasterPage() {
                 '[&>div>div>div:last-child]:border-r-0',
                 '[&>div>form>div:last-child]:border-r-0',
                 '[&_th]:shadow-none [&_th]:border-b-[.1rem]',
-                '[&_th]:border-l-0',
+                '[&_th]:border-l-0'
               )}
               style={{ minWidth: `${minTableWidth}rem` }}
             >
               <TableHeader className="top-0 z-[3] sticky bg-gray text-[1.6rem]">
                 <tr>
-                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Cơ sở
                   </th>
-                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Số chỗ đậu
                   </th>
                   <th
@@ -743,16 +732,28 @@ function BicycleParkingMasterPage() {
                   >
                     Loại hình lưu trú
                   </th>
-                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[15rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l min-w-[15rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Ghi chú
                   </th>
-                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Ngày cập nhật
                   </th>
-                  <th rowSpan={2} className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Người cập nhật
                   </th>
-                  <th rowSpan={2} className="border-r border-b border-black border-l w-[20rem] h-14 font-bold text-center align-middle px-2">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-b border-black border-l w-[20rem] h-14 font-bold text-center align-middle px-2"
+                  >
                     Thao tác
                   </th>
                 </tr>
@@ -812,8 +813,8 @@ function BicycleParkingMasterPage() {
                   </Fragment>
                 ))}
                 {isAdding &&
-                  bicycleParkingData.length > 0 &&
-                  (addAtIndex ?? 0) >= bicycleParkingData.length ? (
+                bicycleParkingData.length > 0 &&
+                (addAtIndex ?? 0) >= bicycleParkingData.length ? (
                   <CreateBicycleParkingRow
                     onCreate={onCreateSubmit}
                     facilitiesOptions={facilitiesOptions}

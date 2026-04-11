@@ -243,9 +243,7 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
     const origDate = original.expirationDate
       ? dayjs(original.expirationDate).format('YYYY-MM-DD')
       : ''
-    const newDate = item.expirationDate
-      ? dayjs(item.expirationDate).format('YYYY-MM-DD')
-      : ''
+    const newDate = item.expirationDate ? dayjs(item.expirationDate).format('YYYY-MM-DD') : ''
     return (
       item.identificationType !== original.identificationType ||
       (item.identificationTypeInput ?? '') !== (original.identificationTypeInput ?? '') ||
@@ -273,10 +271,7 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
     function onScrollHandle(e: Event) {
       // Don't hide modal if interacting with calendar
       const target = e.target as HTMLElement
-      if (
-        target.closest('.react-datetime-picker__calendar') ||
-        target.closest('.react-calendar')
-      ) {
+      if (target.closest('.react-datetime-picker__calendar') || target.closest('.react-calendar')) {
         return
       }
       setIsHidden?.(true)
@@ -468,8 +463,13 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                                   field.onChange(Number.parseInt(value))
                                   // Reset identificationTypeInput when selecting non-"other" option
                                   if (value !== IdentificationsConst.other.value) {
-                                    form.setValue(`identifications.${index}.identificationTypeInput`, '')
-                                    form.clearErrors(`identifications.${index}.identificationTypeInput`)
+                                    form.setValue(
+                                      `identifications.${index}.identificationTypeInput`,
+                                      ''
+                                    )
+                                    form.clearErrors(
+                                      `identifications.${index}.identificationTypeInput`
+                                    )
                                   }
                                 }}
                                 className="flex"
@@ -511,7 +511,7 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                                   disabled={
                                     readonly ||
                                     watchIdentificationTypes?.[index]?.toString() !==
-                                    IdentificationsConst.other.value
+                                      IdentificationsConst.other.value
                                   }
                                   value={value ?? ''}
                                   onChange={onChange}
@@ -530,17 +530,17 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                               `identifications.${index}`,
                               identifications?.[index]
                                 ? {
-                                  ...identifications[index],
-                                  expirationDate: '',
-                                  identificationTypeInput: '',
-                                  active: 1,
-                                  identificationInputType: undefined,
-                                  fileImg: null,
-                                  identificationNumber: '',
-                                  identificationType: undefined,
-                                  imageUrl: '',
-                                  imagePath: null,
-                                }
+                                    ...identifications[index],
+                                    expirationDate: '',
+                                    identificationTypeInput: '',
+                                    active: 1,
+                                    identificationInputType: undefined,
+                                    fileImg: null,
+                                    identificationNumber: '',
+                                    identificationType: undefined,
+                                    imageUrl: '',
+                                    imagePath: null,
+                                  }
                                 : defaultValue
                             )
                             form.clearErrors('identifications')
@@ -649,7 +649,10 @@ const IdentificationSettingModal: React.FC<IdentificationSettingModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center w-fit">
-                      <label htmlFor="area" className="w-[12rem] font-bold text-[1.6rem] text-black">
+                      <label
+                        htmlFor="area"
+                        className="w-[12rem] font-bold text-[1.6rem] text-black"
+                      >
                         Ngày hết hạn
                       </label>
                       <div className="flex items-center">

@@ -4,8 +4,8 @@ import dayjs from 'dayjs'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
-import { z } from 'zod'
 import { useDocumentTitle } from 'usehooks-ts'
+import { z } from 'zod'
 
 import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
@@ -71,7 +71,7 @@ function buildParkingSchema(stayTypeOptions: SelectOption[]) {
           })
           .refine((val) => Number(val) >= 0 && Number(val) <= 999999, {
             message: 'Giá thuê phải từ 0 đến 999,999',
-          }),
+          })
       ),
       number: z.string().max(32, 'Số chỗ đậu tối đa 32 ký tự'),
       height_limit: z.string().optional(),
@@ -208,7 +208,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
-                  },
+                  }
                 )}
                 placeholder="Số chỗ đậu"
                 value={value}
@@ -231,7 +231,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.height_limit,
-                  },
+                  }
                 )}
                 placeholder="Giới hạn chiều cao"
                 value={value == null ? '' : formatValue(value)}
@@ -261,7 +261,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
                     {
                       'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                         form.formState.errors.rents?.[stayTypeIndex],
-                    },
+                    }
                   )}
                   placeholder={opt.label}
                   value={formatValue(value)}
@@ -288,7 +288,7 @@ const CreateParkingRow: React.FC<CreateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
-                  },
+                  }
                 )}
                 placeholder="Ghi chú"
                 value={value == null ? '' : value}
@@ -402,7 +402,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.number,
-                  },
+                  }
                 )}
                 placeholder="Số chỗ đậu"
                 value={value}
@@ -430,7 +430,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.height_limit,
-                  },
+                  }
                 )}
                 placeholder="Giới hạn chiều cao"
                 value={formatValue(value)}
@@ -463,7 +463,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                     {
                       'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                         form.formState.errors.rents?.[stayTypeIndex],
-                    },
+                    }
                   )}
                   placeholder={opt.label}
                   value={formatValue(value)}
@@ -495,7 +495,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                   {
                     'focus:outline-red-500 focus-visible:outline-red-500 border-red-500':
                       form.formState.errors.notice,
-                  },
+                  }
                 )}
                 placeholder="Ghi chú"
                 value={value == null ? '' : value}
@@ -535,10 +535,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
               size="medium"
               customClassContent="max-w-[50rem]"
               trigger={
-                <NButton
-                  type="button"
-                  variant="default"
-                >
+                <NButton type="button" variant="default">
                   <span className="!px-1 font-bold text-[1.4rem]">Tạm dừng</span>
                 </NButton>
               }
@@ -561,7 +558,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                           data_status: 0,
                           order_num: parking.orderNum,
                         },
-                        1,
+                        1
                       )
                     }
                   >
@@ -614,7 +611,7 @@ const UpdateParkingRow: React.FC<UpdateParkingRowProps> = ({
                         data_status: 1,
                         order_num: parking.orderNum,
                       },
-                      2,
+                      2
                     )
                   }
                 >
@@ -660,7 +657,7 @@ function ParkingMasterPage() {
         value: String(st.stayTypeId),
         label: st.stayTypeName,
       })),
-    [stayTypes],
+    [stayTypes]
   )
 
   const parkingSchema = useMemo(() => buildParkingSchema(stayTypeOptions), [stayTypeOptions])
@@ -684,14 +681,14 @@ function ParkingMasterPage() {
           value: String(f.facilityId),
           label: f.facilityName,
         })),
-    [facilitiesResponse],
+    [facilitiesResponse]
   )
 
   useEffect(() => {
     if (facilitiesOptions.length > 0 && !queryParams.facilityId) {
-      const firstOption = facilitiesOptions[0];
-      filterMethods.setValue('facility_id', firstOption);
-      setQueryParams({ facilityId: Number(firstOption.value) });
+      const firstOption = facilitiesOptions[0]
+      filterMethods.setValue('facility_id', firstOption)
+      setQueryParams({ facilityId: Number(firstOption.value) })
     }
   }, [facilitiesOptions])
 
@@ -704,8 +701,6 @@ function ParkingMasterPage() {
     params: queryParams.facilityId ? { facilityId: queryParams.facilityId } : undefined,
     enabled: !!queryParams.facilityId,
   })
-
-
 
   useEffect(() => {
     if (parkingsData) {
@@ -735,7 +730,6 @@ function ParkingMasterPage() {
     },
   })
 
-
   // --- Refetch when query params change ---
   useEffect(() => {
     if (queryParams.facilityId) {
@@ -748,7 +742,7 @@ function ParkingMasterPage() {
   const moveParkingRow = (index1: number, index2: number) => {
     setParkingData((prev) => {
       const updated = [...prev]
-        ;[updated[index1], updated[index2]] = [updated[index2], updated[index1]]
+      ;[updated[index1], updated[index2]] = [updated[index2], updated[index1]]
       return updated
     })
   }
@@ -760,7 +754,7 @@ function ParkingMasterPage() {
 
   const transformData = (
     data: TypeParkingSchema,
-    isUpdate?: boolean,
+    isUpdate?: boolean
   ): {
     parkingId?: number
     parentFacilityId: number
@@ -771,15 +765,12 @@ function ParkingMasterPage() {
     orderNum?: number
     dataStatus?: number
   } => {
-    const originalParking = parkingData.find(
-      (item) => item.parkingId === Number(data.parking_id),
-    )
+    const originalParking = parkingData.find((item) => item.parkingId === Number(data.parking_id))
 
     return {
       parkingId: isUpdate ? Number(data.parking_id) : undefined,
       parentFacilityId: Number(data.parent_facility_id?.value),
-      number:
-        isUpdate && originalParking?.number === data.number ? null : data.number,
+      number: isUpdate && originalParking?.number === data.number ? null : data.number,
       heightLimit: Number(data.height_limit),
       notice: data.notice,
       parkingRents: stayTypes.map((st, index) => ({
@@ -809,13 +800,10 @@ function ParkingMasterPage() {
     setAddAtIndex(index)
   }
 
-
   const isPageLoading =
     parkingsLoading || isCreating || isUpdating || stayTypesLoading || facilityLoading
 
-  const lastOrderNum = parkingData.length > 0
-    ? Math.max(...parkingData.map((p) => p.orderNum))
-    : 0
+  const lastOrderNum = parkingData.length > 0 ? Math.max(...parkingData.map((p) => p.orderNum)) : 0
 
   // Calculate dynamic min table width based on stay types count
   const minTableWidth = 120 + stayTypes.length * 15 // base rem + each stay type col
@@ -832,7 +820,9 @@ function ParkingMasterPage() {
           <div className="flex sm:flex-row flex-col justify-between items-baseline gap-[2rem] w-full overflow-auto">
             <FormProvider {...filterMethods}>
               <div className="flex items-baseline gap-[2rem]">
-                <h3 className="font-bold text-[1.6rem] min-w-[16rem] text-start">Lọc theo cơ sở:</h3>
+                <h3 className="font-bold text-[1.6rem] min-w-[16rem] text-start">
+                  Lọc theo cơ sở:
+                </h3>
                 <div className="w-full">
                   <FormField
                     control={filterMethods.control}
@@ -865,7 +855,7 @@ function ParkingMasterPage() {
                   onClick={() => createParkingAtIndex(0)}
                   className={cn(
                     'bg-gray h-[4rem] w-[16rem] font-bold !text-[1.4rem]',
-                    !queryParams.facilityId ? 'opacity-[0.5] cursor-not-allowed' : '',
+                    !queryParams.facilityId ? 'opacity-[0.5] cursor-not-allowed' : ''
                   )}
                 >
                   Thêm
@@ -886,34 +876,58 @@ function ParkingMasterPage() {
                 '[&>div>div>div:last-child]:border-r-0',
                 '[&>div>form>div:last-child]:border-r-0',
                 '[&_th]:shadow-none [&_th]:border-b-[.1rem]',
-                '[&_th]:border-l-0',
+                '[&_th]:border-l-0'
               )}
               style={{ minWidth: `${minTableWidth}rem` }}
             >
               <TableHeader className="top-0 z-[3] sticky bg-gray text-[1.6rem]">
                 <tr>
-                  <th rowSpan={2} className="border-r border-black border-l w-[20rem] h-14 font-bold text-center  align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l w-[20rem] h-14 font-bold text-center  align-middle"
+                  >
                     Cơ sở
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle"
+                  >
                     Số chỗ đậu
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l min-w-[22rem] h-14 font-bold text-center align-middle"
+                  >
                     Giới hạn chiều cao (m)
                   </th>
-                  <th colSpan={stayTypes.length} className="border-r border-black border-l h-14 font-bold text-center">
+                  <th
+                    colSpan={stayTypes.length}
+                    className="border-r border-black border-l h-14 font-bold text-center"
+                  >
                     Loại hình lưu trú
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l min-w-[20rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l min-w-[20rem] h-14 font-bold text-center align-middle"
+                  >
                     Ghi chú
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l min-w-[10rem] h-14 font-bold text-center align-middle"
+                  >
                     Ngày cập nhật
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l min-w-[12rem] h-14 font-bold text-center align-middle"
+                  >
                     Người cập nhật
                   </th>
-                  <th rowSpan={2} className="border-r border-black border-l w-[20rem] h-14 font-bold text-center align-middle">
+                  <th
+                    rowSpan={2}
+                    className="border-r border-black border-l w-[20rem] h-14 font-bold text-center align-middle"
+                  >
                     Thao tác
                   </th>
                 </tr>

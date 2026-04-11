@@ -1196,17 +1196,10 @@ function ReservationCreatePage() {
               {/* ─── Bottom Action Buttons ─────────────────── */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50 px-8 py-4">
                 <div className="flex items-center justify-end gap-4">
-                  <NButton
-                    type="button"
-                    onClick={() => navigate({ to: '/reservations' })}
-                  >
+                  <NButton type="button" onClick={() => navigate({ to: '/reservations' })}>
                     Hủy bỏ
                   </NButton>
-                  <NButton
-                    type="button"
-                    onClick={handleOpenConfirmDialog}
-                    disabled={loadingSubmit}
-                  >
+                  <NButton type="button" onClick={handleOpenConfirmDialog} disabled={loadingSubmit}>
                     {loadingSubmit ? 'Đang xử lý...' : 'Tạo đặt phòng'}
                   </NButton>
                 </div>
@@ -1228,9 +1221,7 @@ function ReservationCreatePage() {
                   <strong>{selectedClientName || form.getValues('client_id')}</strong>?
                 </p>
                 <div className="flex justify-end gap-3">
-                  <NButton onClick={() => setIsConfirmDialogOpen(false)}>
-                    Hủy
-                  </NButton>
+                  <NButton onClick={() => setIsConfirmDialogOpen(false)}>Hủy</NButton>
                   <NButton onClick={form.handleSubmit(onSubmit)}>Xác nhận tạo</NButton>
                 </div>
               </div>

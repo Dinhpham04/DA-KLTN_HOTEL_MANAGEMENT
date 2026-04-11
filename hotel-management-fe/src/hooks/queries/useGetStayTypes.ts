@@ -7,7 +7,7 @@ export function useGetStayTypes() {
     queryFn: async () => {
       const response = await stayTypeApi.getStayTypes()
       // Axios interceptor already unwraps the ApiEnvelope → response.data is StayType[]
-      return (response.data) ?? []
+      return response.data ?? []
     },
     staleTime: 5 * 60 * 1000,
   })

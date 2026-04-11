@@ -99,7 +99,7 @@ export function Header() {
 
   return (
     <header
-      className="top-0 z-[99] sticky bg-[#3764A8] pt-6 pr-6 pb-2 pl-[2.375rem]"
+      className="top-0 z-[99] sticky bg-[#3764A8] pt-4 pr-6 pb-2 pl-[2.375rem]"
       ref={headerRef}
     >
       <div className="flex justify-between">
@@ -107,8 +107,8 @@ export function Header() {
         <div className="flex flex-col justify-start items-center">
           <Link to="/dashboard">
             <div className="flex items-center">
-              <div className="mr-[1.621rem] h-16 flex items-center">
-                <Hotel size={40} className="text-white" />
+              <div className="mr-[1.621rem] h-[3.5rem] flex items-center">
+                <Hotel size={32} className="text-white" />
               </div>
               <div className="flex flex-col">
                 <div className="h-[2.8rem] flex items-center">
@@ -135,8 +135,9 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/dashboard' ? 'bg-[#666666]' : 'bg-[#204172]'
-                  }`}
+                className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/dashboard' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/dashboard' })}
               >
                 <DashboardIcon
@@ -145,7 +146,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-medium text-[1.4rem]',
+                  'font-medium text-[1.3rem]',
                   location.pathname === '/dashboard' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -158,8 +159,9 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
-                  }`}
+                className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/reservations' })}
               >
                 <ReservationIcon
@@ -170,7 +172,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-medium text-[1.4rem]',
+                  'font-medium text-[1.3rem]',
                   location.pathname === '/reservations' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -183,8 +185,9 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
-                  }`}
+                className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/rooms' })}
               >
                 <RoomIcon
@@ -193,7 +196,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-medium text-[1.4rem]',
+                  'font-medium text-[1.3rem]',
                   location.pathname === '/rooms' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -206,8 +209,9 @@ export function Header() {
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
-                className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
-                  }`}
+                className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                  location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
+                }`}
                 onClick={() => navigate({ to: '/clients' })}
               >
                 <SearchIconSvg
@@ -216,7 +220,7 @@ export function Header() {
               </div>
               <div
                 className={cn(
-                  'font-medium text-[1.4rem]',
+                  'font-medium text-[1.3rem]',
                   location.pathname === '/clients' ? 'text-gray-400' : 'text-white'
                 )}
               >
@@ -230,8 +234,9 @@ export function Header() {
             <div className="flex flex-col justify-center items-center gap-2">
               <DrawerTrigger className="flex justify-center items-start h-full">
                 <div
-                  className={`h-20 w-20 cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
-                    }`}
+                  className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
+                    activeId === 'menu' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  }`}
                   id="open-side-bar-trigger"
                   onClick={() => handleClick('menu')}
                 >
@@ -299,7 +304,7 @@ export function Header() {
                   ))}
                 </Accordion>
               </DrawerContent>
-              <div className="font-medium text-[1.4rem] text-white">{t('header.menu')}</div>
+              <div className="font-medium text-[1.3rem] text-white">{t('header.menu')}</div>
             </div>
           </Drawer>
         </div>

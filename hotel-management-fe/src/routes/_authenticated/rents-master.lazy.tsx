@@ -7,7 +7,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useRef, 
+  useRef,
   useState,
 } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
@@ -38,13 +38,9 @@ import {
 import { useGetRentList } from '@/hooks/queries/useGetRentList'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
-import type {
-  BulkUpdateRentBody,
-  RentGroup,
-  RentGroupInput,
-  RentItemInput,
-} from '@/types/rent'
+import type { BulkUpdateRentBody, RentGroup, RentGroupInput, RentItemInput } from '@/types/rent'
 import type { RoomType } from '@/types/room-type'
+import type { StayType } from '@/types/stay-type'
 
 // ─── Types ──────────────────────────────────────────
 
@@ -92,22 +88,86 @@ type RentGroupFormData = z.infer<typeof rentGroupSchema>
 
 // ─── Helpers ────────────────────────────────────────
 
-const N = (v: number | string | null | undefined): number =>
-  Number(v ?? 0) || 0
+const N = (v: number | string | null | undefined): number => Number(v ?? 0) || 0
 
 const fmt = (v: number) => v.toLocaleString('en-US')
 
 const INPUT_CLASS =
   'disabled:opacity-100 border-transparent focus-visible:outline focus:outline focus-visible:outline-1 focus-visible:outline-gray-300 focus:outline-1 focus:outline-gray-300 min-w-full h-full text-[1.4rem] text-center'
 
-function CalcCell({
-  value,
-  className,
-}: { value: number; className?: string }) {
+// ─── Stay Type Column Layout Helpers ────────────────────────────
+
+function categorizeStayTypes(stayTypes: StayType[]) {
+  const weekly = stayTypes
+    .filter((st) => st.stayContractTypeId === 1)
+    .sort((a, b) => a.orderNum - b.orderNum)
+  const monthly = stayTypes
+    .filter((st) => st.stayContractTypeId === 2)
+    .sort((a, b) => a.orderNum - b.orderNum)
+  return { weekly, monthly }
+}
+
+// Not-Deposited: weekly pos0=2cols, pos1=2cols, pos2+=1col
+function ndWeeklyColSpan(pos: number): number {
+  if (pos === 0) return 2
+  if (pos === 1) return 2
+  return 1
+}
+
+// Not-Deposited: monthly pos0=2cols, pos1+=5cols each
+function ndMonthlyColSpan(pos: number): number {
+  return pos === 0 ? 2 : 5
+}
+
+// Sub-column headers for Not-Deposited weekly stay type at position pos
+function NdWeeklySubHead({ pos }: { pos: number }) {
+  if (pos === 0) {
+    return (
+      <>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">
+          Tiền thuê trước thuế
+        </TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">Tiền thuê sau thuế</TableHead>
+      </>
+    )
+  }
+  if (pos === 1) {
+    return (
+      <>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">
+          Tiền thuê trước thuế
+        </TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">Tiền thuê sau thuế</TableHead>
+      </>
+    )
+  }
+  return <TableHead className="flex-1 border font-bold min-w-[15rem]">Tiền thuê sau thuế</TableHead>
+}
+
+// Sub-column headers for Not-Deposited monthly stay type at position pos
+function NdMonthlySubHead({ pos }: { pos: number }) {
+  if (pos === 0) {
+    return (
+      <>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/tháng</TableHead>
+      </>
+    )
+  }
   return (
-    <TableCell
-      className={cn('!bg-[rgba(121,163,224,0.8)] min-w-[10rem]', className)}
-    >
+    <>
+      <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
+      <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê sau thuế</TableHead>
+      <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/ngày</TableHead>
+      <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh</TableHead>
+      <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (tháng)</TableHead>
+    </>
+  )
+}
+
+function CalcCell({ value, className }: { value: number; className?: string }) {
+  return (
+    <TableCell className={cn('!bg-[rgba(121,163,224,0.8)] min-w-[10rem]', className)}>
       <span>{fmt(value)}</span>
     </TableCell>
   )
@@ -146,7 +206,7 @@ function InputCell({
   )
 }
 
-// ─── Shared Fee Columns (管理費 + 光熱費) ───────────
+// ─── Shared Fee Column ───────────
 
 function SharedFeeCells({
   control,
@@ -164,11 +224,7 @@ function SharedFeeCells({
       <CalcCell value={monthMainteFee / 30} />
       <InputCell control={control} name="month_mainte_fee" disabled={disabled} />
       <CalcCell value={monthUtilityFee / 30} />
-      <InputCell
-        control={control}
-        name="month_utility_fee"
-        disabled={disabled}
-      />
+      <InputCell control={control} name="month_utility_fee" disabled={disabled} />
     </>
   )
 }
@@ -181,8 +237,6 @@ function ActionCells({
   onUpdate,
   onSuspend,
   onReactivate,
-  onAddRow,
-  onCopyRow,
   onDeleteRow,
 }: {
   isSuspended: boolean
@@ -199,43 +253,66 @@ function ActionCells({
       <TableCell className="min-w-[10rem]">
         {!isCreate ? (
           isSuspended ? (
-            <CustomDialog
-              customClass="text-center [&_svg]:hidden"
-              size="medium"
-              customClassContent="max-w-[50rem]"
-              trigger={
-                <NButton className="bg-gray w-auto min-w-fit h-auto">
-                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-                    Sử dụng lại
-                  </span>
-                </NButton>
-              }
-              title="Bạn muốn sử dụng lại?"
-              content={
-                <div className="flex justify-center p-5">
-                  <DialogClose onClick={onReactivate}>
-                    <div className="bg-[#8bd08e] mx-4 w-[12.4rem] border border-black btn btn-default">
-                      <span>Thực hiện</span>
-                    </div>
-                  </DialogClose>
-                  <DialogClose>
-                    <div className="bg-[#eee] mx-4 w-[12.4rem] border border-black btn btn-default">
-                      <span>Hủy</span>
-                    </div>
-                  </DialogClose>
-                </div>
-              }
-            />
+            <div className="flex flex-col gap-[.5rem]">
+              <CustomDialog
+                customClass="text-center [&_svg]:hidden"
+                size="medium"
+                customClassContent="max-w-[50rem]"
+                trigger={
+                  <NButton className="bg-gray w-auto min-w-fit h-auto">
+                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                      Sử dụng lại
+                    </span>
+                  </NButton>
+                }
+                title="Bạn muốn sử dụng lại?"
+                content={
+                  <div className="flex justify-center p-5">
+                    <DialogClose onClick={onReactivate}>
+                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Thực hiện</span>
+                      </div>
+                    </DialogClose>
+                    <DialogClose>
+                      <div className="bg-[#eee] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Hủy</span>
+                      </div>
+                    </DialogClose>
+                  </div>
+                }
+              />
+              <CustomDialog
+                customClass="text-center [&_svg]:hidden"
+                size="medium"
+                customClassContent="max-w-[50rem]"
+                trigger={
+                  <NButton className="bg-gray w-auto min-w-fit h-auto">
+                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                      Xóa dòng
+                    </span>
+                  </NButton>
+                }
+                title="Bạn muốn xóa dòng này?"
+                content={
+                  <div className="flex justify-center p-5">
+                    <DialogClose onClick={onDeleteRow}>
+                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Thực hiện</span>
+                      </div>
+                    </DialogClose>
+                    <DialogClose>
+                      <div className="bg-[#eee] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Hủy</span>
+                      </div>
+                    </DialogClose>
+                  </div>
+                }
+              />
+            </div>
           ) : (
-            <>
-              <NButton
-                className="bg-gray w-auto min-w-fit h-auto"
-                type="button"
-                onClick={onUpdate}
-              >
-                <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-                  Cập nhật
-                </span>
+            <div className="flex flex-col gap-[.5rem]">
+              <NButton className="bg-gray w-auto min-w-fit h-auto" type="button" onClick={onUpdate}>
+                <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Cập nhật</span>
               </NButton>
               <CustomDialog
                 customClass="text-center [&_svg]:hidden"
@@ -264,71 +341,39 @@ function ActionCells({
                   </div>
                 }
               />
-            </>
+              <CustomDialog
+                customClass="text-center [&_svg]:hidden"
+                size="medium"
+                customClassContent="max-w-[50rem]"
+                trigger={
+                  <NButton className="bg-gray w-auto min-w-fit h-auto">
+                    <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
+                      Xóa dòng
+                    </span>
+                  </NButton>
+                }
+                title="Bạn muốn xóa dòng này?"
+                content={
+                  <div className="flex justify-center p-5">
+                    <DialogClose onClick={onDeleteRow}>
+                      <div className="bg-[#8bd08e] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Thực hiện</span>
+                      </div>
+                    </DialogClose>
+                    <DialogClose>
+                      <div className="bg-[#eee] mx-4 w-[12.4rem] border border-black btn btn-default">
+                        <span>Hủy</span>
+                      </div>
+                    </DialogClose>
+                  </div>
+                }
+              />
+            </div>
           )
         ) : (
-          <NButton
-            className="bg-gray w-auto min-w-fit h-auto"
-            type="button"
-            onClick={onUpdate}
-          >
-            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-              Lưu
-            </span>
+          <NButton className="bg-gray w-auto min-w-fit h-auto" type="button" onClick={onUpdate}>
+            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Lưu</span>
           </NButton>
-        )}
-      </TableCell>
-      <TableCell className="min-w-[10rem]">
-        {!isCreate && (
-          <div className="flex flex-col gap-[.5rem]">
-            <NButton
-              className="bg-gray w-auto min-w-fit h-auto"
-              type="button"
-              onClick={onAddRow}
-            >
-              <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-                Thêm dòng
-              </span>
-            </NButton>
-            {!isSuspended && (
-              <NButton
-                className="bg-gray w-auto min-w-fit h-auto"
-                type="button"
-                onClick={onCopyRow}
-              >
-                <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-                  Sao chép
-                </span>
-              </NButton>
-            )}
-            <CustomDialog
-              customClass="text-center [&_svg]:hidden"
-              size="medium"
-              customClassContent="max-w-[50rem]"
-              trigger={
-                <NButton className="bg-gray w-auto min-w-fit h-auto">
-                  <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-                    Xóa dòng
-                  </span>
-                </NButton>
-              }
-              title="Bạn muốn xóa dòng này?"
-              content={
-                <div className="flex justify-center p-5">
-                  <DialogClose onClick={onDeleteRow}>
-                    <div className="bg-[#8bd08e] mx-4 w-[12.4rem] border border-black btn btn-default">
-                      <span>Thực hiện</span>
-                    </div>
-                  </DialogClose>
-                  <DialogClose>
-                    <div className="bg-[#eee] mx-4 w-[12.4rem] border border-black btn btn-default">
-                      <span>Hủy</span>
-                    </div>
-                  </DialogClose>
-                </div>
-              }
-            />
-          </div>
         )}
       </TableCell>
     </>
@@ -339,6 +384,7 @@ function ActionCells({
 
 interface RowProps {
   rent: RentGroupFormData
+  stayTypes: StayType[]
   roomTypes: RoomType[]
   roomClassOptions: SelectOption[]
   isCreate: boolean
@@ -354,6 +400,7 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
   (
     {
       rent,
+      stayTypes,
       roomTypes,
       roomClassOptions,
       isCreate,
@@ -364,7 +411,7 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
       onDeleteRow,
       tableId,
     },
-    ref,
+    ref
   ) => {
     const methods = useForm<RentGroupFormData>({
       resolver: zodResolver(rentGroupSchema),
@@ -395,23 +442,21 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
     const roomClassId = watch('room_class_id')
     const isSuspended = rent.rents[0]?.data_status === 0
 
+    const { weekly, monthly } = useMemo(() => categorizeStayTypes(stayTypes), [stayTypes])
+
     const filteredRoomTypes = useMemo(
       () =>
         roomTypes
-          .filter(
-            (rt) =>
-              !roomClassId ||
-              rt.roomClassId.toString() === roomClassId.toString(),
-          )
+          .filter((rt) => !roomClassId || rt.roomClassId.toString() === roomClassId.toString())
           .map((rt) => ({
             value: rt.roomTypeId.toString(),
             label: rt.roomTypeName,
           })),
-      [roomTypes, roomClassId],
+      [roomTypes, roomClassId]
     )
 
     const shortName = roomTypes.find(
-      (rt) => rt.roomTypeId.toString() === roomTypeId?.toString(),
+      (rt) => rt.roomTypeId.toString() === roomTypeId?.toString()
     )?.roomTypeNameShort
 
     // Monthly period cells (stays 4,5,6)
@@ -463,9 +508,7 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
                       customClassMain="w-[15rem] h-[2rem] sm:h-[3.6rem]"
                       disable={isSuspended}
                       hideWhenDetached
-                      collisionBoundary={
-                        document.getElementById(tableId) ?? undefined
-                      }
+                      collisionBoundary={document.getElementById(tableId) ?? undefined}
                     />
                   </FormControl>
                 </FormItem>
@@ -487,9 +530,7 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
                       customClassMain="w-[15rem] h-[2rem] sm:h-[3.6rem]"
                       disable={isSuspended || !roomClassId}
                       hideWhenDetached
-                      collisionBoundary={
-                        document.getElementById(tableId) ?? undefined
-                      }
+                      collisionBoundary={document.getElementById(tableId) ?? undefined}
                     />
                   </FormControl>
                 </FormItem>
@@ -499,47 +540,62 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
           {/* Short Name */}
           <TableCell className="min-w-[10rem]">{shortName}</TableCell>
 
-          {/* Stay 0: 1-6 nights (2 cols) */}
-          <CalcCell value={(N(rents?.[0]?.day_rent) * 100) / 110} />
-          <InputCell
-            control={control}
-            name="rents.0.day_rent"
-            disabled={isSuspended}
-          />
+          {/* Weekly stay types (dynamic) */}
+          {weekly.map((st, pos) => {
+            const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+            const r = rents?.[stIdx]
+            if (pos === 0) {
+              return (
+                <Fragment key={st.stayTypeId}>
+                  <CalcCell value={(N(r?.day_rent) * 100) / 110} />
+                  <InputCell
+                    control={control}
+                    name={`rents.${stIdx}.day_rent`}
+                    disabled={isSuspended}
+                  />
+                </Fragment>
+              )
+            }
+            if (pos === 1) {
+              return (
+                <Fragment key={st.stayTypeId}>
+                  <CalcCell value={(N(r?.day_rent) * 100) / 110} />
+                  <InputCell
+                    control={control}
+                    name={`rents.${stIdx}.day_rent`}
+                    disabled={isSuspended}
+                  />
+                </Fragment>
+              )
+            }
+            return (
+              <Fragment key={st.stayTypeId}>
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.day_rent`}
+                  disabled={isSuspended}
+                />
+              </Fragment>
+            )
+          })}
 
-          {/* Stay 1: Super-short (4 cols) */}
-          <CalcCell value={0} className="!bg-[rgba(121,163,224,0.8)]" />
-          <InputCell
-            control={control}
-            name="rents.1.day_clean_fee"
-            disabled={isSuspended}
-          />
-          <CalcCell value={(N(rents?.[1]?.day_rent) * 100) / 110} />
-          <InputCell
-            control={control}
-            name="rents.1.day_rent"
-            disabled={isSuspended}
-          />
-
-          {/* Stay 2: Weekly (1 col) */}
-          <InputCell
-            control={control}
-            name="rents.2.day_rent"
-            disabled={isSuspended}
-          />
-
-          {/* Stay 3: 1 month (2 cols) */}
-          <CalcCell value={N(rents?.[3]?.month_rent) / 30} />
-          <InputCell
-            control={control}
-            name="rents.3.month_rent"
-            disabled={isSuspended}
-          />
-
-          {/* Stay 4,5,6: Monthly periods (5 cols each) */}
-          {renderMonthlyPeriod(4)}
-          {renderMonthlyPeriod(5)}
-          {renderMonthlyPeriod(6)}
+          {/* Monthly stay types (dynamic) */}
+          {monthly.map((st, pos) => {
+            const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+            if (pos === 0) {
+              return (
+                <Fragment key={st.stayTypeId}>
+                  <CalcCell value={N(rents?.[stIdx]?.month_rent) / 30} />
+                  <InputCell
+                    control={control}
+                    name={`rents.${stIdx}.month_rent`}
+                    disabled={isSuspended}
+                  />
+                </Fragment>
+              )
+            }
+            return <Fragment key={st.stayTypeId}>{renderMonthlyPeriod(stIdx)}</Fragment>
+          })}
 
           {/* Shared fees */}
           <SharedFeeCells
@@ -553,24 +609,18 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
           <ActionCells
             isSuspended={isSuspended}
             isCreate={isCreate}
-            onUpdate={() =>
-              handleSubmit((data) => onSubmitRow(data, isCreate, 0))()
-            }
+            onUpdate={() => handleSubmit((data) => onSubmitRow(data, isCreate, 0))()}
             onSuspend={() => {
               const updated = {
                 ...methods.getValues(),
-                rents: methods
-                  .getValues()
-                  .rents.map((r) => ({ ...r, data_status: 0 })),
+                rents: methods.getValues().rents.map((r) => ({ ...r, data_status: 0 })),
               }
               onSubmitRow(updated, isCreate, 2)
             }}
             onReactivate={() => {
               const updated = {
                 ...methods.getValues(),
-                rents: methods
-                  .getValues()
-                  .rents.map((r) => ({ ...r, data_status: 1 })),
+                rents: methods.getValues().rents.map((r) => ({ ...r, data_status: 1 })),
               }
               onSubmitRow(updated, isCreate, 1)
             }}
@@ -581,7 +631,7 @@ const NotDepositedRow = forwardRef<RentRowHandle, RowProps>(
         </FormProvider>
       </TableRow>
     )
-  },
+  }
 )
 NotDepositedRow.displayName = 'NotDepositedRow'
 
@@ -591,6 +641,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
   (
     {
       rent,
+      stayTypes,
       roomTypes,
       roomClassOptions,
       isCreate,
@@ -601,7 +652,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
       onDeleteRow,
       tableId,
     },
-    ref,
+    ref
   ) => {
     const methods = useForm<RentGroupFormData>({
       resolver: zodResolver(rentGroupSchema),
@@ -632,29 +683,34 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
     const roomClassId = watch('room_class_id')
     const isSuspended = rent.rents[0]?.data_status === 0
 
+    const { weekly, monthly } = useMemo(() => categorizeStayTypes(stayTypes), [stayTypes])
+
+    // super-short is weekly[1] (position 1 within weekly group)
+    const superShortSt = weekly[1]
+    const superShortIdx = superShortSt
+      ? stayTypes.findIndex((s) => s.stayTypeId === superShortSt.stayTypeId)
+      : 1
+    const superShortR = rents?.[superShortIdx]
+
     const filteredRoomTypes = useMemo(
       () =>
         roomTypes
-          .filter(
-            (rt) =>
-              !roomClassId ||
-              rt.roomClassId.toString() === roomClassId.toString(),
-          )
+          .filter((rt) => !roomClassId || rt.roomClassId.toString() === roomClassId.toString())
           .map((rt) => ({
             value: rt.roomTypeId.toString(),
             label: rt.roomTypeName,
           })),
-      [roomTypes, roomClassId],
+      [roomTypes, roomClassId]
     )
 
     const shortName = roomTypes.find(
-      (rt) => rt.roomTypeId.toString() === roomTypeId?.toString(),
+      (rt) => rt.roomTypeId.toString() === roomTypeId?.toString()
     )?.roomTypeNameShort
 
-    // Super-short daily total
+    // Super-short daily total (uses dynamic superShortIdx)
     const superShortDailyTotal =
-      N(rents?.[1]?.day_rent) +
-      N(rents?.[1]?.day_clean_fee) +
+      N(superShortR?.day_rent) +
+      N(superShortR?.day_clean_fee) +
       monthMainteFee / 30 +
       monthUtilityFee / 30
 
@@ -662,8 +718,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
     const renderDepositedMonthly = (stayIdx: number) => {
       const mr = N(rents?.[stayIdx]?.month_rent)
       const mc = N(rents?.[stayIdx]?.month_clean_fee)
-      const dailyTotal =
-        mr / 30 + mc / 30 + monthMainteFee / 30 + monthUtilityFee / 30
+      const dailyTotal = mr / 30 + mc / 30 + monthMainteFee / 30 + monthUtilityFee / 30
       return (
         <>
           <InputCell
@@ -714,9 +769,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
                       customClassMain="w-[15rem] h-[2rem] sm:h-[3.6rem]"
                       disable={isSuspended}
                       hideWhenDetached
-                      collisionBoundary={
-                        document.getElementById(tableId) ?? undefined
-                      }
+                      collisionBoundary={document.getElementById(tableId) ?? undefined}
                     />
                   </FormControl>
                 </FormItem>
@@ -738,9 +791,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
                       customClassMain="w-[15rem] h-[2rem] sm:h-[3.6rem]"
                       disable={isSuspended || !roomClassId}
                       hideWhenDetached
-                      collisionBoundary={
-                        document.getElementById(tableId) ?? undefined
-                      }
+                      collisionBoundary={document.getElementById(tableId) ?? undefined}
                     />
                   </FormControl>
                 </FormItem>
@@ -750,46 +801,55 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
           {/* Short Name */}
           <TableCell className="min-w-[10rem]">{shortName}</TableCell>
 
-          {/* Super-short (4 cols): deposit, cleanFee, dayRent(INPUT), total(CALC) */}
-          <InputCell
-            control={control}
-            name="rents.1.deposit_pay"
-            disabled={isSuspended}
-          />
-          <InputCell
-            control={control}
-            name="rents.1.day_clean_fee"
-            disabled={isSuspended}
-          />
-          <InputCell
-            control={control}
-            name="rents.1.day_rent"
-            disabled={isSuspended}
-          />
-          <CalcCell value={superShortDailyTotal} />
+          {/* Super-short (dynamic idx, taxable) */}
+          {superShortSt && superShortIdx >= 0 && (
+            <>
+              <InputCell
+                control={control}
+                name={`rents.${superShortIdx}.deposit_pay`}
+                disabled={isSuspended}
+              />
+              <InputCell
+                control={control}
+                name={`rents.${superShortIdx}.day_clean_fee`}
+                disabled={isSuspended}
+              />
+              <InputCell
+                control={control}
+                name={`rents.${superShortIdx}.day_rent`}
+                disabled={isSuspended}
+              />
+              <CalcCell value={superShortDailyTotal} />
+            </>
+          )}
 
-          {/* Short 1-3 months (7 cols): deposit, rent/day(CALC), rent/month(CALC), clean/day(CALC), cleanFee(INPUT), total/day(CALC), total/month(CALC) */}
-          <InputCell
-            control={control}
-            name="rents.4.deposit_pay"
-            disabled={isSuspended}
-          />
-          <CalcCell value={N(rents?.[1]?.day_rent)} />
-          <CalcCell value={N(rents?.[1]?.day_rent) * 30} />
-          <CalcCell value={N(rents?.[1]?.day_clean_fee)} />
-          <InputCell
-            control={control}
-            name="rents.4.month_clean_fee"
-            disabled={isSuspended}
-          />
-          <CalcCell value={superShortDailyTotal} />
-          <CalcCell value={superShortDailyTotal * 30} />
-
-          {/* Middle 3-7 months (7 cols) */}
-          {renderDepositedMonthly(5)}
-
-          {/* Long 7+ months (7 cols) */}
-          {renderDepositedMonthly(6)}
+          {/* Monthly groups: skip one-month (pos=0), show short/medium/long */}
+          {monthly.slice(1).map((st, depPos) => {
+            const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+            if (depPos === 0) {
+              // "short" period: uses super-short daily rates
+              return (
+                <Fragment key={st.stayTypeId}>
+                  <InputCell
+                    control={control}
+                    name={`rents.${stIdx}.deposit_pay`}
+                    disabled={isSuspended}
+                  />
+                  <CalcCell value={N(superShortR?.day_rent)} />
+                  <CalcCell value={N(superShortR?.day_rent) * 30} />
+                  <CalcCell value={N(superShortR?.day_clean_fee)} />
+                  <InputCell
+                    control={control}
+                    name={`rents.${stIdx}.month_clean_fee`}
+                    disabled={isSuspended}
+                  />
+                  <CalcCell value={superShortDailyTotal} />
+                  <CalcCell value={superShortDailyTotal * 30} />
+                </Fragment>
+              )
+            }
+            return <Fragment key={st.stayTypeId}>{renderDepositedMonthly(stIdx)}</Fragment>
+          })}
 
           {/* Shared fees */}
           <SharedFeeCells
@@ -803,24 +863,18 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
           <ActionCells
             isSuspended={isSuspended}
             isCreate={isCreate}
-            onUpdate={() =>
-              handleSubmit((data) => onSubmitRow(data, isCreate, 0))()
-            }
+            onUpdate={() => handleSubmit((data) => onSubmitRow(data, isCreate, 0))()}
             onSuspend={() => {
               const updated = {
                 ...methods.getValues(),
-                rents: methods
-                  .getValues()
-                  .rents.map((r) => ({ ...r, data_status: 0 })),
+                rents: methods.getValues().rents.map((r) => ({ ...r, data_status: 0 })),
               }
               onSubmitRow(updated, isCreate, 2)
             }}
             onReactivate={() => {
               const updated = {
                 ...methods.getValues(),
-                rents: methods
-                  .getValues()
-                  .rents.map((r) => ({ ...r, data_status: 1 })),
+                rents: methods.getValues().rents.map((r) => ({ ...r, data_status: 1 })),
               }
               onSubmitRow(updated, isCreate, 1)
             }}
@@ -831,7 +885,7 @@ const DepositedRow = forwardRef<RentRowHandle, RowProps>(
         </FormProvider>
       </TableRow>
     )
-  },
+  }
 )
 DepositedRow.displayName = 'DepositedRow'
 
@@ -839,8 +893,8 @@ DepositedRow.displayName = 'DepositedRow'
 
 const NotDepositedOver3Row = forwardRef<
   RentRowHandle,
-  { rent: RentGroupFormData; onSubmitRow: (data: RentGroupFormData) => void }
->(({ rent, onSubmitRow }, ref) => {
+  { rent: RentGroupFormData; stayTypes: StayType[]; onSubmitRow: (data: RentGroupFormData) => void }
+>(({ rent, stayTypes, onSubmitRow }, ref) => {
   const methods = useForm<RentGroupFormData>({
     resolver: zodResolver(rentGroupSchema),
     defaultValues: rent,
@@ -862,6 +916,8 @@ const NotDepositedOver3Row = forwardRef<
 
   const rents = watch('rents')
 
+  const { weekly, monthly } = useMemo(() => categorizeStayTypes(stayTypes), [stayTypes])
+
   // Monthly period over3
   const renderMonthlyOver3 = (stayIdx: number) => {
     const mr = N(rents?.[stayIdx]?.month_rent_over3)
@@ -876,11 +932,7 @@ const NotDepositedOver3Row = forwardRef<
           name={`rents.${stayIdx}.month_clean_fee_over3`}
           disabled={false}
         />
-        <InputCell
-          control={control}
-          name={`rents.${stayIdx}.month_rent_over3`}
-          disabled={false}
-        />
+        <InputCell control={control} name={`rents.${stayIdx}.month_rent_over3`} disabled={false} />
       </>
     )
   }
@@ -888,51 +940,64 @@ const NotDepositedOver3Row = forwardRef<
   return (
     <TableRow className="!bg-white [&_td]:text-center">
       <FormProvider {...methods}>
-        <TableCell className="min-w-[10rem]">
-          {rent.room_type_name_short}
-        </TableCell>
+        <TableCell className="min-w-[10rem]">{rent.room_type_name_short}</TableCell>
 
-        {/* Stay 0 */}
-        <CalcCell value={(N(rents?.[0]?.day_rent_over3) * 100) / 110} />
-        <InputCell
-          control={control}
-          name="rents.0.day_rent_over3"
-          disabled={false}
-        />
+        {/* Weekly stay types (dynamic) */}
+        {weekly.map((st, pos) => {
+          const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+          const r = rents?.[stIdx]
+          if (pos === 0) {
+            return (
+              <Fragment key={st.stayTypeId}>
+                <CalcCell value={(N(r?.day_rent_over3) * 100) / 110} />
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.day_rent_over3`}
+                  disabled={false}
+                />
+              </Fragment>
+            )
+          }
+          if (pos === 1) {
+            return (
+              <Fragment key={st.stayTypeId}>
+                <CalcCell value={(N(r?.day_rent_over3) * 100) / 110} />
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.day_rent_over3`}
+                  disabled={false}
+                />
+              </Fragment>
+            )
+          }
+          return (
+            <Fragment key={st.stayTypeId}>
+              <InputCell
+                control={control}
+                name={`rents.${stIdx}.day_rent_over3`}
+                disabled={false}
+              />
+            </Fragment>
+          )
+        })}
 
-        {/* Stay 1 */}
-        <CalcCell value={0} />
-        <InputCell
-          control={control}
-          name="rents.1.day_clean_fee_over3"
-          disabled={false}
-        />
-        <CalcCell value={(N(rents?.[1]?.day_rent_over3) * 100) / 110} />
-        <InputCell
-          control={control}
-          name="rents.1.day_rent_over3"
-          disabled={false}
-        />
-
-        {/* Stay 2 */}
-        <InputCell
-          control={control}
-          name="rents.2.day_rent_over3"
-          disabled={false}
-        />
-
-        {/* Stay 3 */}
-        <CalcCell value={N(rents?.[3]?.month_rent_over3) / 30} />
-        <InputCell
-          control={control}
-          name="rents.3.month_rent_over3"
-          disabled={false}
-        />
-
-        {/* Stay 4,5,6 */}
-        {renderMonthlyOver3(4)}
-        {renderMonthlyOver3(5)}
-        {renderMonthlyOver3(6)}
+        {/* Monthly stay types (dynamic) */}
+        {monthly.map((st, pos) => {
+          const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+          if (pos === 0) {
+            return (
+              <Fragment key={st.stayTypeId}>
+                <CalcCell value={N(rents?.[stIdx]?.month_rent_over3) / 30} />
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.month_rent_over3`}
+                  disabled={false}
+                />
+              </Fragment>
+            )
+          }
+          return <Fragment key={st.stayTypeId}>{renderMonthlyOver3(stIdx)}</Fragment>
+        })}
 
         {/* Actions */}
         <TableCell className="min-w-[10rem]">
@@ -941,9 +1006,7 @@ const NotDepositedOver3Row = forwardRef<
             type="button"
             onClick={() => handleSubmit((data) => onSubmitRow(data))()}
           >
-            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-              Cập nhật
-            </span>
+            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Cập nhật</span>
           </NButton>
         </TableCell>
       </FormProvider>
@@ -956,8 +1019,8 @@ NotDepositedOver3Row.displayName = 'NotDepositedOver3Row'
 
 const DepositedOver3Row = forwardRef<
   RentRowHandle,
-  { rent: RentGroupFormData; onSubmitRow: (data: RentGroupFormData) => void }
->(({ rent, onSubmitRow }, ref) => {
+  { rent: RentGroupFormData; stayTypes: StayType[]; onSubmitRow: (data: RentGroupFormData) => void }
+>(({ rent, stayTypes, onSubmitRow }, ref) => {
   const methods = useForm<RentGroupFormData>({
     resolver: zodResolver(rentGroupSchema),
     defaultValues: rent,
@@ -981,30 +1044,29 @@ const DepositedOver3Row = forwardRef<
   const monthMainteFee = N(watch('month_mainte_fee'))
   const monthUtilityFee = N(watch('month_utility_fee'))
 
+  const { weekly, monthly } = useMemo(() => categorizeStayTypes(stayTypes), [stayTypes])
+
+  const superShortSt = weekly[1]
+  const superShortIdx = superShortSt
+    ? stayTypes.findIndex((s) => s.stayTypeId === superShortSt.stayTypeId)
+    : 1
+  const superShortR = rents?.[superShortIdx]
+
   const superShortTotal =
-    N(rents?.[1]?.day_rent_over3) +
-    N(rents?.[1]?.day_clean_fee_over3) +
+    N(superShortR?.day_rent_over3) +
+    N(superShortR?.day_clean_fee_over3) +
     monthMainteFee / 30 +
     monthUtilityFee / 30
 
   const renderDepositedMonthlyOver3 = (stayIdx: number) => {
     const mr = N(rents?.[stayIdx]?.month_rent_over3)
     const mc = N(rents?.[stayIdx]?.month_clean_fee_over3)
-    const dailyTotal =
-      mr / 30 + mc / 30 + monthMainteFee / 30 + monthUtilityFee / 30
+    const dailyTotal = mr / 30 + mc / 30 + monthMainteFee / 30 + monthUtilityFee / 30
     return (
       <>
-        <InputCell
-          control={control}
-          name={`rents.${stayIdx}.deposit_pay_over3`}
-          disabled={false}
-        />
+        <InputCell control={control} name={`rents.${stayIdx}.deposit_pay_over3`} disabled={false} />
         <CalcCell value={mr / 30} />
-        <InputCell
-          control={control}
-          name={`rents.${stayIdx}.month_rent_over3`}
-          disabled={false}
-        />
+        <InputCell control={control} name={`rents.${stayIdx}.month_rent_over3`} disabled={false} />
         <CalcCell value={mc / 30} />
         <InputCell
           control={control}
@@ -1020,48 +1082,57 @@ const DepositedOver3Row = forwardRef<
   return (
     <TableRow className="!bg-white [&_td]:text-center">
       <FormProvider {...methods}>
-        <TableCell className="min-w-[10rem]">
-          {rent.room_type_name_short}
-        </TableCell>
+        <TableCell className="min-w-[10rem]">{rent.room_type_name_short}</TableCell>
 
-        {/* Super-short over3 */}
-        <InputCell
-          control={control}
-          name="rents.1.deposit_pay_over3"
-          disabled={false}
-        />
-        <InputCell
-          control={control}
-          name="rents.1.day_clean_fee_over3"
-          disabled={false}
-        />
-        <InputCell
-          control={control}
-          name="rents.1.day_rent_over3"
-          disabled={false}
-        />
-        <CalcCell value={superShortTotal} />
+        {/* Super-short over3 (dynamic idx) */}
+        {superShortSt && superShortIdx >= 0 && (
+          <>
+            <InputCell
+              control={control}
+              name={`rents.${superShortIdx}.deposit_pay_over3`}
+              disabled={false}
+            />
+            <InputCell
+              control={control}
+              name={`rents.${superShortIdx}.day_clean_fee_over3`}
+              disabled={false}
+            />
+            <InputCell
+              control={control}
+              name={`rents.${superShortIdx}.day_rent_over3`}
+              disabled={false}
+            />
+            <CalcCell value={superShortTotal} />
+          </>
+        )}
 
-        {/* Short: uses super-short over3 daily rates */}
-        <InputCell
-          control={control}
-          name="rents.4.deposit_pay_over3"
-          disabled={false}
-        />
-        <CalcCell value={N(rents?.[1]?.day_rent_over3)} />
-        <CalcCell value={N(rents?.[1]?.day_rent_over3) * 30} />
-        <CalcCell value={N(rents?.[1]?.day_clean_fee_over3)} />
-        <InputCell
-          control={control}
-          name="rents.4.month_clean_fee_over3"
-          disabled={false}
-        />
-        <CalcCell value={superShortTotal} />
-        <CalcCell value={superShortTotal * 30} />
-
-        {/* Middle, Long */}
-        {renderDepositedMonthlyOver3(5)}
-        {renderDepositedMonthlyOver3(6)}
+        {/* Monthly groups: skip one-month (pos=0), show short/medium/long */}
+        {monthly.slice(1).map((st, depPos) => {
+          const stIdx = stayTypes.findIndex((s) => s.stayTypeId === st.stayTypeId)
+          if (depPos === 0) {
+            // "short": uses super-short over3 rates
+            return (
+              <Fragment key={st.stayTypeId}>
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.deposit_pay_over3`}
+                  disabled={false}
+                />
+                <CalcCell value={N(superShortR?.day_rent_over3)} />
+                <CalcCell value={N(superShortR?.day_rent_over3) * 30} />
+                <CalcCell value={N(superShortR?.day_clean_fee_over3)} />
+                <InputCell
+                  control={control}
+                  name={`rents.${stIdx}.month_clean_fee_over3`}
+                  disabled={false}
+                />
+                <CalcCell value={superShortTotal} />
+                <CalcCell value={superShortTotal * 30} />
+              </Fragment>
+            )
+          }
+          return <Fragment key={st.stayTypeId}>{renderDepositedMonthlyOver3(stIdx)}</Fragment>
+        })}
 
         {/* Actions */}
         <TableCell className="min-w-[10rem]">
@@ -1070,9 +1141,7 @@ const DepositedOver3Row = forwardRef<
             type="button"
             onClick={() => handleSubmit((data) => onSubmitRow(data))()}
           >
-            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">
-              Cập nhật
-            </span>
+            <span className="text-[1.4rem] leading-[1.4rem] whitespace-nowrap">Cập nhật</span>
           </NButton>
         </TableCell>
       </FormProvider>
@@ -1081,224 +1150,301 @@ const DepositedOver3Row = forwardRef<
 })
 DepositedOver3Row.displayName = 'DepositedOver3Row'
 
-// ─── Not-Deposited Table Headers ────────────────────
+// ─── Not-Deposited Table Header ─────────────────────
 
-function NotDepositedTableHeader() {
+function NotDepositedTableHeader({ stayTypes }: { stayTypes: StayType[] }) {
+  const { weekly, monthly } = categorizeStayTypes(stayTypes)
+  const weeklyTotal = weekly.reduce((s, _, i) => s + ndWeeklyColSpan(i), 0)
+  const monthlyTotal = monthly.reduce((s, _, i) => s + ndMonthlyColSpan(i), 0)
+  // Taxable = first 2 weekly positions (short-daily + super-short)
+  const taxableTotal = weekly.slice(0, 2).reduce((s, _, i) => s + ndWeeklyColSpan(i), 0)
+  const nonTaxableTotal = weeklyTotal - taxableTotal + monthlyTotal
+
   return (
-    <TableHeader className="!border-0">
+    <TableHeader className="!border-0 sticky top-0 z-10">
+      {/* Row 1: Contract type groups */}
       <TableRow className="!border-0">
-        <TableHead
-          className="flex-1 !bg-transparent !border-0 font-bold"
-          colSpan={3}
-          rowSpan={3}
-        />
-        <TableHead
-          className="flex-1 !bg-white !border font-bold"
-          colSpan={9}
-        >
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" colSpan={3} rowSpan={3} />
+        <TableHead className="flex-1 !bg-white !border font-bold" colSpan={weeklyTotal}>
           Hợp đồng tuần
         </TableHead>
-        <TableHead
-          className="flex-1 !bg-white !border font-bold"
-          colSpan={15}
-        >
+        <TableHead className="flex-1 !bg-white !border font-bold" colSpan={monthlyTotal}>
           Hợp đồng tháng
         </TableHead>
-        <TableHead
-          className="flex-1 !bg-transparent !border-0 font-bold"
-          colSpan={6}
-          rowSpan={3}
-        />
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" colSpan={5} rowSpan={3} />
       </TableRow>
+      {/* Row 2: Tax groups */}
       <TableRow className="!bg-white !border-0">
-        <TableHead
-          className="flex-1 !bg-[#FCFF61] border font-bold"
-          colSpan={6}
-        >
+        <TableHead className="flex-1 !bg-[#FCFF61] border font-bold" colSpan={taxableTotal}>
           {'<Chịu thuế>'}
         </TableHead>
-        <TableHead
-          className="flex-1 !bg-[#79A3E0] border font-bold"
-          colSpan={18}
-        >
+        <TableHead className="flex-1 !bg-[#79A3E0] border font-bold" colSpan={nonTaxableTotal}>
           {'<Không chịu thuế>'}
         </TableHead>
       </TableRow>
+      {/* Row 3: Stay type names (from API) */}
       <TableRow className="!bg-white !border-0">
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={2}>
-          1~6 đêm
+        {weekly.map((st, i) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={ndWeeklyColSpan(i)}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
+        {monthly.map((st, i) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={ndMonthlyColSpan(i)}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
+      </TableRow>
+      {/* Row 4: Individual column names */}
+      <TableRow className="!border-0">
+        <TableHead className="flex-1  border font-bold min-w-[15rem]">Lớp phòng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">Loại phòng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[8rem]">(Viết tắt)</TableHead>
+        {weekly.map((_, i) => (
+          <NdWeeklySubHead key={i} pos={i} />
+        ))}
+        {monthly.map((_, i) => (
+          <NdMonthlySubHead key={i} pos={i} />
+        ))}
+        {/* Shared fees */}
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí quản lý/ngày</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí quản lý/tháng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí điện nước/ngày</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí điện nước/tháng</TableHead>
+        {/* Actions */}
+        <TableHead className="flex-1 border font-bold min-w-[12rem]">Thao tác</TableHead>
+      </TableRow>
+    </TableHeader >
+  )
+}
+
+// ─── Not-Deposited Over3 Table Header ───────────────
+
+function NotDepositedOver3TableHeader({ stayTypes }: { stayTypes: StayType[] }) {
+  const { weekly, monthly } = categorizeStayTypes(stayTypes)
+  const weeklyTotal = weekly.reduce((s, _, i) => s + ndWeeklyColSpan(i), 0)
+  const monthlyTotal = monthly.reduce((s, _, i) => s + ndMonthlyColSpan(i), 0)
+  const taxableTotal = weekly.slice(0, 2).reduce((s, _, i) => s + ndWeeklyColSpan(i), 0)
+  const nonTaxableTotal = weeklyTotal - taxableTotal + monthlyTotal
+
+  return (
+    <TableHeader className="!border-0 sticky top-0 z-10">
+      {/* Row 1: Contract type groups */}
+      <TableRow className="!border-0">
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" rowSpan={3} />
+        <TableHead className="flex-1 !bg-white !border font-bold" colSpan={weeklyTotal}>
+          Hợp đồng tuần
         </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={4}>
-          7~dưới 1 tháng (Siêu ngắn)
+        <TableHead className="flex-1 !bg-white !border font-bold" colSpan={monthlyTotal}>
+          Hợp đồng tháng
         </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold">
-          Trả theo tuần
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" rowSpan={3} />
+      </TableRow>
+      {/* Row 2: Tax groups */}
+      <TableRow className="!bg-white !border-0">
+        <TableHead className="flex-1 !bg-[#FCFF61] border font-bold" colSpan={taxableTotal}>
+          {'<Chịu thuế>'}
         </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={2}>
-          1 tháng
-        </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={5}>
-          1~dưới 3 tháng
-        </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={5}>
-          3~dưới 7 tháng
-        </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={5}>
-          7 tháng trở lên
+        <TableHead className="flex-1 !bg-[#79A3E0] border font-bold" colSpan={nonTaxableTotal}>
+          {'<Không chịu thuế>'}
         </TableHead>
       </TableRow>
+      {/* Row 3: Stay type names */}
+      <TableRow className="!bg-white !border-0">
+        {weekly.map((st, i) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={ndWeeklyColSpan(i)}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
+        {monthly.map((st, i) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={ndMonthlyColSpan(i)}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
+      </TableRow>
+      {/* Row 4: Individual column names */}
       <TableRow className="!border-0">
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Lớp phòng</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Loại phòng</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">(Viết tắt)</TableHead>
-        {/* Stay 0 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tiền thuê (trước thuế)</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tiền thuê (sau thuế)</TableHead>
-        {/* Stay 1 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">A Tiền thuê</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">A Phí vệ sinh</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tiền thuê (trước thuế)</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tiền thuê (sau thuế)</TableHead>
-        {/* Stay 2 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tiền thuê (sau thuế)</TableHead>
-        {/* Stay 3 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        {/* Stay 4 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
-        {/* Stay 5 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
-        {/* Stay 6 */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
-        {/* Shared */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Phí quản lý
-        </TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap" colSpan={2}>
-          Phí điện nước
-        </TableHead>
-        {/* Actions */}
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Thao tác dòng</TableHead>
-        <TableHead className="flex-1 border font-bold whitespace-nowrap">Thao tác khác</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[8rem]">(Viết tắt)</TableHead>
+        {weekly.map((_, i) => (
+          <NdWeeklySubHead key={i} pos={i} />
+        ))}
+        {monthly.map((_, i) => (
+          <NdMonthlySubHead key={i} pos={i} />
+        ))}
+        <TableHead className="flex-1 border font-bold min-w-[12rem]">Thao tác</TableHead>
       </TableRow>
     </TableHeader>
   )
 }
 
-// ─── Deposited Table Headers ────────────────────────
+// ─── Deposited Over3 Table Header ────────────────────
 
-function DepositedTableHeader() {
+function DepositedOver3TableHeader({ stayTypes }: { stayTypes: StayType[] }) {
+  const { weekly, monthly } = categorizeStayTypes(stayTypes)
+  const superShortSt = weekly[1]
+  const depMonthly = monthly.slice(1)
+  const superShortCols = superShortSt ? 4 : 0
+  const depMonthlyCols = depMonthly.length * 7
+  const nonTaxableCols = depMonthlyCols
+
   return (
-    <TableHeader className="!border-0">
+    <TableHeader className="!border-0 sticky top-0 z-10">
+      {/* Row 1: Tax groups */}
       <TableRow className="!border-0">
-        <TableHead
-          className="flex-1 !bg-transparent !border-0 font-bold"
-          colSpan={3}
-          rowSpan={2}
-        />
-        <TableHead
-          className="flex-1 !bg-[#FCFF61] border font-bold"
-          colSpan={4}
-        >
-          Chịu thuế
-        </TableHead>
-        <TableHead
-          className="flex-1 !bg-[#79A3E0] border font-bold"
-          colSpan={21}
-        >
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" rowSpan={2} />
+        {superShortSt && (
+          <TableHead className="flex-1 !bg-[#FCFF61] border font-bold" colSpan={superShortCols}>
+            Chịu thuế
+          </TableHead>
+        )}
+        <TableHead className="flex-1 !bg-[#79A3E0] border font-bold" colSpan={nonTaxableCols}>
           {'<Không chịu thuế>'}
         </TableHead>
-        <TableHead
-          className="flex-1 !bg-transparent !border-0 font-bold"
-          colSpan={6}
-        />
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" rowSpan={2} />
       </TableRow>
+      {/* Row 2: Stay type names */}
       <TableRow className="!bg-white !border-0">
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={4}>
-          Siêu ngắn (7~dưới 1 tháng): Trả theo ngày
+        {superShortSt && (
+          <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={superShortCols}>
+            {superShortSt.stayTypeName}: Trả theo ngày
+          </TableHead>
+        )}
+        {depMonthly.map((st) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={7}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
+      </TableRow>
+      {/* Row 3: Individual column names */}
+      <TableRow className="!border-0">
+        <TableHead className="flex-1 border font-bold min-w-[8rem]">(Viết tắt)</TableHead>
+        {superShortSt && (
+          <>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[12rem]">Phí vệ sinh (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[15rem]">
+              Tiền thuê (trước thuế)
+            </TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng</TableHead>
+          </>
+        )}
+        {depMonthly.map((st) => (
+          <Fragment key={st.stayTypeId}>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/ngày</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (tháng)</TableHead>
+          </Fragment>
+        ))}
+        <TableHead className="flex-1 border font-bold min-w-[12rem]">Thao tác</TableHead>
+      </TableRow>
+    </TableHeader>
+  )
+}
+
+// ─── Deposited Table Header ──────────────────────────
+
+function DepositedTableHeader({ stayTypes }: { stayTypes: StayType[] }) {
+  const { weekly, monthly } = categorizeStayTypes(stayTypes)
+  // Deposited shows: super-short (weekly[1]) + monthly[1..] (skip one-month)
+  const superShortSt = weekly[1]
+  const depMonthly = monthly.slice(1)
+  const superShortCols = superShortSt ? 4 : 0
+  const depMonthlyCols = depMonthly.length * 7
+  const nonTaxableCols = depMonthlyCols
+
+  return (
+    <TableHeader className="!border-0 sticky top-0 z-10">
+      {/* Row 1: Tax groups */}
+      <TableRow className="!border-0">
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" colSpan={3} rowSpan={2} />
+        {superShortSt && (
+          <TableHead className="flex-1 !bg-[#FCFF61] border font-bold" colSpan={superShortCols}>
+            Chịu thuế
+          </TableHead>
+        )}
+        <TableHead className="flex-1 !bg-[#79A3E0] border font-bold" colSpan={nonTaxableCols}>
+          {'<Không chịu thuế>'}
         </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={7}>
-          Ngắn hạn (1~dưới 3 tháng)
-        </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={7}>
-          Trung hạn (3~dưới 7 tháng)
-        </TableHead>
-        <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={7}>
-          Dài hạn (7 tháng trở lên)
-        </TableHead>
+        <TableHead className="flex-1 !bg-transparent !border-0 font-bold" colSpan={5} />
+      </TableRow>
+      {/* Row 2: Stay type names */}
+      <TableRow className="!bg-white !border-0">
+        {superShortSt && (
+          <TableHead className="flex-1 !bg-transparent border font-bold" colSpan={superShortCols}>
+            {superShortSt.stayTypeName}: Trả theo ngày
+          </TableHead>
+        )}
+        {depMonthly.map((st) => (
+          <TableHead
+            key={st.stayTypeId}
+            className="flex-1 !bg-transparent border font-bold"
+            colSpan={7}
+          >
+            {st.stayTypeName}
+          </TableHead>
+        ))}
         <TableHead className="flex-1 !bg-red-100 border font-bold" colSpan={4}>
           Chung
         </TableHead>
-        <TableHead className="flex-1 !bg-transparent border-0 font-bold" colSpan={2} />
+        <TableHead className="flex-1 !bg-transparent border-0 font-bold" colSpan={1} />
       </TableRow>
+      {/* Row 3: Individual column names */}
       <TableRow className="!border-0">
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Lớp phòng</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Loại phòng</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">(Viết tắt)</TableHead>
-        {/* Super-short */}
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tiền cọc</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">A Phí vệ sinh</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tiền thuê (trước thuế)</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng</TableHead>
-        {/* Short */}
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tiền cọc</TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (ngày)</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
-        {/* Middle */}
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tiền cọc</TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (ngày)</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
-        {/* Long */}
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tiền cọc</TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Tiền thuê (sau thuế)
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Phí vệ sinh
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (ngày)</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Tổng (tháng)</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">Lớp phòng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[15rem]">Loại phòng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[8rem]">(Viết tắt)</TableHead>
+        {superShortSt && (
+          <>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[12rem]">Phí vệ sinh (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[15rem]">
+              Tiền thuê (trước thuế)
+            </TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng</TableHead>
+          </>
+        )}
+        {depMonthly.map((st) => (
+          <Fragment key={st.stayTypeId}>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/ngày</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (tháng)</TableHead>
+          </Fragment>
+        ))}
         {/* Shared */}
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Phí quản lý
-        </TableHead>
-        <TableHead className="flex-1 border min-w-[12rem] font-bold whitespace-nowrap" colSpan={2}>
-          Phí điện nước
-        </TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí quản lý/ngày</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí quản lý/tháng</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí điện nước/ngày</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí điện nước/tháng</TableHead>
         {/* Actions */}
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Thao tác dòng</TableHead>
-        <TableHead className="flex-1 border min-w-[10rem] font-bold whitespace-nowrap">Thao tác khác</TableHead>
+        <TableHead className="flex-1 border font-bold min-w-[12rem]">Thao tác</TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -1306,7 +1452,7 @@ function DepositedTableHeader() {
 
 // ─── Default empty rent group ───────────────────────
 
-function createDefaultRentGroup(): RentGroupFormData {
+function createDefaultRentGroup(stayTypes: StayType[]): RentGroupFormData {
   return {
     room_type_id: '',
     room_class_id: '',
@@ -1314,8 +1460,8 @@ function createDefaultRentGroup(): RentGroupFormData {
     month_mainte_fee: 0,
     month_utility_fee: 0,
     order_num: 0,
-    rents: Array.from({ length: 7 }, (_, i) => ({
-      stay_type_id: i + 1,
+    rents: stayTypes.map((st) => ({
+      stay_type_id: st.stayTypeId,
       data_status: 1,
       day_rent: null,
       month_rent: null,
@@ -1382,7 +1528,7 @@ function formDataToApiInput(f: RentGroupFormData): RentGroupInput {
         dayUtilityFee: r.day_utility_fee,
         depositPay: r.deposit_pay,
         depositPayOver3: r.deposit_pay_over3,
-      }),
+      })
     ),
   }
 }
@@ -1410,12 +1556,12 @@ function RentsMasterPage() {
     refetch: refetchDeposits,
   } = useGetRentList({ params: { depositFlag: 1 } })
 
-  const { data: roomTypesData, isLoading: isLoadingRoomTypes } =
-    useGetRoomTypes({ params: { limit: 1000 } })
+  const { data: roomTypesData, isLoading: isLoadingRoomTypes } = useGetRoomTypes({
+    params: { limit: 1000 },
+  })
   const roomTypes = roomTypesData?.data ?? []
 
-  const { isLoading: isLoadingStayTypes } =
-    useGetStayTypes()
+  const { data: stayTypes = [], isLoading: isLoadingStayTypes } = useGetStayTypes()
 
   // Room class options
   const roomClassOptions = useMemo(() => {
@@ -1452,27 +1598,25 @@ function RentsMasterPage() {
   const [depositCopy, setDepositCopy] = useState<RentGroupFormData | null>(null)
 
   // ─── Mutations ──────────────────────────────────
-  const { mutate: putNotDeposited, isPending: isPutNotDeposited } =
-    useBulkUpdateNotDeposited({
-      onSuccess() {
-        toast.success('Cập nhật thành công')
-        refetchNotDeposits()
-      },
-      onError() {
-        toast.error('Cập nhật thất bại')
-      },
-    })
+  const { mutate: putNotDeposited, isPending: isPutNotDeposited } = useBulkUpdateNotDeposited({
+    onSuccess() {
+      toast.success('Cập nhật thành công')
+      refetchNotDeposits()
+    },
+    onError() {
+      toast.error('Cập nhật thất bại')
+    },
+  })
 
-  const { mutate: putDeposited, isPending: isPutDeposited } =
-    useBulkUpdateDeposited({
-      onSuccess() {
-        toast.success('Cập nhật thành công')
-        refetchDeposits()
-      },
-      onError() {
-        toast.error('Cập nhật thất bại')
-      },
-    })
+  const { mutate: putDeposited, isPending: isPutDeposited } = useBulkUpdateDeposited({
+    onSuccess() {
+      toast.success('Cập nhật thành công')
+      refetchDeposits()
+    },
+    onError() {
+      toast.error('Cập nhật thất bại')
+    },
+  })
 
   const isPageLoading =
     isLoadingNotDeposits ||
@@ -1485,13 +1629,10 @@ function RentsMasterPage() {
   // ─── Form data ──────────────────────────────────
   const notDepositFormData = useMemo(
     () => rentNotDeposits.map(apiGroupToFormData),
-    [rentNotDeposits],
+    [rentNotDeposits]
   )
 
-  const depositFormData = useMemo(
-    () => rentDeposits.map(apiGroupToFormData),
-    [rentDeposits],
-  )
+  const depositFormData = useMemo(() => rentDeposits.map(apiGroupToFormData), [rentDeposits])
 
   // ─── Handlers ───────────────────────────────────
   const handlePutRentNotDeposited = useCallback(
@@ -1509,7 +1650,7 @@ function RentsMasterPage() {
       putNotDeposited(body)
       setIsAddNotDeposit(false)
     },
-    [notDepositFormData, putNotDeposited],
+    [notDepositFormData, putNotDeposited]
   )
 
   const handlePutRentDeposited = useCallback(
@@ -1526,89 +1667,19 @@ function RentsMasterPage() {
       putDeposited(body)
       setIsAddDeposit(false)
     },
-    [depositFormData, putDeposited],
+    [depositFormData, putDeposited]
   )
 
-  const handleBulkUpdateNotDeposited = useCallback(async () => {
-    const rents: RentGroupFormData[] = [...notDepositFormData]
-
-    // Validate all
-    const allRefs = notDepositedRefs.current.update
-    const validations = await Promise.all(
-      allRefs.map((r) => r?.validateRent()),
-    )
-    const firstInvalid = validations.findIndex((v) => v === false)
-    if (firstInvalid >= 0) {
-      allRefs[firstInvalid]?.handleSubmit()
-      return
-    }
-
-    // Collect values
-    for (let i = 0; i < allRefs.length; i++) {
-      if (allRefs[i]) {
-        rents[i] = allRefs[i]!.getFormValues()
-      }
-    }
-
-    // Add create row if present
-    const createRefs = notDepositedRefs.current.create
-    for (let i = 0; i < createRefs.length; i++) {
-      if (createRefs[i]) {
-        const val = createRefs[i]!.getFormValues()
-        rents.splice(i, 0, val)
-      }
-    }
-
-    const body: BulkUpdateRentBody = {
-      data: rents.map(formDataToApiInput),
-    }
-    putNotDeposited(body)
-    setIsAddNotDeposit(false)
-  }, [notDepositFormData, putNotDeposited])
-
-  const handleBulkUpdateDeposited = useCallback(async () => {
-    const rents: RentGroupFormData[] = [...depositFormData]
-
-    const allRefs = depositedRefs.current.update
-    const validations = await Promise.all(
-      allRefs.map((r) => r?.validateRent()),
-    )
-    const firstInvalid = validations.findIndex((v) => v === false)
-    if (firstInvalid >= 0) {
-      allRefs[firstInvalid]?.handleSubmit()
-      return
-    }
-
-    for (let i = 0; i < allRefs.length; i++) {
-      if (allRefs[i]) {
-        rents[i] = allRefs[i]!.getFormValues()
-      }
-    }
-
-    const createRefs = depositedRefs.current.create
-    for (let i = 0; i < createRefs.length; i++) {
-      if (createRefs[i]) {
-        const val = createRefs[i]!.getFormValues()
-        rents.splice(i, 0, val)
-      }
-    }
-
-    const body: BulkUpdateRentBody = {
-      data: rents.map(formDataToApiInput),
-    }
-    putDeposited(body)
-    setIsAddDeposit(false)
-  }, [depositFormData, putDeposited])
 
   // Over3 handler (updates a single row via bulk)
   const handleOver3Submit = useCallback(
     (
       data: RentGroupFormData,
       allFormData: RentGroupFormData[],
-      putFn: (body: BulkUpdateRentBody) => void,
+      putFn: (body: BulkUpdateRentBody) => void
     ) => {
       const idx = allFormData.findIndex(
-        (r) => r.room_type_id.toString() === data.room_type_id.toString(),
+        (r) => r.room_type_id.toString() === data.room_type_id.toString()
       )
       if (idx >= 0) {
         // Merge over3 fields back into the main row
@@ -1627,15 +1698,74 @@ function RentsMasterPage() {
         putFn({ data: updated.map(formDataToApiInput) })
       }
     },
-    [],
+    []
   )
+
+  // ─── Sync column widths between header/body tables ──
+  const syncColumnWidths = useCallback((container: Element | null) => {
+    if (!container) return
+    const tables = (container as HTMLElement).getElementsByTagName('table')
+    if (tables.length < 2) return
+
+    const headerTable = tables[0] as HTMLTableElement
+    const bodyTable = tables[1] as HTMLTableElement
+
+    const lastRowIndex = headerTable.rows.length - 1
+    if (lastRowIndex < 0 || bodyTable.rows.length === 0) return
+
+    const headerCols = headerTable.rows[lastRowIndex].querySelectorAll('th, td')
+    const bodyCols = bodyTable.rows[0].querySelectorAll('th, td')
+
+    if (bodyCols.length === 1) {
+      let totalWidth = 0
+      for (let i = 0; i < headerCols.length; i++) {
+        totalWidth += (headerCols[i] as HTMLElement).getBoundingClientRect().width
+      }
+      const el = bodyCols[0] as HTMLElement
+      el.style.width = `${totalWidth}px`
+      el.style.minWidth = `${totalWidth}px`
+      el.style.maxWidth = `${totalWidth}px`
+      return
+    }
+
+    let bodyIdx = 0
+    headerCols.forEach((col) => {
+      const colspan = Number((col as HTMLElement).getAttribute('colspan')) || 1
+      let totalWidth = 0
+      for (let i = 0; i < colspan; i++) {
+        if (bodyCols[bodyIdx]) {
+          totalWidth += (bodyCols[bodyIdx] as HTMLElement).getBoundingClientRect().width
+          bodyIdx++
+        }
+      }
+      const el = col as HTMLElement
+      el.style.width = `${totalWidth}px`
+      el.style.minWidth = `${totalWidth}px`
+      el.style.maxWidth = `${totalWidth}px`
+    })
+  }, [])
+
+  useEffect(() => {
+    const containers = document.querySelectorAll('.scroll-table')
+    const observer = new MutationObserver(() => {
+      containers.forEach((container) => {
+        syncColumnWidths(container)
+      })
+    })
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    })
+    return () => observer.disconnect()
+  }, [syncColumnWidths])
 
   // FA room types for Over3
   const notDepositOver3 = notDepositFormData.filter(
-    (r) => r.room_type_name_short?.includes('FA') && r.rents[0]?.data_status === 1,
+    (r) => r.room_type_name_short?.includes('FA') && r.rents[0]?.data_status === 1
   )
   const depositOver3 = depositFormData.filter(
-    (r) => r.room_type_name_short?.includes('FA') && r.rents[0]?.data_status === 1,
+    (r) => r.room_type_name_short?.includes('FA') && r.rents[0]?.data_status === 1
   )
 
   return (
@@ -1644,55 +1774,25 @@ function RentsMasterPage() {
       <div className="py-[2rem] common-container">
         {/* Page Title */}
         <div className="flex items-center bg-white before:bg-primary before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-          <span className="ml-[1.5rem]">Bảng giá phòng</span>
+          <span className="ml-[1.5rem]">Bảng giá phòng không đặt cọc</span>
         </div>
 
-        {/* ════════════════ NOT DEPOSITED ════════════════ */}
-        <div className="flex items-center bg-white before:bg-green-600 mt-[1.5rem] mb-[1.5rem] before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-          <h2 className="ml-[1.2rem] font-semibold text-2xl sm:text-4xl">
-            ■Không đặt cọc
-          </h2>
-        </div>
-
-        <div className="group-button flex flex-wrap gap-8 mt-8">
-          <NButton
-            className="bg-gray"
-            onClick={() => {
-              setNotDepositCopy(null)
-              setIsAddNotDeposit(true)
-              setIndexAddNotDeposit(0)
-            }}
-          >
-            <span className="text-[1.4rem] leading-[1.4rem]">
-              Thêm dòng lên đầu
-            </span>
-          </NButton>
-          <NButton className="bg-gray" onClick={handleBulkUpdateNotDeposited}>
-            <span className="text-[1.4rem] leading-[1.4rem]">
-              Cập nhật toàn bộ
-            </span>
-          </NButton>
-        </div>
 
         <div className="flex flex-col mt-8 !overflow-auto scroll-table">
-          {/* Header */}
           <div className="flex w-fit">
             <Table className={TABLE_CLASSES}>
-              <NotDepositedTableHeader />
+              <NotDepositedTableHeader stayTypes={stayTypes} />
             </Table>
           </div>
-          {/* Body */}
-          <div
-            className="flex w-fit max-h-[45.6rem] overflow-y-auto"
-            id="rent-not-deposit-table"
-          >
+          <div className="flex w-fit max-h-[45.6rem] overflow-y-auto" id="rent-not-deposit-table">
             <Table className={TABLE_CLASSES}>
               <TableBody className="text-[1.4rem]">
                 {notDepositFormData.map((rent, index) => (
                   <Fragment key={`nd-${rent.room_type_id}-${index}`}>
                     {isAddNotDeposit && index === indexAddNotDeposit && (
                       <NotDepositedRow
-                        rent={notDepositCopy ?? createDefaultRentGroup()}
+                        rent={notDepositCopy ?? createDefaultRentGroup(stayTypes)}
+                        stayTypes={stayTypes}
                         roomTypes={roomTypes}
                         roomClassOptions={roomClassOptions}
                         isCreate
@@ -1700,8 +1800,8 @@ function RentsMasterPage() {
                         onSubmitRow={(data, isCreate, type) =>
                           handlePutRentNotDeposited(data, isCreate, index, type)
                         }
-                        onAddRow={() => {}}
-                        onCopyRow={() => {}}
+                        onAddRow={() => { }}
+                        onCopyRow={() => { }}
                         onDeleteRow={() => setIsAddNotDeposit(false)}
                         tableId="rent-not-deposit-table"
                         ref={(el) => {
@@ -1711,6 +1811,7 @@ function RentsMasterPage() {
                     )}
                     <NotDepositedRow
                       rent={rent}
+                      stayTypes={stayTypes}
                       roomTypes={roomTypes}
                       roomClassOptions={roomClassOptions}
                       isCreate={false}
@@ -1729,9 +1830,7 @@ function RentsMasterPage() {
                         setIndexAddNotDeposit(index + 1)
                       }}
                       onDeleteRow={() => {
-                        const updated = notDepositFormData.filter(
-                          (_, i) => i !== index,
-                        )
+                        const updated = notDepositFormData.filter((_, i) => i !== index)
                         putNotDeposited({
                           data: updated.map(formDataToApiInput),
                         })
@@ -1743,117 +1842,82 @@ function RentsMasterPage() {
                     />
                   </Fragment>
                 ))}
-                {isAddNotDeposit &&
-                  indexAddNotDeposit >= notDepositFormData.length && (
-                    <NotDepositedRow
-                      rent={notDepositCopy ?? createDefaultRentGroup()}
-                      roomTypes={roomTypes}
-                      roomClassOptions={roomClassOptions}
-                      isCreate
-                      index={notDepositFormData.length}
-                      onSubmitRow={(data, isCreate, type) =>
-                        handlePutRentNotDeposited(
-                          data,
-                          isCreate,
-                          notDepositFormData.length,
-                          type,
-                        )
-                      }
-                      onAddRow={() => {}}
-                      onCopyRow={() => {}}
-                      onDeleteRow={() => setIsAddNotDeposit(false)}
-                      tableId="rent-not-deposit-table"
-                      ref={(el) => {
-                        notDepositedRefs.current.create[
-                          notDepositFormData.length
-                        ] = el
-                      }}
-                    />
-                  )}
+                {isAddNotDeposit && indexAddNotDeposit >= notDepositFormData.length && (
+                  <NotDepositedRow
+                    rent={notDepositCopy ?? createDefaultRentGroup(stayTypes)}
+                    stayTypes={stayTypes}
+                    roomTypes={roomTypes}
+                    roomClassOptions={roomClassOptions}
+                    isCreate
+                    index={notDepositFormData.length}
+                    onSubmitRow={(data, isCreate, type) =>
+                      handlePutRentNotDeposited(data, isCreate, notDepositFormData.length, type)
+                    }
+                    onAddRow={() => { }}
+                    onCopyRow={() => { }}
+                    onDeleteRow={() => setIsAddNotDeposit(false)}
+                    tableId="rent-not-deposit-table"
+                    ref={(el) => {
+                      notDepositedRefs.current.create[notDepositFormData.length] = el
+                    }}
+                  />
+                )}
                 {!notDepositFormData.length && !isAddNotDeposit && (
                   <TableRow className="!bg-white">
-                    <TableCell className="font-bold text-red-500">
-                      Không có dữ liệu
-                    </TableCell>
+                    <TableCell className="font-bold text-red-500">Không có dữ liệu</TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
         </div>
-
-        {/* Over3 for not-deposited */}
         {notDepositOver3.length > 0 && (
-          <div className="flex flex-col mt-8 !overflow-auto scroll-table">
-            <div className="flex items-center mb-4">
-              <span className="font-semibold text-[1.6rem]">
-                3 người trở lên (Không đặt cọc)
-              </span>
+          <>
+            <div className="flex items-center bg-white my-[4rem] h-[4.7rem] before:bg-primary before:w-[.4rem] before:h-full font-bold text-[2.3rem] before:content-['']">
+              <span className='ml-[1.5rem]'>Bảng giá phòng 3 người trở lên không đặt cọc</span>
             </div>
-            <div className="flex w-fit">
-              <Table className={TABLE_CLASSES}>
-                <TableBody className="text-[1.4rem]">
-                  {notDepositOver3.map((rent) => (
-                    <NotDepositedOver3Row
-                      key={`ndo3-${rent.room_type_id}`}
-                      rent={rent}
-                      onSubmitRow={(data) =>
-                        handleOver3Submit(data, notDepositFormData, putNotDeposited)
-                      }
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="flex flex-col mt-8 !overflow-auto">
+              <div className="flex w-fit">
+                <Table className={TABLE_CLASSES}>
+                  <NotDepositedOver3TableHeader stayTypes={stayTypes} />
+                  <TableBody className="text-[1.4rem]">
+                    {notDepositOver3.map((rent) => (
+                      <NotDepositedOver3Row
+                        key={`ndo3-${rent.room_type_id}`}
+                        rent={rent}
+                        stayTypes={stayTypes}
+                        onSubmitRow={(data) =>
+                          handleOver3Submit(data, notDepositFormData, putNotDeposited)
+                        }
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* ════════════════ DEPOSITED ════════════════ */}
         <div className="flex items-center bg-white before:bg-green-600 mt-[1.5rem] mb-[1.5rem] before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-          <h2 className="ml-[1.2rem] font-semibold text-2xl sm:text-4xl">
-            ■Có đặt cọc
-          </h2>
-        </div>
-
-        <div className="group-button flex flex-wrap gap-8 mt-8">
-          <NButton
-            className="bg-gray"
-            onClick={() => {
-              setDepositCopy(null)
-              setIsAddDeposit(true)
-              setIndexAddDeposit(0)
-            }}
-          >
-            <span className="text-[1.4rem] leading-[1.4rem]">
-              Thêm dòng lên đầu
-            </span>
-          </NButton>
-          <NButton className="bg-gray" onClick={handleBulkUpdateDeposited}>
-            <span className="text-[1.4rem] leading-[1.4rem]">
-              Cập nhật toàn bộ
-            </span>
-          </NButton>
+          <h2 className="ml-[1.2rem] font-semibold text-2xl sm:text-4xl">Bảng giá phòng Có đặt cọc</h2>
         </div>
 
         <div className="flex flex-col mt-8 !overflow-auto scroll-table">
-          {/* Header */}
           <div className="flex w-fit">
             <Table className={TABLE_CLASSES}>
-              <DepositedTableHeader />
+              <DepositedTableHeader stayTypes={stayTypes} />
             </Table>
           </div>
-          {/* Body */}
-          <div
-            className="flex w-fit max-h-[45.6rem] overflow-y-auto"
-            id="rent-deposit-table"
-          >
+          <div className="flex w-fit max-h-[45.6rem] overflow-y-auto" id="rent-deposit-table">
             <Table className={TABLE_CLASSES}>
               <TableBody className="text-[1.4rem]">
                 {depositFormData.map((rent, index) => (
                   <Fragment key={`d-${rent.room_type_id}-${index}`}>
                     {isAddDeposit && index === indexAddDeposit && (
                       <DepositedRow
-                        rent={depositCopy ?? createDefaultRentGroup()}
+                        rent={depositCopy ?? createDefaultRentGroup(stayTypes)}
+                        stayTypes={stayTypes}
                         roomTypes={roomTypes}
                         roomClassOptions={roomClassOptions}
                         isCreate
@@ -1861,8 +1925,8 @@ function RentsMasterPage() {
                         onSubmitRow={(data, isCreate, type) =>
                           handlePutRentDeposited(data, isCreate, index, type)
                         }
-                        onAddRow={() => {}}
-                        onCopyRow={() => {}}
+                        onAddRow={() => { }}
+                        onCopyRow={() => { }}
                         onDeleteRow={() => setIsAddDeposit(false)}
                         tableId="rent-deposit-table"
                         ref={(el) => {
@@ -1872,6 +1936,7 @@ function RentsMasterPage() {
                     )}
                     <DepositedRow
                       rent={rent}
+                      stayTypes={stayTypes}
                       roomTypes={roomTypes}
                       roomClassOptions={roomClassOptions}
                       isCreate={false}
@@ -1890,9 +1955,7 @@ function RentsMasterPage() {
                         setIndexAddDeposit(index + 1)
                       }}
                       onDeleteRow={() => {
-                        const updated = depositFormData.filter(
-                          (_, i) => i !== index,
-                        )
+                        const updated = depositFormData.filter((_, i) => i !== index)
                         putDeposited({
                           data: updated.map(formDataToApiInput),
                         })
@@ -1904,37 +1967,29 @@ function RentsMasterPage() {
                     />
                   </Fragment>
                 ))}
-                {isAddDeposit &&
-                  indexAddDeposit >= depositFormData.length && (
-                    <DepositedRow
-                      rent={depositCopy ?? createDefaultRentGroup()}
-                      roomTypes={roomTypes}
-                      roomClassOptions={roomClassOptions}
-                      isCreate
-                      index={depositFormData.length}
-                      onSubmitRow={(data, isCreate, type) =>
-                        handlePutRentDeposited(
-                          data,
-                          isCreate,
-                          depositFormData.length,
-                          type,
-                        )
-                      }
-                      onAddRow={() => {}}
-                      onCopyRow={() => {}}
-                      onDeleteRow={() => setIsAddDeposit(false)}
-                      tableId="rent-deposit-table"
-                      ref={(el) => {
-                        depositedRefs.current.create[depositFormData.length] =
-                          el
-                      }}
-                    />
-                  )}
+                {isAddDeposit && indexAddDeposit >= depositFormData.length && (
+                  <DepositedRow
+                    rent={depositCopy ?? createDefaultRentGroup(stayTypes)}
+                    stayTypes={stayTypes}
+                    roomTypes={roomTypes}
+                    roomClassOptions={roomClassOptions}
+                    isCreate
+                    index={depositFormData.length}
+                    onSubmitRow={(data, isCreate, type) =>
+                      handlePutRentDeposited(data, isCreate, depositFormData.length, type)
+                    }
+                    onAddRow={() => { }}
+                    onCopyRow={() => { }}
+                    onDeleteRow={() => setIsAddDeposit(false)}
+                    tableId="rent-deposit-table"
+                    ref={(el) => {
+                      depositedRefs.current.create[depositFormData.length] = el
+                    }}
+                  />
+                )}
                 {!depositFormData.length && !isAddDeposit && (
                   <TableRow className="!bg-white">
-                    <TableCell className="font-bold text-red-500">
-                      Không có dữ liệu
-                    </TableCell>
+                    <TableCell className="font-bold text-red-500">Không có dữ liệu</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -1944,28 +1999,30 @@ function RentsMasterPage() {
 
         {/* Over3 for deposited */}
         {depositOver3.length > 0 && (
-          <div className="flex flex-col mt-8 !overflow-auto scroll-table">
-            <div className="flex items-center mb-4">
-              <span className="font-semibold text-[1.6rem]">
-                3 người trở lên (Có đặt cọc)
+          <>
+            <div className="flex items-center bg-white my-[4rem] h-[4.7rem] before:bg-primary before:w-[.4rem] before:h-full font-bold text-[2.3rem] before:content-['']">
+              <span className='ml-[1.5rem]'>
+                Bảng giá đặt phòng 3 người trở lên có đặt cọc
               </span>
             </div>
-            <div className="flex w-fit">
-              <Table className={TABLE_CLASSES}>
-                <TableBody className="text-[1.4rem]">
-                  {depositOver3.map((rent) => (
-                    <DepositedOver3Row
-                      key={`do3-${rent.room_type_id}`}
-                      rent={rent}
-                      onSubmitRow={(data) =>
-                        handleOver3Submit(data, depositFormData, putDeposited)
-                      }
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="flex flex-col mt-8 !overflow-auto">
+              <div className="flex w-fit">
+                <Table className={TABLE_CLASSES}>
+                  <DepositedOver3TableHeader stayTypes={stayTypes} />
+                  <TableBody className="text-[1.4rem]">
+                    {depositOver3.map((rent) => (
+                      <DepositedOver3Row
+                        key={`do3-${rent.room_type_id}`}
+                        rent={rent}
+                        stayTypes={stayTypes}
+                        onSubmitRow={(data) => handleOver3Submit(data, depositFormData, putDeposited)}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </>
