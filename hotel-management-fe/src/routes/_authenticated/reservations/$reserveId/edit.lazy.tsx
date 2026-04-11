@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
+import { createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
@@ -53,19 +53,18 @@ import { RugSVG } from '@/components/svgs/RugSVG'
 import { DialogClose } from '@/components/ui/dialog'
 import { NButton } from '@/components/ui/new-button'
 
-import { useGetClients } from '@/hooks/queries/useGetClients'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
 import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
-import { useCreateReservation } from '@/hooks/queries/useReservations'
+import { useReservation, useUpdateReservation } from '@/hooks/queries/useReservations'
 import { cn } from '@/lib/utils'
-import type { CreateReservationBody } from '@/types/reservation'
+import type { Reservation, UpdateReservationBody } from '@/types/reservation'
 
-export const Route = createLazyFileRoute('/_authenticated/reservations/create')({
-  component: ReservationCreatePage,
+export const Route = createLazyFileRoute('/_authenticated/reservations/$reserveId/edit')({
+  component: ReservationEditPage,
 })
 
 // ─── Schema ──────────────────────────────────────────────────────────
@@ -117,6 +116,7 @@ const reserveSchema = z.object({
   directcheckin_type: z.string().default('1'),
   advertising_type: z.string().default('0'),
   rental_keys: z.string().default('0'),
+  return_keys: z.string().default('0'),
   note: z.string().max(1024).optional(),
   overdue_debt_note: z.string().max(1024).optional(),
   disable_reservation: z.boolean().default(false),
@@ -128,6 +128,10 @@ const reserveSchema = z.object({
   contacted_flag: z.boolean().default(false),
   pre_delivery_key_flag: z.boolean().default(false),
   checkin_date: z.string().optional(),
+  // Key return
+  key_return_flag: z.boolean().default(false),
+  key_return_contact_type: z.string().optional(),
+  key_return_datetime: z.string().optional(),
   // Extension / Delete
   extension_time: z.string().optional(),
   checked_delete: z.boolean().default(false),
@@ -150,6 +154,9 @@ const reserveSchema = z.object({
   // Staff
   charge_staff_id: z.string().optional(),
   charge_staff_id2: z.string().optional(),
+  // Announcements
+  request_announcement: z.string().max(1024).optional(),
+  sale_announcement: z.string().max(1024).optional(),
 })
 
 const formSchema = z.object({
@@ -207,6 +214,7 @@ const defaultValues: FormValues = {
     directcheckin_type: '1',
     advertising_type: '0',
     rental_keys: '0',
+    return_keys: '0',
     note: '',
     overdue_debt_note: '',
     disable_reservation: false,
@@ -217,6 +225,9 @@ const defaultValues: FormValues = {
     contacted_flag: false,
     pre_delivery_key_flag: false,
     checkin_date: '',
+    key_return_flag: false,
+    key_return_contact_type: '',
+    key_return_datetime: '',
     extension_time: '',
     checked_delete: false,
     delete_status: '',
@@ -235,6 +246,8 @@ const defaultValues: FormValues = {
     substitute_room_note: '',
     charge_staff_id: '',
     charge_staff_id2: '',
+    request_announcement: '',
+    sale_announcement: '',
   },
 }
 
@@ -245,14 +258,57 @@ function calcNights(from: string, to: string): number {
   return diff > 0 ? diff : 0
 }
 
+// Key return contact type options
+const KEY_RETURN_CONTACT_OPTIONS: Option[] = [
+  { label: 'Trả trực tiếp', value: '1' },
+  { label: 'Bưu điện', value: '2' },
+  { label: 'Khác', value: '9' },
+]
+
+// ─── Extended Reservation type ───────────────────────────────────────
+interface ReservationDetail extends Reservation {
+  client?: {
+    clientId: number
+    clientName: string
+    companyName?: string
+    contactName?: string
+    dataType: number
+    birthday: string | null
+    sex: number | null
+    countryId: number | null
+    countryName?: string
+    zipCode?: string
+    address1?: string
+    address2?: string
+    companyZipCode?: string
+    companyAddress1?: string
+    companyAddress2?: string
+    email?: string
+    tel?: string
+    telPhone?: string
+    telEmergency?: string
+    emergencyRelation?: string
+    companyTel?: string
+    fax?: string
+    useCount: number
+    memo?: string
+    stayDurationAutoFlag: boolean
+    usedMessyLevel: number
+    ugFlag: boolean
+    postpaidFlag?: boolean
+  }
+}
+
 // ─── Main Page Component ─────────────────────────────────────────────
-function ReservationCreatePage() {
-  useDocumentTitle('Tạo đặt phòng mới')
+function ReservationEditPage() {
+  const { reserveId } = useParams({ from: '/_authenticated/reservations/$reserveId/edit' })
+  const reserveIdNum = Number(reserveId)
+  useDocumentTitle('Chỉnh sửa đặt phòng')
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalConfirmSubmit, setModalConfirmSubmit] = useState(false)
-  const [modalConfirmClear, setModalConfirmClear] = useState(false)
-  const [isRedirect, setIsRedirect] = useState<'usage' | 'edit'>('edit')
+  const [isRedirect, setIsRedirect] = useState<'list' | 'stay'>('stay')
+  const [isFormPopulated, setIsFormPopulated] = useState(false)
 
   // Refs for scroll
   const refBilling = useRef<HTMLDivElement>(null)
@@ -279,6 +335,9 @@ function ReservationCreatePage() {
   const nights = useMemo(() => calcNights(periodFrom ?? '', periodTo ?? ''), [periodFrom, periodTo])
 
   // ─── Data Hooks ──────────────────────────────────────────────────
+  const { data: reserveData, isLoading: isLoadingReserve } = useReservation(reserveIdNum)
+  const reserve = reserveData as ReservationDetail | undefined
+
   const { data: facilitiesData } = useGetFacilities()
   const { data: roomTypesData } = useGetRoomTypes()
   const { data: roomsData } = useGetRooms({
@@ -287,9 +346,8 @@ function ReservationCreatePage() {
   const { data: stayTypes } = useGetStayTypes()
   const { data: countries } = useGetCountries()
   const { data: staffsData } = useGetStaffs({})
-  const { data: clientsData } = useGetClients({ params: { limit: 1000 } })
 
-  const { mutateAsync: createReservation } = useCreateReservation()
+  const { mutateAsync: updateReservation } = useUpdateReservation()
 
   // ─── Options ─────────────────────────────────────────────────────
   const facilityOptions: Option[] = useMemo(
@@ -348,84 +406,111 @@ function ReservationCreatePage() {
     [staffsData]
   )
 
-  const clientOptions: Option[] = useMemo(
-    () =>
-      (clientsData?.items ?? []).map((c) => ({
-        label: `${c.clientName} (${c.clientId})`,
-        value: String(c.clientId),
-      })),
-    [clientsData]
-  )
-
-  // ─── Auto-calc stay type from period ──────────────────────────────
+  // ─── Populate form from reservation data ─────────────────────────
   useEffect(() => {
-    if (!periodFrom || !periodTo || !stayTypes?.length) return
-    const n = calcNights(periodFrom, periodTo)
-    if (n <= 0) return
-    // Auto-select first stay type (simplified)
-    const matched = stayTypes.find((st) => st.active)
-    if (matched) {
-      form.setValue('reserve.stay_type_id', String(matched.stayTypeId))
-    }
-  }, [periodFrom, periodTo, stayTypes, form])
+    if (!reserve || isFormPopulated) return
 
-  // ─── Client select handler ────────────────────────────────────────
-  const handleClientSelect = (opt: Option) => {
-    if (!opt.value) return
-    const client = clientsData?.items?.find((c) => String(c.clientId) === opt.value)
-    if (!client) return
-    form.setValue('client.client_id', String(client.clientId))
-    form.setValue('client.client_name', client.clientName ?? '')
-    form.setValue('client.company_name', client.companyName ?? '')
-    form.setValue('client.contact_name', client.contactName ?? '')
-    form.setValue('client.email', client.email ?? '')
-    form.setValue('client.tel', client.tel ?? '')
-    form.setValue('client.tel_phone', client.telPhone ?? '')
-    form.setValue('client.tel_emergency', client.telEmergency ?? '')
-    form.setValue('client.emergency_relation', client.emergencyRelation ?? '')
-    form.setValue('client.company_tel', client.companyTel ?? '')
-    form.setValue('client.fax', client.fax ?? '')
-    form.setValue('client.sex', client.sex ? String(client.sex) : '')
-    form.setValue('client.country_id', client.countryId ? String(client.countryId) : '')
-    form.setValue('client.zip_code', client.zipCode ?? '')
-    form.setValue('client.address1', client.address1 ?? '')
-    form.setValue('client.address2', client.address2 ?? '')
-    form.setValue('client.company_zip_code', client.companyZipCode ?? '')
-    form.setValue('client.company_address1', client.companyAddress1 ?? '')
-    form.setValue('client.company_address2', client.companyAddress2 ?? '')
-    form.setValue('client.memo', client.memo ?? '')
-    form.setValue('client.use_count', String(client.useCount ?? 0))
-    form.setValue('client.data_type', String(client.dataType ?? 1))
-    form.setValue('client.ug_flag', client.ugFlag ?? false)
-    form.setValue('client.postpaid_flag', client.postpaidFlag ?? false)
-    form.setValue('client.stay_duration_auto_flag', client.stayDurationAutoFlag ?? false)
-    form.setValue('client.used_messy_level', String(client.usedMessyLevel ?? 0))
-    if (client.birthday) {
-      form.setValue('client.birthday', client.birthday)
-    }
-  }
+    const client = reserve.client
+    form.reset({
+      client: {
+        data_type: String(client?.dataType ?? 1),
+        client_id: String(reserve.clientId ?? ''),
+        client_name: client?.clientName ?? '',
+        company_name: client?.companyName ?? '',
+        contact_name: client?.contactName ?? '',
+        birthday: client?.birthday ?? '',
+        sex: client?.sex ? String(client.sex) : '',
+        country_id: client?.countryId ? String(client.countryId) : '',
+        zip_code: client?.zipCode ?? '',
+        address1: client?.address1 ?? '',
+        address2: client?.address2 ?? '',
+        company_zip_code: client?.companyZipCode ?? '',
+        company_address1: client?.companyAddress1 ?? '',
+        company_address2: client?.companyAddress2 ?? '',
+        email: client?.email ?? '',
+        tel: client?.tel ?? '',
+        tel_phone: client?.telPhone ?? '',
+        tel_emergency: client?.telEmergency ?? '',
+        emergency_relation: client?.emergencyRelation ?? '',
+        company_tel: client?.companyTel ?? '',
+        fax: client?.fax ?? '',
+        use_count: String(client?.useCount ?? 0),
+        memo: client?.memo ?? '',
+        stay_duration_auto_flag: client?.stayDurationAutoFlag ?? false,
+        used_messy_level: String(client?.usedMessyLevel ?? 0),
+        ug_flag: client?.ugFlag ?? false,
+        postpaid_flag: client?.postpaidFlag ?? false,
+        advertising_type: false,
+      },
+      reserve: {
+        area_id: '',
+        facility_id: reserve.facilityId ? String(reserve.facilityId) : '',
+        room_type_id: '',
+        room_id: reserve.roomId ? String(reserve.roomId) : '',
+        stay_type_id: reserve.stayTypeId ? String(reserve.stayTypeId) : '',
+        period_from: reserve.periodFrom ?? '',
+        period_to: reserve.periodTo ?? '',
+        period_from_time: '',
+        payment_due_date: reserve.paymentDueDate ?? '',
+        noreserve_count_before: '0',
+        noreserve_count_after: '0',
+        auto_extend_flag: reserve.autoExtendFlag ?? false,
+        confirm_flag: reserve.confirmFlag ? '1' : '0',
+        directcheckin_type: reserve.directcheckinType ? String(reserve.directcheckinType) : '1',
+        advertising_type: reserve.advertisingType ? String(reserve.advertisingType) : '0',
+        rental_keys: reserve.rentalKeys ? String(reserve.rentalKeys) : '0',
+        return_keys: reserve.returnKeys ? String(reserve.returnKeys) : '0',
+        note: reserve.note ?? '',
+        overdue_debt_note: reserve.overdueDebtNote ?? '',
+        disable_reservation: reserve.disableReservation ?? false,
+        directcheckin_flag: reserve.directcheckinFlag ?? false,
+        keybox_name: '',
+        keybox_password: '',
+        di_contact_staff_id: reserve.diContactStaffId ? String(reserve.diContactStaffId) : '',
+        contacted_flag: reserve.contactedFlag ?? false,
+        pre_delivery_key_flag: false,
+        checkin_date: reserve.checkinDate ?? '',
+        key_return_flag: reserve.keyReturnFlag ?? false,
+        key_return_contact_type: reserve.keyReturnContactType
+          ? String(reserve.keyReturnContactType)
+          : '',
+        key_return_datetime: '',
+        extension_time: '',
+        checked_delete: !!reserve.deleteStatus,
+        delete_status: reserve.deleteStatus ? String(reserve.deleteStatus) : '',
+        amendment: reserve.amendment ?? '',
+        pet_flag: reserve.petFlag ?? false,
+        dog_count: String(reserve.dogCount ?? 0),
+        cat_count: String(reserve.catCount ?? 0),
+        other_count: String(reserve.otherCount ?? 0),
+        pet_note: reserve.petNote ?? '',
+        futon_flag: reserve.futonFlag ?? false,
+        deliverybox_flag: reserve.deliveryboxFlag ?? false,
+        substitute_facility_id: '',
+        substitute_room_id: '',
+        substitute_room_from: '',
+        substitute_room_to: '',
+        substitute_room_note: '',
+        charge_staff_id: reserve.chargeStaffId ? String(reserve.chargeStaffId) : '',
+        charge_staff_id2: reserve.chargeStaffId2 ? String(reserve.chargeStaffId2) : '',
+        request_announcement: reserve.requestAnnouncement ?? '',
+        sale_announcement: reserve.saleAnnouncement ?? '',
+      },
+    })
+    setIsFormPopulated(true)
+  }, [reserve, isFormPopulated, form])
 
   // ─── Submit handler ───────────────────────────────────────────────
   const handleSubmit = async (values: FormValues) => {
-    if (!values.client.client_id) {
-      toast.error('Vui lòng chọn khách hàng')
-      return
-    }
-    if (!values.reserve.period_from || !values.reserve.period_to) {
-      toast.error('Vui lòng chọn thời gian lưu trú')
-      return
-    }
-
-    setIsLoading(true)
+    setIsSubmitting(true)
     try {
-      const body: CreateReservationBody = {
-        clientId: Number(values.client.client_id),
+      const body: UpdateReservationBody = {
+        reserveId: reserveIdNum,
         facilityId: values.reserve.facility_id ? Number(values.reserve.facility_id) : undefined,
         roomId: values.reserve.room_id ? Number(values.reserve.room_id) : undefined,
         stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
-        periodFrom: values.reserve.period_from,
-        periodTo: values.reserve.period_to,
-        bookingUnitPrice: undefined,
+        periodFrom: values.reserve.period_from || undefined,
+        periodTo: values.reserve.period_to || undefined,
         advertisingType: values.reserve.advertising_type
           ? Number(values.reserve.advertising_type)
           : undefined,
@@ -438,10 +523,10 @@ function ReservationCreatePage() {
         dogCount: values.reserve.dog_count ? Number(values.reserve.dog_count) : undefined,
         catCount: values.reserve.cat_count ? Number(values.reserve.cat_count) : undefined,
         otherCount: values.reserve.other_count ? Number(values.reserve.other_count) : undefined,
-        petNote: values.reserve.pet_note,
-        note: values.reserve.note,
-        memo: values.client.memo,
-        amendment: values.reserve.amendment,
+        petNote: values.reserve.pet_note || undefined,
+        note: values.reserve.note || undefined,
+        memo: values.client.memo || undefined,
+        amendment: values.reserve.amendment || undefined,
         futonFlag: values.reserve.futon_flag,
         deliveryboxFlag: values.reserve.deliverybox_flag,
         autoExtendFlag: values.reserve.auto_extend_flag,
@@ -454,33 +539,58 @@ function ReservationCreatePage() {
         diContactStaffId: values.reserve.di_contact_staff_id
           ? Number(values.reserve.di_contact_staff_id)
           : undefined,
+        contactedFlag: values.reserve.contacted_flag,
+        rentalKeys: values.reserve.rental_keys ? Number(values.reserve.rental_keys) : undefined,
+        returnKeys: values.reserve.return_keys ? Number(values.reserve.return_keys) : undefined,
+        keyReturnContactType: values.reserve.key_return_contact_type
+          ? Number(values.reserve.key_return_contact_type)
+          : undefined,
+        keyReturnFlag: values.reserve.key_return_flag,
+        overdueDebtNote: values.reserve.overdue_debt_note || undefined,
+        disableReservation: values.reserve.disable_reservation,
+        paymentDueDate: values.reserve.payment_due_date || undefined,
+        earlyExitDatetime: undefined,
       }
 
-      await createReservation(body)
-      if (isRedirect === 'usage') {
+      await updateReservation(body)
+      if (isRedirect === 'list') {
         navigate({ to: '/reservations' })
       }
     } catch {
       // error handled by mutation
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  const handleClear = () => {
-    form.reset(defaultValues)
-    setModalConfirmClear(false)
+  if (isLoadingReserve) {
+    return <Loading />
+  }
+
+  if (!reserve) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <p className="text-lg text-gray-500">Không tìm thấy đặt phòng</p>
+        <NButton onClick={() => navigate({ to: '/reservations' })} className="mt-4">
+          Quay lại danh sách
+        </NButton>
+      </div>
+    )
   }
 
   return (
     <>
-      {isLoading && <Loading />}
+      {isSubmitting && <Loading />}
       <div className="common-container">
         <div className="pt-16 pb-52">
           <section>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)}>
-                <CustomAccordion type="multiple" className="w-full" defaultValue={['customer', 'reservation-0']}>
+                <CustomAccordion
+                  type="multiple"
+                  className="w-full"
+                  defaultValue={['customer', 'reservation-0']}
+                >
                   {/* ═══════════════════════════════════════════════════════════
                       ACCORDION 1: THÔNG TIN KHÁCH HÀNG (GREEN #8BD08E)
                   ═══════════════════════════════════════════════════════════ */}
@@ -493,20 +603,6 @@ function ReservationCreatePage() {
                         <span className="font-bold text-black text-[1.2rem] sm:text-[1.8rem]">
                           Thông tin khách hàng
                         </span>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <CustomSelectClean
-                            option={clientOptions}
-                            selected={
-                              form.watch('client.client_id')
-                                ? clientOptions.find(
-                                    (o) => o.value === form.watch('client.client_id')
-                                  )
-                                : undefined
-                            }
-                            change={handleClientSelect}
-                            customClassMain="bg-white w-[20rem] btn btn-default"
-                          />
-                        </div>
                       </div>
                     </CustomAccordionTrigger>
                     <CustomAccordionContent className={cn('pb-0')}>
@@ -518,7 +614,7 @@ function ReservationCreatePage() {
                       >
                         {/* Row 1: Type + Client Code + ID Card + Expiry Date */}
                         <div className="flex items-center gap-[1.4rem]">
-                          {/* Type (Loại) */}
+                          {/* Type (Loại) - disabled for edit */}
                           <div className="flex items-center my-4">
                             <p className="min-w-[10rem] font-bold text-[1.6rem]">Loại</p>
                             <Controller
@@ -529,6 +625,7 @@ function ReservationCreatePage() {
                                   value={field.value}
                                   onValueChange={field.onChange}
                                   className="flex flex-row"
+                                  disabled
                                 >
                                   {DATA_TYPE_OPTIONS.map((opt) => (
                                     <div
@@ -606,7 +703,7 @@ function ReservationCreatePage() {
                           />
                         </div>
 
-                        {/* Row 3: Name fields */}
+                        {/* Row 3: Name fields (disabled for edit) */}
                         {dataType === '1' ? (
                           <div className="flex items-center">
                             <div className="flex items-center my-4 mr-16">
@@ -614,11 +711,14 @@ function ReservationCreatePage() {
                               <div className="relative">
                                 <CustomInput
                                   {...form.register('client.client_name')}
-                                  className="bg-white w-[26.2rem]"
+                                  disabled
+                                  className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                                 />
                                 {form.formState.errors.client?.client_name && (
                                   <ErrorTooltip
-                                    text={form.formState.errors.client.client_name.message ?? ''}
+                                    text={
+                                      form.formState.errors.client.client_name.message ?? ''
+                                    }
                                   />
                                 )}
                               </div>
@@ -637,16 +737,21 @@ function ReservationCreatePage() {
                           <>
                             <div className="flex items-center">
                               <div className="flex items-center my-4 mr-16">
-                                <p className="min-w-[10rem] font-bold text-[1.6rem]">Tên công ty</p>
+                                <p className="min-w-[10rem] font-bold text-[1.6rem]">
+                                  Tên công ty
+                                </p>
                                 <div className="relative">
                                   <CustomInput
                                     {...form.register('client.company_name')}
-                                    className="bg-white w-[26.2rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                                   />
                                 </div>
                               </div>
                               <div className="flex items-center my-4">
-                                <p className="min-w-[10rem] font-bold text-[1.6rem]">Số lần SD</p>
+                                <p className="min-w-[10rem] font-bold text-[1.6rem]">
+                                  Số lần SD
+                                </p>
                                 <CustomInput
                                   {...form.register('client.use_count')}
                                   disabled
@@ -656,11 +761,14 @@ function ReservationCreatePage() {
                               </div>
                             </div>
                             <div className="flex items-center my-4">
-                              <p className="min-w-[10rem] font-bold text-[1.6rem]">Người liên hệ</p>
+                              <p className="min-w-[10rem] font-bold text-[1.6rem]">
+                                Người liên hệ
+                              </p>
                               <div className="relative">
                                 <CustomInput
                                   {...form.register('client.contact_name')}
-                                  className="bg-white w-[26.2rem]"
+                                  disabled
+                                  className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                                 />
                               </div>
                             </div>
@@ -674,7 +782,8 @@ function ReservationCreatePage() {
                               <p className="min-w-[10rem] font-bold text-[1.6rem]">Tên công ty</p>
                               <CustomInput
                                 {...form.register('client.company_name')}
-                                className="bg-white w-[26.2rem]"
+                                disabled
+                                className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                               />
                             </div>
                             <NButton
@@ -689,13 +798,14 @@ function ReservationCreatePage() {
                           </div>
                         )}
 
-                        {/* Row 4: Phone numbers */}
+                        {/* Row 4: Phone numbers (disabled) */}
                         <div className="flex items-center gap-[4.2rem] flex-wrap">
                           <div className="flex items-center my-4">
                             <p className="min-w-[10rem] font-bold text-[1.6rem]">☎ Di động</p>
                             <CustomInput
                               {...form.register('client.tel_phone')}
-                              className="bg-white w-[26.2rem]"
+                              disabled
+                              className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                             />
                           </div>
                           {dataType === '1' ? (
@@ -703,7 +813,8 @@ function ReservationCreatePage() {
                               <p className="min-w-[10rem] font-bold text-[1.6rem]">☎ Nhà</p>
                               <CustomInput
                                 {...form.register('client.tel')}
-                                className="bg-white w-[26.2rem]"
+                                disabled
+                                className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                               />
                             </div>
                           ) : (
@@ -711,7 +822,8 @@ function ReservationCreatePage() {
                               <p className="min-w-[10rem] font-bold text-[1.6rem]">☎ Công ty</p>
                               <CustomInput
                                 {...form.register('client.company_tel')}
-                                className="bg-white w-[26.2rem]"
+                                disabled
+                                className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                               />
                             </div>
                           )}
@@ -719,18 +831,20 @@ function ReservationCreatePage() {
                             <p className="min-w-[10rem] font-bold text-[1.6rem]">Email</p>
                             <CustomInput
                               {...form.register('client.email')}
-                              className="bg-white w-[26.2rem]"
+                              disabled
+                              className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                             />
                           </div>
                         </div>
 
-                        {/* Row 5: Emergency contact */}
+                        {/* Row 5: Emergency contact (disabled) */}
                         <div className="flex items-center gap-[4.3rem] flex-wrap">
                           <div className="flex items-center my-4">
                             <p className="min-w-[10rem] font-bold text-[1.6rem]">☎ Khẩn cấp</p>
                             <CustomInput
                               {...form.register('client.tel_emergency')}
-                              className="bg-white w-[26.2rem]"
+                              disabled
+                              className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                             />
                           </div>
                           <div className="flex items-center my-4">
@@ -739,7 +853,8 @@ function ReservationCreatePage() {
                             </p>
                             <CustomInput
                               {...form.register('client.emergency_relation')}
-                              className="bg-white w-[26.2rem]"
+                              disabled
+                              className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                             />
                           </div>
                           {(dataType === '2' || dataType === '3') && (
@@ -747,7 +862,8 @@ function ReservationCreatePage() {
                               <p className="min-w-[10rem] font-bold text-[1.6rem]">FAX</p>
                               <CustomInput
                                 {...form.register('client.fax')}
-                                className="bg-white w-[26.2rem]"
+                                disabled
+                                className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                               />
                             </div>
                           )}
@@ -772,6 +888,7 @@ function ReservationCreatePage() {
                                     value={field.value}
                                     onValueChange={field.onChange}
                                     className="flex flex-row"
+                                    disabled
                                   >
                                     {SEX_OPTIONS.map((opt) => (
                                       <div
@@ -805,6 +922,7 @@ function ReservationCreatePage() {
                                       )}
                                       change={(o) => field.onChange(o.value)}
                                       customClassMain="w-[26.2rem]"
+                                      disabledSelect
                                     />
                                   )}
                                 />
@@ -818,6 +936,7 @@ function ReservationCreatePage() {
                                     <CustomDatePicker
                                       value={field.value ? new Date(field.value) : null}
                                       format="yyyy/MM/dd"
+                                      disabled
                                       className="flex-1 [&>div]:px-4 w-[19rem] h-16 font-bold text-2xl"
                                       change={(date: Date | Date[] | null) => {
                                         if (date instanceof Date) {
@@ -832,7 +951,7 @@ function ReservationCreatePage() {
                               </div>
                             </div>
 
-                            {/* Zip Code + Address (Individual) */}
+                            {/* Zip Code + Address (Individual) - disabled */}
                             {dataType === '1' && (
                               <div className="flex items-center gap-[3.2rem] flex-wrap">
                                 <div className="flex items-center my-4">
@@ -841,28 +960,31 @@ function ReservationCreatePage() {
                                   </p>
                                   <CustomInput
                                     {...form.register('client.zip_code')}
-                                    className="bg-white w-[15.2rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[15.2rem]"
                                   />
                                 </div>
                                 <div className="flex items-center my-4">
                                   <p className="min-w-[10rem] font-bold text-[1.6rem]">Địa chỉ</p>
                                   <CustomInput
                                     {...form.register('client.address1')}
-                                    className="bg-white w-[26.2rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                                     placeholder="Tỉnh/Thành phố"
                                   />
                                 </div>
                                 <div className="flex items-center my-4">
                                   <CustomInput
                                     {...form.register('client.address2')}
-                                    className="bg-white w-[30.7rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[30.7rem]"
                                     placeholder="Quận/Huyện + Số nhà"
                                   />
                                 </div>
                               </div>
                             )}
 
-                            {/* Company Zip + Address (Corporation) */}
+                            {/* Company Zip + Address (Corporation) - disabled */}
                             {dataType !== '1' && (
                               <div className="flex items-center gap-[3.2rem] flex-wrap">
                                 <div className="flex items-center my-4">
@@ -871,7 +993,8 @@ function ReservationCreatePage() {
                                   </p>
                                   <CustomInput
                                     {...form.register('client.company_zip_code')}
-                                    className="bg-white w-[15.2rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[15.2rem]"
                                   />
                                 </div>
                                 <div className="flex items-center my-4">
@@ -880,14 +1003,16 @@ function ReservationCreatePage() {
                                   </p>
                                   <CustomInput
                                     {...form.register('client.company_address1')}
-                                    className="bg-white w-[26.2rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[26.2rem]"
                                     placeholder="Tỉnh/Thành phố"
                                   />
                                 </div>
                                 <div className="flex items-center my-4">
                                   <CustomInput
                                     {...form.register('client.company_address2')}
-                                    className="bg-white w-[30.7rem]"
+                                    disabled
+                                    className="disabled:bg-[#D9D9D9] !opacity-100 w-[30.7rem]"
                                     placeholder="Quận/Huyện + Số nhà"
                                   />
                                 </div>
@@ -1010,7 +1135,6 @@ function ReservationCreatePage() {
 
                         {/* Horizontal table row of selects */}
                         <div className="flex items-center mt-[1.6rem]">
-                          {/* Area */}
                           <SelectColumn
                             label="Khu vực"
                             width="12.4rem"
@@ -1018,7 +1142,6 @@ function ReservationCreatePage() {
                             options={MOCK_AREA_OPTIONS}
                             form={form}
                           />
-                          {/* Facility */}
                           <SelectColumn
                             label="Cơ sở"
                             width="12.4rem"
@@ -1026,7 +1149,6 @@ function ReservationCreatePage() {
                             options={facilityOptions}
                             form={form}
                           />
-                          {/* Room Type */}
                           <SelectColumn
                             label="Loại phòng"
                             width="12.4rem"
@@ -1034,7 +1156,6 @@ function ReservationCreatePage() {
                             options={roomTypeOptions}
                             form={form}
                           />
-                          {/* Room Number */}
                           <SelectColumn
                             label="Số phòng"
                             width="12.4rem"
@@ -1042,7 +1163,6 @@ function ReservationCreatePage() {
                             options={roomOptions}
                             form={form}
                           />
-                          {/* Before X */}
                           <SelectColumn
                             label="Trước X"
                             width="7rem"
@@ -1101,7 +1221,6 @@ function ReservationCreatePage() {
                             </div>
                           </div>
 
-                          {/* After X */}
                           <SelectColumn
                             label="Sau X"
                             width="7rem"
@@ -1109,7 +1228,6 @@ function ReservationCreatePage() {
                             options={FROM_1_TO_50_OPTIONS}
                             form={form}
                           />
-                          {/* Stay Type */}
                           <SelectColumn
                             label="Loại lưu trú"
                             width="12.3rem"
@@ -1137,7 +1255,6 @@ function ReservationCreatePage() {
                               </div>
                             </div>
                           </div>
-                          {/* Confirm */}
                           <SelectColumn
                             label="Xác nhận"
                             width="9.4rem"
@@ -1209,7 +1326,7 @@ function ReservationCreatePage() {
                           </div>
                         </div>
 
-                        {/* Rental Keys + Check-in Time + Payment Due */}
+                        {/* Rental Keys + Return Keys + Check-in Time + Payment Due */}
                         <div className="flex justify-between items-center">
                           <div className="flex items-center mt-[1.6rem] mr-4">
                             {/* Key icon + rental keys */}
@@ -1229,7 +1346,30 @@ function ReservationCreatePage() {
                                           (o) => o.value === field.value
                                         )}
                                         change={(o) => field.onChange(o.value)}
-                                        disabledSelect
+                                        customClassMain="w-full h-14"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Return keys */}
+                            <div className="my-0 ml-[-0.1rem] min-w-[6.5rem]">
+                              <div className="flex flex-col">
+                                <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.2rem]">
+                                  Trả chìa
+                                </p>
+                                <div className="flex justify-center items-center border border-black h-16">
+                                  <Controller
+                                    control={form.control}
+                                    name="reserve.return_keys"
+                                    render={({ field }) => (
+                                      <CustomSelectClean
+                                        option={RENTAL_KEYS_OPTIONS}
+                                        selected={RENTAL_KEYS_OPTIONS.find(
+                                          (o) => o.value === field.value
+                                        )}
+                                        change={(o) => field.onChange(o.value)}
                                         customClassMain="w-full h-14"
                                       />
                                     )}
@@ -1450,7 +1590,9 @@ function ReservationCreatePage() {
                                               />
                                             )}
                                           />
-                                          <label className="text-[1.2rem] font-bold cursor-pointer">Đã liên hệ</label>
+                                          <label className="text-[1.2rem] font-bold cursor-pointer">
+                                            Đã liên hệ
+                                          </label>
                                         </div>
                                         <div className="flex items-center gap-1">
                                           <Controller
@@ -1463,7 +1605,9 @@ function ReservationCreatePage() {
                                               />
                                             )}
                                           />
-                                          <label className="text-[1.2rem] font-bold cursor-pointer">Giao chìa khóa trước</label>
+                                          <label className="text-[1.2rem] font-bold cursor-pointer">
+                                            Giao chìa khóa trước
+                                          </label>
                                         </div>
                                       </div>
                                     </div>
@@ -1484,7 +1628,9 @@ function ReservationCreatePage() {
                                         className="w-[20rem] h-16"
                                         change={(date: Date | Date[] | null) => {
                                           if (date instanceof Date) {
-                                            field.onChange(dayjs(date).format('YYYY-MM-DD HH:mm'))
+                                            field.onChange(
+                                              dayjs(date).format('YYYY-MM-DD HH:mm')
+                                            )
                                           } else {
                                             field.onChange('')
                                           }
@@ -1496,6 +1642,73 @@ function ReservationCreatePage() {
                               )}
                             </CustomCollapsibleContent>
                           )}
+                        </CustomCollapsible>
+
+                        {/* ── Section: Key Return (Edit-only) ──────────── */}
+                        <CustomCollapsible className="my-8">
+                          <CustomCollapsibleTrigger>
+                            <h5 className="font-bold text-[2.3rem] leading-none">
+                              ■ Trả chìa khóa
+                            </h5>
+                          </CustomCollapsibleTrigger>
+                          <CustomCollapsibleContent className="mt-4">
+                            <div className="flex items-center gap-8 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <Controller
+                                  control={form.control}
+                                  name="reserve.key_return_flag"
+                                  render={({ field }) => (
+                                    <CustomCheckbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  )}
+                                />
+                                <label className="font-bold text-[1.6rem] cursor-pointer">
+                                  Đã trả chìa khóa
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-[1.6rem]">Phương thức</p>
+                                <Controller
+                                  control={form.control}
+                                  name="reserve.key_return_contact_type"
+                                  render={({ field }) => (
+                                    <CustomSelectClean
+                                      isAll
+                                      option={KEY_RETURN_CONTACT_OPTIONS}
+                                      selected={KEY_RETURN_CONTACT_OPTIONS.find(
+                                        (o) => o.value === field.value
+                                      )}
+                                      change={(o) => field.onChange(o.value)}
+                                      customClassMain="w-[14rem]"
+                                    />
+                                  )}
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-[1.6rem]">Ngày trả</p>
+                                <Controller
+                                  control={form.control}
+                                  name="reserve.key_return_datetime"
+                                  render={({ field }) => (
+                                    <CustomDatePicker
+                                      value={field.value ? new Date(field.value) : null}
+                                      format="yyyy/MM/dd HH:mm"
+                                      className="w-[20rem] h-16"
+                                      change={(date: Date | Date[] | null) => {
+                                        if (date instanceof Date) {
+                                          field.onChange(dayjs(date).format('YYYY-MM-DD HH:mm'))
+                                        } else {
+                                          field.onChange('')
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </CustomCollapsibleContent>
                         </CustomCollapsible>
 
                         {/* ── Section: Billing Normal (Mock) ─────────── */}
@@ -1529,7 +1742,6 @@ function ReservationCreatePage() {
                               </tbody>
                             </table>
                           </div>
-                          {/* Subtotal */}
                           <div className="flex mr-14 border border-black h-[3.6rem] mt-4">
                             <div className="flex items-center justify-center bg-[#EEEEEE] px-4 w-[18.2rem] font-bold text-[1.6rem]">
                               Tổng phụ
@@ -1708,11 +1920,15 @@ function ReservationCreatePage() {
                                   <CarSvg className="w-6 h-6 mr-2" /> Bãi đỗ xe
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
+                                  <span className="text-gray-400 text-[1.4rem]">
+                                    Chưa cài đặt
+                                  </span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
+                                    onClick={() =>
+                                      toast.info('Tính năng chưa được triển khai')
+                                    }
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1723,11 +1939,15 @@ function ReservationCreatePage() {
                                   <BicycleSvg className="w-6 h-6 mr-2" /> Xe đạp
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
+                                  <span className="text-gray-400 text-[1.4rem]">
+                                    Chưa cài đặt
+                                  </span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
+                                    onClick={() =>
+                                      toast.info('Tính năng chưa được triển khai')
+                                    }
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1739,11 +1959,15 @@ function ReservationCreatePage() {
                                   <RugSVG className="w-6 h-6 mr-2" /> Phòng kho
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
+                                  <span className="text-gray-400 text-[1.4rem]">
+                                    Chưa cài đặt
+                                  </span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
+                                    onClick={() =>
+                                      toast.info('Tính năng chưa được triển khai')
+                                    }
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1754,17 +1978,21 @@ function ReservationCreatePage() {
                                   <DogSvg className="w-6 h-6 mr-2" /> Thú cưng/Chăn/Hộp
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
+                                  <span className="text-gray-400 text-[1.4rem]">
+                                    Chưa cài đặt
+                                  </span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
+                                    onClick={() =>
+                                      toast.info('Tính năng chưa được triển khai')
+                                    }
                                   >
                                     Cài đặt
                                   </NButton>
                                 </div>
                               </div>
-                              {/* RC/Tel row (full width) */}
+                              {/* RC/Tel row */}
                               <div className="flex w-full md:mt-[-0.1rem]">
                                 <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
                                   RC/Tel
@@ -1789,7 +2017,6 @@ function ReservationCreatePage() {
                           </CustomCollapsibleTrigger>
                           <CustomCollapsibleContent className="mt-4">
                             <div className="flex items-center">
-                              {/* Facility */}
                               <div className="ml-[-0.1rem] first:ml-0">
                                 <div className="flex">
                                   <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
@@ -1814,7 +2041,6 @@ function ReservationCreatePage() {
                                   </div>
                                 </div>
                               </div>
-                              {/* Room */}
                               <div className="ml-[-0.1rem]">
                                 <div className="flex">
                                   <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
@@ -1839,7 +2065,6 @@ function ReservationCreatePage() {
                                   </div>
                                 </div>
                               </div>
-                              {/* Period */}
                               <div className="ml-[-0.1rem]">
                                 <div className="flex">
                                   <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
@@ -1885,7 +2110,6 @@ function ReservationCreatePage() {
                                   </div>
                                 </div>
                               </div>
-                              {/* Clear button */}
                               <NButton
                                 type="button"
                                 className="ml-4 h-[3.6rem]"
@@ -1900,7 +2124,6 @@ function ReservationCreatePage() {
                                 Xóa
                               </NButton>
                             </div>
-                            {/* Substitute note */}
                             <div className="flex mt-4">
                               <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] min-h-[6.9rem] font-bold text-[1.4rem]">
                                 Nội dung
@@ -1912,6 +2135,30 @@ function ReservationCreatePage() {
                             </div>
                           </CustomCollapsibleContent>
                         </CustomCollapsible>
+
+                        {/* ── Announcement Memos ────────────────────── */}
+                        <div className="mt-[1.6rem] w-[51.7rem]">
+                          <div className="flex">
+                            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[8.6rem] min-h-[6.9rem] font-bold text-[1.4rem] text-center">
+                              Ghi chú yêu cầu
+                            </p>
+                            <CustomTextarea
+                              {...form.register('reserve.request_announcement')}
+                              className="flex-1 border border-black h-[6.9rem] min-h-full font-bold text-[1.4rem]"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-[-0.1rem] w-[51.7rem]">
+                          <div className="flex">
+                            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[8.6rem] min-h-[6.9rem] font-bold text-[1.4rem] text-center">
+                              Ghi chú doanh thu
+                            </p>
+                            <CustomTextarea
+                              {...form.register('reserve.sale_announcement')}
+                              className="flex-1 border border-black h-[6.9rem] min-h-full font-bold text-[1.4rem]"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </CustomAccordionContent>
                   </CustomAccordionItem>
@@ -1961,6 +2208,22 @@ function ReservationCreatePage() {
                   </div>
                 </CustomAccordion>
 
+                {/* ── Registration metadata ──────────────────── */}
+                <div className="flex items-center gap-8 mt-8 px-4 text-[1.4rem] text-gray-500">
+                  <span>
+                    Tạo:{' '}
+                    {reserve.createdAt
+                      ? dayjs(reserve.createdAt).format('YYYY/MM/DD HH:mm')
+                      : '---'}
+                  </span>
+                  <span>
+                    Cập nhật:{' '}
+                    {reserve.updatedAt
+                      ? dayjs(reserve.updatedAt).format('YYYY/MM/DD HH:mm')
+                      : '---'}
+                  </span>
+                </div>
+
                 {/* ═══════════════════════════════════════════════════════════
                     FLOATING BOTTOM BAR
                 ═══════════════════════════════════════════════════════════ */}
@@ -1998,16 +2261,16 @@ function ReservationCreatePage() {
                     <NButton
                       type="submit"
                       className="bg-white mx-8 px-2 w-fit"
-                      onClick={() => setIsRedirect('usage')}
+                      onClick={() => setIsRedirect('list')}
                     >
-                      Đăng ký và chuyển danh sách
+                      Cập nhật và chuyển danh sách
                     </NButton>
                     <NButton
                       type="submit"
                       className="bg-white mx-8 px-2 w-fit"
-                      onClick={() => setIsRedirect('edit')}
+                      onClick={() => setIsRedirect('stay')}
                     >
-                      Đăng ký và tiếp tục chỉnh sửa
+                      Cập nhật và tiếp tục chỉnh sửa
                     </NButton>
                   </div>
                 </div>
@@ -2018,9 +2281,8 @@ function ReservationCreatePage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
-          CONFIRMATION MODALS
+          CONFIRMATION MODAL
       ═══════════════════════════════════════════════════════════ */}
-      {/* No billing data warning */}
       <CustomDialog
         opened={modalConfirmSubmit}
         changeOnOpened={(open) => !open && setModalConfirmSubmit(false)}
@@ -2044,35 +2306,6 @@ function ReservationCreatePage() {
                 type="button"
                 className="bg-[#eee] mx-4 w-[12.4rem]"
                 onClick={() => setModalConfirmSubmit(false)}
-              >
-                Hủy
-              </NButton>
-            </DialogClose>
-          </div>
-        }
-      />
-
-      {/* Clear confirmation */}
-      <CustomDialog
-        opened={modalConfirmClear}
-        changeOnOpened={(open) => !open && setModalConfirmClear(false)}
-        title="Bạn có muốn xóa?"
-        size="medium"
-        trigger={<span />}
-        content={
-          <div className="flex justify-center gap-4 py-4">
-            <NButton
-              type="button"
-              className="bg-green-600 mx-4 w-[12.4rem] text-white"
-              onClick={handleClear}
-            >
-              Thực hiện
-            </NButton>
-            <DialogClose asChild>
-              <NButton
-                type="button"
-                className="bg-[#eee] mx-4 w-[12.4rem]"
-                onClick={() => setModalConfirmClear(false)}
               >
                 Hủy
               </NButton>

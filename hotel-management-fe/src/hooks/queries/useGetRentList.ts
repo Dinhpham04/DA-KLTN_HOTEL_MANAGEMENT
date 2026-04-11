@@ -1,5 +1,5 @@
 import { rentApi } from '@/api/rent.api'
-import type { RentFilterParams, RentListResponse } from '@/types/rent'
+import type { RentFilterParams } from '@/types/rent'
 import { useQuery } from '@tanstack/react-query'
 
 interface UseGetRentListParams {
