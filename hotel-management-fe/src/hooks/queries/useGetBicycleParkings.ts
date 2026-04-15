@@ -1,8 +1,5 @@
 import { bicycleParkingApi } from '@/api/bicycle-parking.api'
-import type {
-  BicycleParkingFilterParams,
-  BicycleParkingListResponse,
-} from '@/types/bicycle-parking'
+import type { BicycleParkingFilterParams } from '@/types/bicycle-parking'
 import { useQuery } from '@tanstack/react-query'
 
 interface UseGetBicycleParkingsParams {

@@ -71,7 +71,7 @@ const CustomDialog: React.FC<DialogType> = ({
           onClick={(e) => e.stopPropagation()}
           className={cn(
             handleSize(),
-            'border-none [&>button]:hidden outline-none',
+            'border-none [&>button]:hidden outline-none mt-[4rem]',
             customClassContent
           )}
         >

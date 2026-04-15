@@ -16,7 +16,6 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedStaffMasterRouteImport } from './routes/_authenticated/staff-master'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
-import { Route as AuthenticatedReservationsRouteImport } from './routes/_authenticated/reservations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCleaningRouteImport } from './routes/_authenticated/cleaning'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
@@ -50,6 +49,12 @@ const AuthenticatedReservationsCreateLazyRouteImport = createFileRoute(
 )()
 const AuthenticatedClientsCreateLazyRouteImport = createFileRoute(
   '/_authenticated/clients/create',
+)()
+const AuthenticatedReservationsReserveIdEditLazyRouteImport = createFileRoute(
+  '/_authenticated/reservations/$reserveId/edit',
+)()
+const AuthenticatedReservationsReserveIdDetailLazyRouteImport = createFileRoute(
+  '/_authenticated/reservations/$reserveId/detail',
 )()
 const AuthenticatedClientsClientIdEditLazyRouteImport = createFileRoute(
   '/_authenticated/clients/$clientId/edit',
@@ -135,12 +140,6 @@ const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
   path: '/rooms',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedReservationsRoute =
-  AuthenticatedReservationsRouteImport.update({
-    id: '/reservations',
-    path: '/reservations',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -158,9 +157,9 @@ const AuthenticatedBillingRoute = AuthenticatedBillingRouteImport.update({
 } as any)
 const AuthenticatedReservationsIndexLazyRoute =
   AuthenticatedReservationsIndexLazyRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedReservationsRoute,
+    id: '/reservations/',
+    path: '/reservations/',
+    getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/reservations/index.lazy').then(
       (d) => d.Route,
@@ -176,9 +175,9 @@ const AuthenticatedClientsIndexLazyRoute =
   )
 const AuthenticatedReservationsCreateLazyRoute =
   AuthenticatedReservationsCreateLazyRouteImport.update({
-    id: '/create',
-    path: '/create',
-    getParentRoute: () => AuthenticatedReservationsRoute,
+    id: '/reservations/create',
+    path: '/reservations/create',
+    getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/reservations/create.lazy').then(
       (d) => d.Route,
@@ -191,6 +190,26 @@ const AuthenticatedClientsCreateLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/clients/create.lazy').then((d) => d.Route),
+  )
+const AuthenticatedReservationsReserveIdEditLazyRoute =
+  AuthenticatedReservationsReserveIdEditLazyRouteImport.update({
+    id: '/reservations/$reserveId/edit',
+    path: '/reservations/$reserveId/edit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/reservations/$reserveId/edit.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AuthenticatedReservationsReserveIdDetailLazyRoute =
+  AuthenticatedReservationsReserveIdDetailLazyRouteImport.update({
+    id: '/reservations/$reserveId/detail',
+    path: '/reservations/$reserveId/detail',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/reservations/$reserveId/detail.lazy').then(
+      (d) => d.Route,
+    ),
   )
 const AuthenticatedClientsClientIdEditLazyRoute =
   AuthenticatedClientsClientIdEditLazyRouteImport.update({
@@ -219,7 +238,6 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AuthenticatedBillingRoute
   '/cleaning': typeof AuthenticatedCleaningRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/reservations': typeof AuthenticatedReservationsRouteWithChildren
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
   '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
@@ -234,6 +252,8 @@ export interface FileRoutesByFullPath {
   '/reservations/': typeof AuthenticatedReservationsIndexLazyRoute
   '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
   '/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
+  '/reservations/$reserveId/detail': typeof AuthenticatedReservationsReserveIdDetailLazyRoute
+  '/reservations/$reserveId/edit': typeof AuthenticatedReservationsReserveIdEditLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -255,6 +275,8 @@ export interface FileRoutesByTo {
   '/reservations': typeof AuthenticatedReservationsIndexLazyRoute
   '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
   '/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
+  '/reservations/$reserveId/detail': typeof AuthenticatedReservationsReserveIdDetailLazyRoute
+  '/reservations/$reserveId/edit': typeof AuthenticatedReservationsReserveIdEditLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -264,7 +286,6 @@ export interface FileRoutesById {
   '/_authenticated/billing': typeof AuthenticatedBillingRoute
   '/_authenticated/cleaning': typeof AuthenticatedCleaningRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/reservations': typeof AuthenticatedReservationsRouteWithChildren
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
   '/_authenticated/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
@@ -279,6 +300,8 @@ export interface FileRoutesById {
   '/_authenticated/reservations/': typeof AuthenticatedReservationsIndexLazyRoute
   '/_authenticated/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
   '/_authenticated/clients/$clientId/edit': typeof AuthenticatedClientsClientIdEditLazyRoute
+  '/_authenticated/reservations/$reserveId/detail': typeof AuthenticatedReservationsReserveIdDetailLazyRoute
+  '/_authenticated/reservations/$reserveId/edit': typeof AuthenticatedReservationsReserveIdEditLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -288,7 +311,6 @@ export interface FileRouteTypes {
     | '/billing'
     | '/cleaning'
     | '/dashboard'
-    | '/reservations'
     | '/rooms'
     | '/staff-master'
     | '/bicycle-parking-master'
@@ -303,6 +325,8 @@ export interface FileRouteTypes {
     | '/reservations/'
     | '/clients/$clientId/detail'
     | '/clients/$clientId/edit'
+    | '/reservations/$reserveId/detail'
+    | '/reservations/$reserveId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -324,6 +348,8 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/clients/$clientId/detail'
     | '/clients/$clientId/edit'
+    | '/reservations/$reserveId/detail'
+    | '/reservations/$reserveId/edit'
   id:
     | '__root__'
     | '/'
@@ -332,7 +358,6 @@ export interface FileRouteTypes {
     | '/_authenticated/billing'
     | '/_authenticated/cleaning'
     | '/_authenticated/dashboard'
-    | '/_authenticated/reservations'
     | '/_authenticated/rooms'
     | '/_authenticated/staff-master'
     | '/_authenticated/bicycle-parking-master'
@@ -347,6 +372,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reservations/'
     | '/_authenticated/clients/$clientId/detail'
     | '/_authenticated/clients/$clientId/edit'
+    | '/_authenticated/reservations/$reserveId/detail'
+    | '/_authenticated/reservations/$reserveId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -434,13 +461,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRoomsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/reservations': {
-      id: '/_authenticated/reservations'
-      path: '/reservations'
-      fullPath: '/reservations'
-      preLoaderRoute: typeof AuthenticatedReservationsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -464,10 +484,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/reservations/': {
       id: '/_authenticated/reservations/'
-      path: '/'
+      path: '/reservations'
       fullPath: '/reservations/'
       preLoaderRoute: typeof AuthenticatedReservationsIndexLazyRouteImport
-      parentRoute: typeof AuthenticatedReservationsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/clients/': {
       id: '/_authenticated/clients/'
@@ -478,16 +498,30 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/reservations/create': {
       id: '/_authenticated/reservations/create'
-      path: '/create'
+      path: '/reservations/create'
       fullPath: '/reservations/create'
       preLoaderRoute: typeof AuthenticatedReservationsCreateLazyRouteImport
-      parentRoute: typeof AuthenticatedReservationsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/clients/create': {
       id: '/_authenticated/clients/create'
       path: '/clients/create'
       fullPath: '/clients/create'
       preLoaderRoute: typeof AuthenticatedClientsCreateLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reservations/$reserveId/edit': {
+      id: '/_authenticated/reservations/$reserveId/edit'
+      path: '/reservations/$reserveId/edit'
+      fullPath: '/reservations/$reserveId/edit'
+      preLoaderRoute: typeof AuthenticatedReservationsReserveIdEditLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reservations/$reserveId/detail': {
+      id: '/_authenticated/reservations/$reserveId/detail'
+      path: '/reservations/$reserveId/detail'
+      fullPath: '/reservations/$reserveId/detail'
+      preLoaderRoute: typeof AuthenticatedReservationsReserveIdDetailLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/clients/$clientId/edit': {
@@ -507,29 +541,10 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedReservationsRouteChildren {
-  AuthenticatedReservationsCreateLazyRoute: typeof AuthenticatedReservationsCreateLazyRoute
-  AuthenticatedReservationsIndexLazyRoute: typeof AuthenticatedReservationsIndexLazyRoute
-}
-
-const AuthenticatedReservationsRouteChildren: AuthenticatedReservationsRouteChildren =
-  {
-    AuthenticatedReservationsCreateLazyRoute:
-      AuthenticatedReservationsCreateLazyRoute,
-    AuthenticatedReservationsIndexLazyRoute:
-      AuthenticatedReservationsIndexLazyRoute,
-  }
-
-const AuthenticatedReservationsRouteWithChildren =
-  AuthenticatedReservationsRoute._addFileChildren(
-    AuthenticatedReservationsRouteChildren,
-  )
-
 interface AuthenticatedRouteChildren {
   AuthenticatedBillingRoute: typeof AuthenticatedBillingRoute
   AuthenticatedCleaningRoute: typeof AuthenticatedCleaningRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRouteWithChildren
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
   AuthenticatedBicycleParkingMasterLazyRoute: typeof AuthenticatedBicycleParkingMasterLazyRoute
@@ -539,16 +554,19 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
   AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
   AuthenticatedClientsCreateLazyRoute: typeof AuthenticatedClientsCreateLazyRoute
+  AuthenticatedReservationsCreateLazyRoute: typeof AuthenticatedReservationsCreateLazyRoute
   AuthenticatedClientsIndexLazyRoute: typeof AuthenticatedClientsIndexLazyRoute
+  AuthenticatedReservationsIndexLazyRoute: typeof AuthenticatedReservationsIndexLazyRoute
   AuthenticatedClientsClientIdDetailLazyRoute: typeof AuthenticatedClientsClientIdDetailLazyRoute
   AuthenticatedClientsClientIdEditLazyRoute: typeof AuthenticatedClientsClientIdEditLazyRoute
+  AuthenticatedReservationsReserveIdDetailLazyRoute: typeof AuthenticatedReservationsReserveIdDetailLazyRoute
+  AuthenticatedReservationsReserveIdEditLazyRoute: typeof AuthenticatedReservationsReserveIdEditLazyRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBillingRoute: AuthenticatedBillingRoute,
   AuthenticatedCleaningRoute: AuthenticatedCleaningRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedReservationsRoute: AuthenticatedReservationsRouteWithChildren,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedStaffMasterRoute: AuthenticatedStaffMasterRoute,
   AuthenticatedBicycleParkingMasterLazyRoute:
@@ -559,11 +577,19 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,
   AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
   AuthenticatedClientsCreateLazyRoute: AuthenticatedClientsCreateLazyRoute,
+  AuthenticatedReservationsCreateLazyRoute:
+    AuthenticatedReservationsCreateLazyRoute,
   AuthenticatedClientsIndexLazyRoute: AuthenticatedClientsIndexLazyRoute,
+  AuthenticatedReservationsIndexLazyRoute:
+    AuthenticatedReservationsIndexLazyRoute,
   AuthenticatedClientsClientIdDetailLazyRoute:
     AuthenticatedClientsClientIdDetailLazyRoute,
   AuthenticatedClientsClientIdEditLazyRoute:
     AuthenticatedClientsClientIdEditLazyRoute,
+  AuthenticatedReservationsReserveIdDetailLazyRoute:
+    AuthenticatedReservationsReserveIdDetailLazyRoute,
+  AuthenticatedReservationsReserveIdEditLazyRoute:
+    AuthenticatedReservationsReserveIdEditLazyRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

@@ -1,5 +1,6 @@
 import {
   IsInt,
+  IsIn,
   IsOptional,
   IsBoolean,
   IsDateString,
@@ -59,9 +60,13 @@ export class CreateReservationDto {
   @Min(0)
   readonly deposit?: number;
 
-  @ApiPropertyOptional({ description: 'Advertising type' })
+  @ApiPropertyOptional({
+    description:
+      'Advertising type: 0=Unknown, 1=Repeat/Referral, 2=Walk-in, 3=Official Website, 4=OTA, 5=Social Media, 9=Other',
+  })
   @IsOptional()
   @IsInt()
+  @IsIn([0, 1, 2, 3, 4, 5, 9])
   readonly advertisingType?: number;
 
   @ApiPropertyOptional({ description: 'Draft flag', default: false })
@@ -85,9 +90,13 @@ export class CreateReservationDto {
   @IsBoolean()
   readonly directcheckinFlag?: boolean;
 
-  @ApiPropertyOptional({ description: 'Direct check-in type: 1=Visit, 2=6Building, 3=D/I, 4=YCAT, 5=RoomDelivery' })
+  @ApiPropertyOptional({
+    description:
+      'Direct check-in type: 1=Front Desk, 2=Self Check-in (PIN/Lockbox), 3=Meet & Greet',
+  })
   @IsOptional()
   @IsInt()
+  @IsIn([1, 2, 3])
   readonly directcheckinType?: number;
 
   @ApiPropertyOptional({ description: 'Direct check-in note', maxLength: 256 })

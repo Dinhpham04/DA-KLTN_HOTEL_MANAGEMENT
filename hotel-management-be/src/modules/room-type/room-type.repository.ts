@@ -16,6 +16,15 @@ export class RoomTypeRepository {
 
     if (filter.dataStatus !== undefined) where.dataStatus = filter.dataStatus;
     if (filter.roomClassId !== undefined) where.roomClassId = filter.roomClassId;
+    if (filter.facilityId !== undefined) {
+      where.facilityRoomTypes = {
+        some: {
+          facilityId: filter.facilityId,
+          deletedAt: null,
+          dataStatus: 1,
+        },
+      };
+    }
 
     if (filter.search) {
       where.OR = [
