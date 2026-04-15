@@ -201,7 +201,7 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
         disabled={disable}
         locale={locale}
         format={format}
-        dayPlaceholder="DD"
+        dayPlaceholder="dd"
         onClick={onClick}
         maxDate={otherProp.maxDate}
         minDate={otherProp.minDate}
@@ -234,8 +234,8 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
           },
         }}
         disableClock
-        monthPlaceholder="MM"
-        yearPlaceholder="YYYY"
+        monthPlaceholder="mm"
+        yearPlaceholder="yyyy"
         clearIcon={false}
         calendarIcon={false}
         className={cn(

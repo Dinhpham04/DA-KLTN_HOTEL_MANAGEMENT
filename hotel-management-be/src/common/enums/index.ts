@@ -74,18 +74,16 @@ export enum StayContractType {
 export enum AdvertisingType {
   REPEAT = 1,
   WALK_IN = 2,
-  HOMEPAGE = 3,
-  RAKUTEN = 4,
-  ENGLISH_SITE = 5,
+  WEBSITE = 3,
+  OTA = 4,
+  SOCIAL_MEDIA = 5,
   OTHER = 9,
 }
 
 export enum DirectCheckinType {
-  VISIT = 1,
-  SIX_BUILDING = 2,
-  DIRECT_IN = 3,
-  YCAT = 4,
-  ROOM_DELIVERY = 5,
+  FRONT_DESK = 1,
+  SELF_CHECKIN = 2,
+  MEET_AND_GREET = 3,
 }
 
 export enum KeyReturnContactType {

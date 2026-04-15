@@ -36,7 +36,7 @@ import {
   DATA_TYPE_OPTIONS,
   DELETE_STATUS_OPTIONS,
   DIRECTCHECKIN_TYPE_OPTIONS,
-  FROM_1_TO_50_OPTIONS,
+  NORESERVE_COUNT_OPTIONS,
   MOCK_AREA_OPTIONS,
   MOCK_KEYBOX_OPTIONS,
   OCCUPIER_HEADERS,
@@ -44,7 +44,7 @@ import {
   SEX_OPTIONS,
   TIME_EXTENSION_OPTIONS,
   USED_MESSY_LEVEL_OPTIONS,
-} from '@/components/reservation/mock-data'
+} from '@/constants/reservation'
 import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
 import { DogSvg } from '@/components/svgs/DogSvg'
@@ -60,6 +60,7 @@ import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
 import { useReservation, useUpdateReservation } from '@/hooks/queries/useReservations'
+import { calculateNights, normalizeDirectcheckinType } from '@/lib/reservation'
 import { cn } from '@/lib/utils'
 import type { Reservation, UpdateReservationBody } from '@/types/reservation'
 
@@ -251,13 +252,6 @@ const defaultValues: FormValues = {
   },
 }
 
-// ─── Helper: calculate nights ────────────────────────────────────────
-function calcNights(from: string, to: string): number {
-  if (!from || !to) return 0
-  const diff = dayjs(to).diff(dayjs(from), 'day')
-  return diff > 0 ? diff : 0
-}
-
 // Key return contact type options
 const KEY_RETURN_CONTACT_OPTIONS: Option[] = [
   { label: 'Trả trực tiếp', value: '1' },
@@ -332,7 +326,7 @@ function ReservationEditPage() {
   const facilityId = form.watch('reserve.facility_id')
   const roomTypeId = form.watch('reserve.room_type_id')
 
-  const nights = useMemo(() => calcNights(periodFrom ?? '', periodTo ?? ''), [periodFrom, periodTo])
+  const nights = useMemo(() => calculateNights(periodFrom ?? '', periodTo ?? ''), [periodFrom, periodTo])
 
   // ─── Data Hooks ──────────────────────────────────────────────────
   const { data: reserveData, isLoading: isLoadingReserve } = useReservation(reserveIdNum)
@@ -456,7 +450,7 @@ function ReservationEditPage() {
         noreserve_count_after: '0',
         auto_extend_flag: reserve.autoExtendFlag ?? false,
         confirm_flag: reserve.confirmFlag ? '1' : '0',
-        directcheckin_type: reserve.directcheckinType ? String(reserve.directcheckinType) : '1',
+        directcheckin_type: normalizeDirectcheckinType(reserve.directcheckinType),
         advertising_type: reserve.advertisingType ? String(reserve.advertisingType) : '0',
         rental_keys: reserve.rentalKeys ? String(reserve.rentalKeys) : '0',
         return_keys: reserve.returnKeys ? String(reserve.returnKeys) : '0',
@@ -516,9 +510,7 @@ function ReservationEditPage() {
           : undefined,
         confirmFlag: values.reserve.confirm_flag === '1',
         directcheckinFlag: values.reserve.directcheckin_flag,
-        directcheckinType: values.reserve.directcheckin_type
-          ? Number(values.reserve.directcheckin_type)
-          : undefined,
+        directcheckinType: Number(normalizeDirectcheckinType(Number(values.reserve.directcheckin_type))),
         petFlag: values.reserve.pet_flag,
         dogCount: values.reserve.dog_count ? Number(values.reserve.dog_count) : undefined,
         catCount: values.reserve.cat_count ? Number(values.reserve.cat_count) : undefined,
@@ -716,9 +708,7 @@ function ReservationEditPage() {
                                 />
                                 {form.formState.errors.client?.client_name && (
                                   <ErrorTooltip
-                                    text={
-                                      form.formState.errors.client.client_name.message ?? ''
-                                    }
+                                    text={form.formState.errors.client.client_name.message ?? ''}
                                   />
                                 )}
                               </div>
@@ -737,9 +727,7 @@ function ReservationEditPage() {
                           <>
                             <div className="flex items-center">
                               <div className="flex items-center my-4 mr-16">
-                                <p className="min-w-[10rem] font-bold text-[1.6rem]">
-                                  Tên công ty
-                                </p>
+                                <p className="min-w-[10rem] font-bold text-[1.6rem]">Tên công ty</p>
                                 <div className="relative">
                                   <CustomInput
                                     {...form.register('client.company_name')}
@@ -749,9 +737,7 @@ function ReservationEditPage() {
                                 </div>
                               </div>
                               <div className="flex items-center my-4">
-                                <p className="min-w-[10rem] font-bold text-[1.6rem]">
-                                  Số lần SD
-                                </p>
+                                <p className="min-w-[10rem] font-bold text-[1.6rem]">Số lần SD</p>
                                 <CustomInput
                                   {...form.register('client.use_count')}
                                   disabled
@@ -761,9 +747,7 @@ function ReservationEditPage() {
                               </div>
                             </div>
                             <div className="flex items-center my-4">
-                              <p className="min-w-[10rem] font-bold text-[1.6rem]">
-                                Người liên hệ
-                              </p>
+                              <p className="min-w-[10rem] font-bold text-[1.6rem]">Người liên hệ</p>
                               <div className="relative">
                                 <CustomInput
                                   {...form.register('client.contact_name')}
@@ -848,9 +832,7 @@ function ReservationEditPage() {
                             />
                           </div>
                           <div className="flex items-center my-4">
-                            <p className="min-w-[10rem] font-bold text-[1.6rem]">
-                              Tên LH khẩn cấp
-                            </p>
+                            <p className="min-w-[10rem] font-bold text-[1.6rem]">Tên LH khẩn cấp</p>
                             <CustomInput
                               {...form.register('client.emergency_relation')}
                               disabled
@@ -917,9 +899,7 @@ function ReservationEditPage() {
                                     <CustomSelectClean
                                       isAll
                                       option={countryOptions}
-                                      selected={countryOptions.find(
-                                        (o) => o.value === field.value
-                                      )}
+                                      selected={countryOptions.find((o) => o.value === field.value)}
                                       change={(o) => field.onChange(o.value)}
                                       customClassMain="w-[26.2rem]"
                                       disabledSelect
@@ -1082,9 +1062,7 @@ function ReservationEditPage() {
                                     />
                                   )}
                                 />
-                                <label className="font-bold text-[1.6rem] cursor-pointer">
-                                  UG
-                                </label>
+                                <label className="font-bold text-[1.6rem] cursor-pointer">UG</label>
                               </div>
                               {dataType === '3' && (
                                 <div className="flex items-center gap-2">
@@ -1167,7 +1145,7 @@ function ReservationEditPage() {
                             label="Trước X"
                             width="7rem"
                             name="reserve.noreserve_count_before"
-                            options={FROM_1_TO_50_OPTIONS}
+                            options={NORESERVE_COUNT_OPTIONS}
                             form={form}
                           />
 
@@ -1225,7 +1203,7 @@ function ReservationEditPage() {
                             label="Sau X"
                             width="7rem"
                             name="reserve.noreserve_count_after"
-                            options={FROM_1_TO_50_OPTIONS}
+                            options={NORESERVE_COUNT_OPTIONS}
                             form={form}
                           />
                           <SelectColumn
@@ -1628,9 +1606,7 @@ function ReservationEditPage() {
                                         className="w-[20rem] h-16"
                                         change={(date: Date | Date[] | null) => {
                                           if (date instanceof Date) {
-                                            field.onChange(
-                                              dayjs(date).format('YYYY-MM-DD HH:mm')
-                                            )
+                                            field.onChange(dayjs(date).format('YYYY-MM-DD HH:mm'))
                                           } else {
                                             field.onChange('')
                                           }
@@ -1920,15 +1896,11 @@ function ReservationEditPage() {
                                   <CarSvg className="w-6 h-6 mr-2" /> Bãi đỗ xe
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">
-                                    Chưa cài đặt
-                                  </span>
+                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() =>
-                                      toast.info('Tính năng chưa được triển khai')
-                                    }
+                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1939,15 +1911,11 @@ function ReservationEditPage() {
                                   <BicycleSvg className="w-6 h-6 mr-2" /> Xe đạp
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">
-                                    Chưa cài đặt
-                                  </span>
+                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() =>
-                                      toast.info('Tính năng chưa được triển khai')
-                                    }
+                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1959,15 +1927,11 @@ function ReservationEditPage() {
                                   <RugSVG className="w-6 h-6 mr-2" /> Phòng kho
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">
-                                    Chưa cài đặt
-                                  </span>
+                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() =>
-                                      toast.info('Tính năng chưa được triển khai')
-                                    }
+                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
                                   >
                                     Cài đặt
                                   </NButton>
@@ -1978,15 +1942,11 @@ function ReservationEditPage() {
                                   <DogSvg className="w-6 h-6 mr-2" /> Thú cưng/Chăn/Hộp
                                 </div>
                                 <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">
-                                    Chưa cài đặt
-                                  </span>
+                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
                                   <NButton
                                     type="button"
                                     className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() =>
-                                      toast.info('Tính năng chưa được triển khai')
-                                    }
+                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
                                   >
                                     Cài đặt
                                   </NButton>
@@ -2011,9 +1971,7 @@ function ReservationEditPage() {
                         {/* ── Collapsible: Substitute Room ───────────── */}
                         <CustomCollapsible className="my-8">
                           <CustomCollapsibleTrigger>
-                            <h5 className="font-bold text-[2.3rem] leading-none">
-                              Phòng thay thế
-                            </h5>
+                            <h5 className="font-bold text-[2.3rem] leading-none">Phòng thay thế</h5>
                           </CustomCollapsibleTrigger>
                           <CustomCollapsibleContent className="mt-4">
                             <div className="flex items-center">
@@ -2232,27 +2190,21 @@ function ReservationEditPage() {
                     <button
                       type="button"
                       className="font-bold text-[1.6rem] text-primary underline"
-                      onClick={() =>
-                        refBilling.current?.scrollIntoView({ behavior: 'smooth' })
-                      }
+                      onClick={() => refBilling.current?.scrollIntoView({ behavior: 'smooth' })}
                     >
                       Đăng ký thanh toán
                     </button>
                     <button
                       type="button"
                       className="font-bold text-[1.6rem] text-primary underline"
-                      onClick={() =>
-                        refInvoice.current?.scrollIntoView({ behavior: 'smooth' })
-                      }
+                      onClick={() => refInvoice.current?.scrollIntoView({ behavior: 'smooth' })}
                     >
                       Xuất hóa đơn
                     </button>
                     <button
                       type="button"
                       className="font-bold text-[1.6rem] text-primary underline"
-                      onClick={() =>
-                        refSales.current?.scrollIntoView({ behavior: 'smooth' })
-                      }
+                      onClick={() => refSales.current?.scrollIntoView({ behavior: 'smooth' })}
                     >
                       Chỉnh sửa doanh thu
                     </button>

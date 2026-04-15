@@ -263,6 +263,129 @@ Một bảng giá của `1 Loại phòng + 1 Gói lưu trú` gồm:
 
 **Bảng chính:**
 - **`reserves`**: Lưu thông tin đặt phòng.
+Các field chính của 予約情報 và ý nghĩa chi tiết theo nghiệp vụ đang thể hiện trong màn hình của bạn:
+
+エリア area_id
+Ý nghĩa: Khu vực quản lý (vùng địa lý hoặc cụm cơ sở).
+Bạn chọn field này trước để lọc danh sách 店舗.
+Nghiệp vụ: Đây là “cấp 1” trong chuỗi chọn phòng.
+
+店舗 facility_id
+Ý nghĩa: Cơ sở/tòa nhà cụ thể thuộc エリア.
+Sau khi chọn 店舗 thì mới xác định được ルームタイプ và ルーム番号.
+Nghiệp vụ: Đây là “cấp 2” để định vị inventory phòng.
+
+ルームタイプ room_type_id
+Ý nghĩa: Loại phòng (studio, 1K, 1LDK… tùy hệ thống).
+Nghiệp vụ: Dùng để:
+
+lọc danh sách phòng thực tế
+tính đơn giá/rent tương ứng
+ルーム番号 room_id
+Ý nghĩa: Phòng cụ thể khách sẽ ở.
+Nghiệp vụ:
+là khóa chính để xác định đặt phòng thực tế
+khi đổi room, hệ thống tự tính lại 後× theo cấu hình phòng + mức độ bẩn khách
+前× noreserve_count_before
+Ý nghĩa nghiệp vụ thường gặp: số “đệm” trước kỳ ở (số ngày/số lượt block trước khi bắt đầu booking).
+Thực tế trong code đang cho chọn số 1-50.
+Bạn có thể hiểu là buffer trước khi check-in để đảm bảo vận hành.
+
+後× noreserve_count_after
+Ý nghĩa: số “đệm” sau kỳ ở.
+Field này được auto set khi chọn room (dựa trên reserved_clean_day và used_messy_level), nhưng vẫn cho chỉnh tay.
+Nghiệp vụ: dành thời gian vệ sinh/chuẩn bị phòng trước booking tiếp theo.
+
+利用期間 period_from, period_to
+Ý nghĩa: Ngày bắt đầu và ngày kết thúc lưu trú.
+Nghiệp vụ:
+
+hiển thị số đêm
+là cơ sở tính loại lưu trú, billing period, và kiểm tra hợp lệ ngày (to phải >= from)
+利用区分 stay_type_id
+Ý nghĩa: Phân loại thời hạn ở (ngắn hạn/tuần/tháng/quý...).
+Nghiệp vụ:
+auto tính từ 利用期間
+có thể chỉnh tay nếu cần override
+ảnh hưởng trực tiếp đến tính giá thuê
+自動延長しない auto_extend_flag
+Ý nghĩa: Không cho tự động gia hạn.
+Nghiệp vụ: khi bật, reservation sẽ không tự kéo dài theo logic gia hạn tự động của hệ thống.
+
+確定 confirm_flag
+Ý nghĩa: Trạng thái reservation (未定: chưa chốt, 確定: đã chốt).
+Nghiệp vụ:
+
+ảnh hưởng luồng xử lý kế toán/thuế ở một số dòng billing
+cũng là cờ quan trọng cho vận hành biết booking đã final hay chưa
+入居方法 directcheckin_type
+Ý nghĩa: Phương thức vào ở (ví dụ trực tiếp, remote, v.v. tùy enum).
+Nghiệp vụ:
+nếu chọn option “3” thì directcheckin_flag tự bật
+phản ánh cách giao nhận chìa khóa/check-in
+ダイレクトチェックイン設定 directcheckin_flag
+Ý nghĩa: Bật/tắt chế độ direct check-in.
+Nghiệp vụ:
+liên kết 2 chiều với directcheckin_type
+bật sẽ phát sinh thêm trường vận hành liên quan keybox, liên hệ, giờ checkin...
+広告媒体 advertising_type
+Ý nghĩa: Nguồn lead/nguồn quảng cáo khách đến từ đâu.
+Nghiệp vụ: phục vụ tracking marketing và báo cáo hiệu quả kênh.
+
+鍵 (rental_keys)
+Ý nghĩa: số chìa khóa cấp cho khách.
+Trong UI đang để disabled (không cho sửa trực tiếp trong ngữ cảnh này).
+
+入居予定時間 period_from_time
+Ý nghĩa: giờ dự kiến check-in trong ngày bắt đầu.
+Nghiệp vụ:
+
+bắt buộc
+dùng để ghép thành period_from datetime khi gửi payload API
+お支払い期限 payment_due_date
+Ý nghĩa: hạn thanh toán của booking.
+Nghiệp vụ: dùng cho kiểm soát công nợ/nhắc thanh toán.
+
+予約メモ note
+Ý nghĩa: ghi chú reservation tổng quát (vận hành, lưu ý khách...).
+Nghiệp vụ: thông tin mềm cho đội vận hành.
+
+滞納メモ overdue_debt_note
+Ý nghĩa: ghi chú riêng về công nợ trễ hạn.
+Nghiệp vụ: phục vụ thu hồi công nợ và kiểm soát rủi ro khách.
+
+この予約以降、後続の予約を許可しない disable_reservation
+Ý nghĩa: khóa không cho đặt tiếp sau reservation này (trên cùng phòng/chuỗi liên quan).
+Nghiệp vụ: dùng khi muốn chặn booking kế tiếp vì lý do vận hành đặc biệt.
+
+Box keybox_name và 暗証番号 keybox_password
+Ý nghĩa: chọn hộp chìa khóa và mã mở.
+Nghiệp vụ:
+
+nếu chọn “メールボックス” thì password có thể lấy theo mailbox của room và bị disable
+còn lại có thể nhập/chỉnh tay
+予約担当 di_contact_staff_id
+Ý nghĩa: nhân sự phụ trách reservation/check-in liên lạc.
+Nghiệp vụ: dùng cho phân công và truy vết trách nhiệm.
+
+連絡済み contacted_flag và 日時 checkin_date
+Ý nghĩa:
+
+contacted_flag: đã liên hệ khách chưa
+checkin_date: thời điểm liên hệ/nhận check-in (theo luồng màn này)
+Nghiệp vụ: tracking trạng thái chăm sóc trước nhận phòng.
+Box使用期間 box_usage_period_type, box_usage_start_date, box_usage_end_date
+Ý nghĩa: kiểu thời gian dùng Box và khoảng ngày áp dụng.
+Nghiệp vụ:
+phục vụ kiểm soát cấp phát box/chìa theo thời gian
+có validate end_date phải sau hoặc bằng start_date
+Các field hay gây nhầm lẫn nhất và cách nhớ nhanh:
+
+前× / 後×: buffer vận hành trước-sau kỳ ở, không phải ngày ở của khách.
+利用区分: loại lưu trú để tính giá, không phải trạng thái booking.
+確定: trạng thái chốt booking, không phải trạng thái thanh toán.
+directcheckin_type vs directcheckin_flag: một cái là “loại”, một cái là “bật/tắt chế độ”.
+period_from_time: giờ check-in dự kiến, ghép vào ngày bắt đầu khi submit.
 - **`usage_statuses`**: Trạng thái sử dụng phòng thực tế (mapping reserve → room). Là bảng then chốt để **check trùng lịch (overlap)**.
 - **`reserve_previews`**: View tổng hợp cho danh sách đặt phòng (join reserve + client + room + facility).
 

@@ -10,6 +10,7 @@ import { CustomRadio, CustomRadioItems } from '@/components/common/CustomRadio'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import { CustomTooltip } from '@/components/common/CustomToolTip'
 import Loading from '@/components/common/Loading'
+import { ADVERTISING_TYPE_OPTIONS, RENTAL_KEYS_OPTIONS } from '@/constants/reservation'
 import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { BinSVG } from '@/components/svgs/BinSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
@@ -27,10 +28,6 @@ import { StayDurationAutoFlag, UsedMessyLevel } from '@/constants/common'
 import { useReservation, useUpdateReservation } from '@/hooks/queries/useReservations'
 import { cn } from '@/lib/utils'
 import { calculateAge, formatMoney, isEmpty } from '@/misc/type-guard.misc'
-import {
-  ADVERTISING_TYPE_OPTIONS,
-  RENTAL_KEYS_OPTIONS,
-} from '@/components/reservation/mock-data'
 import type { Reservation } from '@/types/reservation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
@@ -163,9 +160,27 @@ interface ReservationDetail extends Reservation {
   keyboxName?: string
   keyboxPassword?: string
   directcheckinNote?: string
-  parkingReserves?: { facilityName: string; roomNumber: string; periodFrom: string; periodTo: string; unitPrice: number }[]
-  bicycleParkingReserves?: { facilityName: string; roomNumber: string; periodFrom: string; periodTo: string; unitPrice: number }[]
-  trunkRoomsReserve?: { facilityName: string; roomNumber: string; periodFrom: string; periodTo: string; unitPrice: number }[]
+  parkingReserves?: {
+    facilityName: string
+    roomNumber: string
+    periodFrom: string
+    periodTo: string
+    unitPrice: number
+  }[]
+  bicycleParkingReserves?: {
+    facilityName: string
+    roomNumber: string
+    periodFrom: string
+    periodTo: string
+    unitPrice: number
+  }[]
+  trunkRoomsReserve?: {
+    facilityName: string
+    roomNumber: string
+    periodFrom: string
+    periodTo: string
+    unitPrice: number
+  }[]
   substituteRoomFacilityName?: string
   substituteRoomNumber?: string
   substituteRoomPeriodFrom?: string
@@ -267,7 +282,7 @@ function ReservationDetail() {
   const advertisingLabel =
     ADVERTISING_TYPE_OPTIONS.find((o) => o.value === String(reserve.advertisingType))?.name ?? ''
   const deleteStatusLabel = reserve.deleteStatus
-    ? DELETE_STATUS_MAP[reserve.deleteStatus] ?? 'Không xác định'
+    ? (DELETE_STATUS_MAP[reserve.deleteStatus] ?? 'Không xác định')
     : 'Không xóa'
 
   // Helper: calc days between two dates
@@ -290,7 +305,11 @@ function ReservationDetail() {
               SECTION 1 — Thông tin khách hàng (Customer Info)
               ═══════════════════════════════════════════════════════════ */}
           <section className="mt-[2rem]">
-            <CustomAccordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+            <CustomAccordion
+              type="multiple"
+              defaultValue={['item-1', 'item-2', 'item-3']}
+              className="w-full"
+            >
               <CustomAccordionItem
                 value="item-1"
                 className="bg-white first:mt-0 mb-20 border !border-black rounded-[0.8rem]"
@@ -316,7 +335,7 @@ function ReservationDetail() {
                             Loại
                           </td>
                           <td className="border border-black">
-                            {client ? typeOption[client.dataType] ?? '' : ''}
+                            {client ? (typeOption[client.dataType] ?? '') : ''}
                           </td>
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                             Giấy tờ tùy thân
@@ -338,7 +357,7 @@ function ReservationDetail() {
                         {/* Row 2: Họ tên | Ngày sinh + Tuổi */}
                         <tr>
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
-                            {client ? typeTitleOption[client.dataType] ?? 'Họ tên' : 'Họ tên'}
+                            {client ? (typeTitleOption[client.dataType] ?? 'Họ tên') : 'Họ tên'}
                           </td>
                           <td className="border border-black" colSpan={3}>
                             {client?.clientName}
@@ -346,7 +365,10 @@ function ReservationDetail() {
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                             Ngày sinh
                           </td>
-                          <td className="border border-black" style={{ borderRight: '1px dashed black' }}>
+                          <td
+                            className="border border-black"
+                            style={{ borderRight: '1px dashed black' }}
+                          >
                             {client?.birthday ? dayjs(client.birthday).format('YYYY/MM/DD') : ''}
                           </td>
                           <td
@@ -384,7 +406,9 @@ function ReservationDetail() {
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                             ĐT (Khẩn cấp)
                           </td>
-                          <td className="border border-black" colSpan={2}>{client?.telEmergency}</td>
+                          <td className="border border-black" colSpan={2}>
+                            {client?.telEmergency}
+                          </td>
                         </tr>
 
                         {/* Row 5: Email | FAX | Người LH khẩn cấp */}
@@ -400,7 +424,9 @@ function ReservationDetail() {
                           <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                             Người LH khẩn cấp
                           </td>
-                          <td className="border border-black" colSpan={2}>{client?.emergencyRelation}</td>
+                          <td className="border border-black" colSpan={2}>
+                            {client?.emergencyRelation}
+                          </td>
                         </tr>
 
                         {/* Empty separator */}
@@ -443,10 +469,14 @@ function ReservationDetail() {
                             <div className="flex gap-[0.5rem]">
                               {client?.lastUsedServiceIds?.map((item) => {
                                 const Icon =
-                                  item.type === 1 ? CarSvg
-                                    : item.type === 2 ? BicycleSvg
-                                      : item.type === 4 ? DogSvg
-                                        : item.type === 5 ? BinSVG
+                                  item.type === 1
+                                    ? CarSvg
+                                    : item.type === 2
+                                      ? BicycleSvg
+                                      : item.type === 4
+                                        ? DogSvg
+                                        : item.type === 5
+                                          ? BinSVG
                                           : null
                                 if (!Icon) return null
                                 return (
@@ -454,7 +484,9 @@ function ReservationDetail() {
                                     key={item.id}
                                     className="flex justify-center items-center bg-[#B86020] mr-3 p-2 border-none rounded-[0.4rem] w-10 sm:w-16 h-10 sm:h-16"
                                   >
-                                    <Icon className={item.type === 5 ? '[&>path]:fill-white' : ''} />
+                                    <Icon
+                                      className={item.type === 5 ? '[&>path]:fill-white' : ''}
+                                    />
                                   </div>
                                 )
                               })}
@@ -468,13 +500,25 @@ function ReservationDetail() {
                     <div className="flex justify-center items-center gap-[2rem]">
                       {client && (
                         <>
-                          <Link to="/clients/$clientId/edit" params={{ clientId: String(client.clientId) }}>
-                            <NButton type="button" className="bg-[#efefef] w-[14.4rem] text-lg sm:text-2xl">
+                          <Link
+                            to="/clients/$clientId/edit"
+                            params={{ clientId: String(client.clientId) }}
+                          >
+                            <NButton
+                              type="button"
+                              className="bg-[#efefef] w-[14.4rem] text-lg sm:text-2xl"
+                            >
                               <span>Chỉnh sửa</span>
                             </NButton>
                           </Link>
-                          <Link to="/clients/$clientId/detail" params={{ clientId: String(client.clientId) }}>
-                            <NButton type="button" className="bg-[#efefef] w-[14.4rem] text-lg sm:text-2xl">
+                          <Link
+                            to="/clients/$clientId/detail"
+                            params={{ clientId: String(client.clientId) }}
+                          >
+                            <NButton
+                              type="button"
+                              className="bg-[#efefef] w-[14.4rem] text-lg sm:text-2xl"
+                            >
                               <span>Chi tiết</span>
                             </NButton>
                           </Link>
@@ -533,13 +577,9 @@ function ReservationDetail() {
                           {reserve.noreserveCountBefore ?? 0}
                         </TableCell>
                         <TableCell className="border border-black text-center whitespace-nowrap">
-                          {reserve.periodFrom
-                            ? dayjs(reserve.periodFrom).format('YYYY/MM/DD')
-                            : ''}
+                          {reserve.periodFrom ? dayjs(reserve.periodFrom).format('YYYY/MM/DD') : ''}
                           {' ~ '}
-                          {reserve.periodTo
-                            ? dayjs(reserve.periodTo).format('YYYY/MM/DD')
-                            : ''}
+                          {reserve.periodTo ? dayjs(reserve.periodTo).format('YYYY/MM/DD') : ''}
                           {reserve.periodFrom && reserve.periodTo && (
                             <span className="ml-2 text-gray-500">
                               ({calcDays(reserve.periodFrom, reserve.periodTo)} ngày)
@@ -580,15 +620,15 @@ function ReservationDetail() {
                             {reserve.rentalKeys ?? 0}
                           </TableCell>
                           <TableCell className="border border-black text-center whitespace-nowrap">
-                            {reserve.periodFrom
-                              ? dayjs(reserve.periodFrom).format('HH:mm')
-                              : ''}
+                            {reserve.periodFrom ? dayjs(reserve.periodFrom).format('HH:mm') : ''}
                           </TableCell>
                           <TableCell className="border border-black text-center">
                             {reserve.amendment ?? ''}
                           </TableCell>
                           <TableCell className="border border-black text-center">
-                            {reserve.deposit != null ? `${formatMoney(reserve.deposit)} đ` : 'Không'}
+                            {reserve.deposit != null
+                              ? `${formatMoney(reserve.deposit)} đ`
+                              : 'Không'}
                           </TableCell>
                           <TableCell className="border border-black text-center whitespace-nowrap">
                             {reserve.movedFacilityName
@@ -662,7 +702,9 @@ function ReservationDetail() {
                       >
                         <tbody>
                           <tr>
-                            <td className="bg-[#efefef] border border-black w-[14rem] font-bold">Box</td>
+                            <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
+                              Box
+                            </td>
                             <td className="border border-black">{reserve.keyboxName ?? ''}</td>
                             <td className="bg-[#efefef] border border-black w-[14rem] font-bold">
                               Mật mã
@@ -710,7 +752,10 @@ function ReservationDetail() {
                           {reserve.parkingReserves?.length ? (
                             reserve.parkingReserves.map((p, i) => (
                               <div key={i} className="text-[1.4rem]">
-                                {p.facilityName} {p.roomNumber} | {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~ {dayjs(p.periodTo).format('YYYY/MM/DD')} | {formatMoney(p.unitPrice)} đ/ngày
+                                {p.facilityName} {p.roomNumber} |{' '}
+                                {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~{' '}
+                                {dayjs(p.periodTo).format('YYYY/MM/DD')} |{' '}
+                                {formatMoney(p.unitPrice)} đ/ngày
                               </div>
                             ))
                           ) : (
@@ -731,7 +776,10 @@ function ReservationDetail() {
                           {reserve.bicycleParkingReserves?.length ? (
                             reserve.bicycleParkingReserves.map((p, i) => (
                               <div key={i} className="text-[1.4rem]">
-                                {p.facilityName} {p.roomNumber} | {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~ {dayjs(p.periodTo).format('YYYY/MM/DD')} | {formatMoney(p.unitPrice)} đ/ngày
+                                {p.facilityName} {p.roomNumber} |{' '}
+                                {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~{' '}
+                                {dayjs(p.periodTo).format('YYYY/MM/DD')} |{' '}
+                                {formatMoney(p.unitPrice)} đ/ngày
                               </div>
                             ))
                           ) : (
@@ -752,7 +800,10 @@ function ReservationDetail() {
                           {reserve.trunkRoomsReserve?.length ? (
                             reserve.trunkRoomsReserve.map((p, i) => (
                               <div key={i} className="text-[1.4rem]">
-                                {p.facilityName} {p.roomNumber} | {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~ {dayjs(p.periodTo).format('YYYY/MM/DD')} | {formatMoney(p.unitPrice)} đ/ngày
+                                {p.facilityName} {p.roomNumber} |{' '}
+                                {dayjs(p.periodFrom).format('YYYY/MM/DD')} ~{' '}
+                                {dayjs(p.periodTo).format('YYYY/MM/DD')} |{' '}
+                                {formatMoney(p.unitPrice)} đ/ngày
                               </div>
                             ))
                           ) : (
@@ -875,20 +926,29 @@ function ReservationDetail() {
                         {MOCK_OCCUPIERS.length > 0 ? (
                           MOCK_OCCUPIERS.map((occ) => (
                             <TableRow key={occ.no}>
-                              <TableCell className="border border-black text-center">{occ.no}</TableCell>
+                              <TableCell className="border border-black text-center">
+                                {occ.no}
+                              </TableCell>
                               <TableCell className="border border-black">{occ.name}</TableCell>
-                              <TableCell className="border border-black text-center">{occ.sex}</TableCell>
+                              <TableCell className="border border-black text-center">
+                                {occ.sex}
+                              </TableCell>
                               <TableCell className="border border-black text-center">
                                 {occ.birthday ? dayjs(occ.birthday).format('YYYY/MM/DD') : ''}
                               </TableCell>
-                              <TableCell className="border border-black text-center">{occ.age}</TableCell>
+                              <TableCell className="border border-black text-center">
+                                {occ.age}
+                              </TableCell>
                               <TableCell className="border border-black">{occ.tel}</TableCell>
                               <TableCell className="border border-black">{occ.address}</TableCell>
                             </TableRow>
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={7} className="border border-black text-center py-8 text-gray-400">
+                            <TableCell
+                              colSpan={7}
+                              className="border border-black text-center py-8 text-gray-400"
+                            >
                               Không có dữ liệu.
                             </TableCell>
                           </TableRow>
@@ -912,17 +972,30 @@ function ReservationDetail() {
                             control={keyReturnForm.control}
                             name="keyReturnContactType"
                             render={({ field: { onChange, value } }) => (
-                              <CustomRadio value={value} onValueChange={onChange} className="flex gap-8">
+                              <CustomRadio
+                                value={value}
+                                onValueChange={onChange}
+                                className="flex gap-8"
+                              >
                                 <CustomRadioItems value="1" id="contact-bring" />
-                                <label htmlFor="contact-bring" className="font-bold text-xl cursor-pointer">
+                                <label
+                                  htmlFor="contact-bring"
+                                  className="font-bold text-xl cursor-pointer"
+                                >
                                   Mang đến
                                 </label>
                                 <CustomRadioItems value="2" id="contact-tel" />
-                                <label htmlFor="contact-tel" className="font-bold text-xl cursor-pointer">
+                                <label
+                                  htmlFor="contact-tel"
+                                  className="font-bold text-xl cursor-pointer"
+                                >
                                   Điện thoại
                                 </label>
                                 <CustomRadioItems value="0" id="contact-none" />
-                                <label htmlFor="contact-none" className="font-bold text-xl cursor-pointer">
+                                <label
+                                  htmlFor="contact-none"
+                                  className="font-bold text-xl cursor-pointer"
+                                >
                                   Chưa
                                 </label>
                               </CustomRadio>
@@ -968,7 +1041,9 @@ function ReservationDetail() {
                               <select
                                 className="border border-black rounded px-4 py-2 text-[1.4rem] w-[8rem]"
                                 value={value.value}
-                                onChange={(e) => onChange({ value: e.target.value, label: e.target.value })}
+                                onChange={(e) =>
+                                  onChange({ value: e.target.value, label: e.target.value })
+                                }
                               >
                                 {RENTAL_KEYS_OPTIONS.map((opt) => (
                                   <option key={opt.value} value={opt.value}>
@@ -985,7 +1060,10 @@ function ReservationDetail() {
                           >
                             <span>Đặt giờ hiện tại</span>
                           </NButton>
-                          <NButton type="submit" className="bg-[#efefef] w-[10rem] text-lg sm:text-2xl">
+                          <NButton
+                            type="submit"
+                            className="bg-[#efefef] w-[10rem] text-lg sm:text-2xl"
+                          >
                             <span>Cập nhật</span>
                           </NButton>
                         </div>
@@ -1066,14 +1144,21 @@ function ReservationDetail() {
                               </TableCell>
                               <TableCell className="border border-black">{bill.item}</TableCell>
                               <TableCell className="border border-black text-center">
-                                {dayjs(bill.periodFrom).format('YYYY/MM/DD')} ~ {dayjs(bill.periodTo).format('YYYY/MM/DD')}
+                                {dayjs(bill.periodFrom).format('YYYY/MM/DD')} ~{' '}
+                                {dayjs(bill.periodTo).format('YYYY/MM/DD')}
                               </TableCell>
-                              <TableCell className="border border-black text-center">{bill.days}</TableCell>
+                              <TableCell className="border border-black text-center">
+                                {bill.days}
+                              </TableCell>
                               <TableCell className="border border-black text-right">
                                 {formatMoney(bill.unitPrice)} đ
                               </TableCell>
-                              <TableCell className="border border-black text-center">{bill.quantity}</TableCell>
-                              <TableCell className="border border-black">{bill.staffName}</TableCell>
+                              <TableCell className="border border-black text-center">
+                                {bill.quantity}
+                              </TableCell>
+                              <TableCell className="border border-black">
+                                {bill.staffName}
+                              </TableCell>
                               <TableCell className="border border-black text-right">
                                 {formatMoney(bill.amount)} đ
                               </TableCell>
@@ -1095,7 +1180,10 @@ function ReservationDetail() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={11} className="border border-black text-center py-8 text-gray-400">
+                            <TableCell
+                              colSpan={11}
+                              className="border border-black text-center py-8 text-gray-400"
+                            >
                               Không có dữ liệu.
                             </TableCell>
                           </TableRow>
@@ -1122,7 +1210,10 @@ function ReservationDetail() {
                               />
                             )}
                           />
-                          <NButton type="submit" className="bg-[#efefef] w-[10rem] text-lg sm:text-2xl">
+                          <NButton
+                            type="submit"
+                            className="bg-[#efefef] w-[10rem] text-lg sm:text-2xl"
+                          >
                             <span>Cập nhật</span>
                           </NButton>
                         </div>
@@ -1142,7 +1233,10 @@ function ReservationDetail() {
                           <TableHead className="bg-[#efefef] border border-black text-center font-bold text-black">
                             Nội dung
                           </TableHead>
-                          <TableHead className="bg-[#efefef] border border-black text-center font-bold text-black" colSpan={2}>
+                          <TableHead
+                            className="bg-[#efefef] border border-black text-center font-bold text-black"
+                            colSpan={2}
+                          >
                             Phương thức TT
                           </TableHead>
                           <TableHead className="bg-[#efefef] border border-black text-center font-bold text-black">
@@ -1182,8 +1276,12 @@ function ReservationDetail() {
                                 />
                               </TableCell>
                               <TableCell className="border border-black">{adv.content}</TableCell>
-                              <TableCell className="border border-black">{adv.paymentMethod1}</TableCell>
-                              <TableCell className="border border-black">{adv.paymentMethod2}</TableCell>
+                              <TableCell className="border border-black">
+                                {adv.paymentMethod1}
+                              </TableCell>
+                              <TableCell className="border border-black">
+                                {adv.paymentMethod2}
+                              </TableCell>
                               <TableCell className="border border-black text-right">
                                 {formatMoney(adv.amount)} đ
                               </TableCell>
@@ -1209,7 +1307,10 @@ function ReservationDetail() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={10} className="border border-black text-center py-8 text-gray-400">
+                            <TableCell
+                              colSpan={10}
+                              className="border border-black text-center py-8 text-gray-400"
+                            >
                               Không có dữ liệu.
                             </TableCell>
                           </TableRow>
@@ -1275,7 +1376,9 @@ function ReservationDetail() {
             </div>
             <div className="flex gap-2">
               <span className="font-bold">Ngày tạo:</span>
-              <span>{reserve.createdAt ? dayjs(reserve.createdAt).format('YYYY/MM/DD HH:mm') : ''}</span>
+              <span>
+                {reserve.createdAt ? dayjs(reserve.createdAt).format('YYYY/MM/DD HH:mm') : ''}
+              </span>
             </div>
             <div className="flex gap-2">
               <span className="font-bold">Người cập nhật:</span>
@@ -1283,7 +1386,9 @@ function ReservationDetail() {
             </div>
             <div className="flex gap-2">
               <span className="font-bold">Ngày cập nhật:</span>
-              <span>{reserve.updatedAt ? dayjs(reserve.updatedAt).format('YYYY/MM/DD HH:mm') : ''}</span>
+              <span>
+                {reserve.updatedAt ? dayjs(reserve.updatedAt).format('YYYY/MM/DD HH:mm') : ''}
+              </span>
             </div>
           </div>
         </>

@@ -13,7 +13,7 @@ export const ERROR_MESSAGES = {
   CONFLICT: 'Resource conflict',
   VALIDATION_ERROR: 'Validation error',
   INTERNAL_ERROR: 'Internal server error',
-  ROOM_OVERLAP: '日程が他の予約と重複しています。再度ご確認ください。',
+  ROOM_OVERLAP: 'Room is already booked for the selected period',
   INVALID_STATUS_TRANSITION: 'Invalid reservation status transition',
   RESERVATION_NOT_CONFIRMED: 'Reservation must be confirmed before check-in',
   RESERVATION_NOT_CHECKED_IN: 'Reservation must be checked in before check-out',

@@ -6,12 +6,7 @@ interface KeySVGProps extends React.SVGProps<SVGSVGElement> {
   fill?: string
 }
 
-export function KeySVG02({
-  className,
-  fill,
-  fillOutline = '#EDD600',
-  ...props
-}: KeySVGProps) {
+export function KeySVG02({ className, fill, fillOutline = '#EDD600', ...props }: KeySVGProps) {
   return (
     <svg
       width="17"

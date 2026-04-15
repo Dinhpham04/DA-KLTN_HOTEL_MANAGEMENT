@@ -4,8 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 
 interface UseGetRoomTypesParams {
   params?: RoomTypeFilterParams
-  onSuccess?: (data: RoomType[]) => void
-  onError?: (error: unknown) => void
 }
 
 function isRoomTypeArray(payload: unknown): payload is RoomType[] {
@@ -42,19 +40,12 @@ function normalizeRoomTypesResponse(payload: unknown): PaginatedRoomTypeResponse
   return { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } }
 }
 
-export function useGetRoomTypes({ params, onSuccess, onError }: UseGetRoomTypesParams = {}) {
+export function useGetRoomTypes({ params }: UseGetRoomTypesParams = {}) {
   return useQuery({
     queryKey: ['get-room-types', params],
     queryFn: async () => {
-      try {
-        const response = await roomTypeApi.getRoomTypes(params)
-        const normalized = normalizeRoomTypesResponse(response.data)
-        onSuccess?.(normalized.data)
-        return normalized
-      } catch (error) {
-        onError?.(error)
-        throw error
-      }
+      const response = await roomTypeApi.getRoomTypes(params)
+      return normalizeRoomTypesResponse(response.data)
     },
   })
 }

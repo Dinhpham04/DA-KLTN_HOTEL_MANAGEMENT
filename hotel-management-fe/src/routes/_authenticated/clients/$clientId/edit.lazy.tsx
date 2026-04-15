@@ -314,7 +314,7 @@ const FormSchemaContact = z
     }
   })
 
-export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> { }
+export interface TypeFormClientSchemaContact extends z.infer<typeof FormSchemaContact> {}
 
 function ClientEditPage() {
   useDocumentTitle('Chỉnh sửa khách hàng')
@@ -331,7 +331,11 @@ function ClientEditPage() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState<boolean>(false)
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
-  const { data: client, isLoading: isLoadingClient, refetch } = useGetClientById({ clientId: clientIdNum })
+  const {
+    data: client,
+    isLoading: isLoadingClient,
+    refetch,
+  } = useGetClientById({ clientId: clientIdNum })
   const { data: identifications, refetch: refetchIdentifications } = useGetIdentifications({
     clientId: clientIdNum,
     enabled: !!clientIdNum,

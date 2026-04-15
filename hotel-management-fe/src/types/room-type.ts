@@ -30,5 +30,6 @@ export interface RoomTypeFilterParams {
   limit?: number
   search?: string
   roomClassId?: number
+  facilityId?: number
   dataStatus?: number
 }

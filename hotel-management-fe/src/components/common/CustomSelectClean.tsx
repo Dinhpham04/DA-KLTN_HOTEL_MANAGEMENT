@@ -4,18 +4,20 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { CommandItem } from 'cmdk'
 import { Check } from 'lucide-react'
+import type React from 'react'
 import { useEffect, useState } from 'react'
 
 interface TypeSelect {
   isAll?: boolean
   option: Option[]
   selected?: Option
+  selectedLabel?: string
   change?: (e: Option) => void
   customClassMain?: string
   customClassArrow?: string
@@ -33,6 +35,7 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
   option,
   change,
   selected,
+  selectedLabel,
   customClassMain,
   customClassArrow,
   customClassDropDown,
@@ -44,10 +47,14 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
   const handleSelect = (item: Option) => {
     if (value === item.value && isAll) {
       setValue('')
-      change?.({ value: '', label: '---' })
+      if (change) {
+        change({ value: '', label: '---' })
+      }
     } else {
       setValue(item.value)
-      change?.(item)
+      if (change) {
+        change(item)
+      }
     }
     setOpen(false)
   }
@@ -64,19 +71,20 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            'w-full justify-between border border-black bg-white py-0 pr-0 text-[1.4rem] hover:bg-[#eeeeee] disabled:cursor-not-allowed disabled:opacity-50',
+            'justify-between bg-white hover:bg-[#eeeeee] disabled:opacity-50 py-0 pr-0 border border-black w-full text-[1.4rem] disabled:cursor-not-allowed',
             customClassMain
           )}
         >
-          <span className="flex h-full max-w-[calc(100%-40px)] flex-1 items-center overflow-hidden text-left text-ellipsis">
-            {option.find((item) => item.value === value)?.label ||
+          <span className="flex flex-1 items-center max-w-[calc(100%-40px)] h-full overflow-hidden text-left text-ellipsis text-black">
+            {selectedLabel ||
+              option.find((item) => item.value === value)?.label ||
               (selected?.label && selected.label !== 'null' ? selected.label : null) ||
               '---'}
           </span>
           <div
             className={cn(
-              'flex h-full w-[3.2rem] items-center justify-center border-l border-black',
-              disabledSelect ? 'cursor-not-allowed bg-white' : 'bg-[#eee]',
+              'flex justify-center items-center border-black border-l w-[3.2rem] h-full',
+              disabledSelect ? 'bg-white cursor-not-allowed' : 'bg-[#eee]',
               customClassArrow
             )}
           >
@@ -94,35 +102,37 @@ const CustomSelectClean: React.FC<TypeSelect> = ({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="z-[1111] w-fit min-w-[18rem] bg-white p-0">
+      <PopoverContent className="z-[1111] bg-white p-0 w-fit min-w-[18rem]">
         <Command
-          className="text-black"
-          filter={(commandValue, search) =>
-            commandValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-          }
+          filter={(value, search) => {
+            if (value.toLowerCase().includes(search.toLowerCase())) return 1
+            return 0
+          }}
         >
           <CommandList className={cn(customClassDropDown)}>
-            <CommandInput className="text-xl text-black" placeholder="Tìm kiếm tùy chọn" />
-            <CommandEmpty className="text-xl text-black">Không tìm thấy dữ liệu</CommandEmpty>
+            <CommandInput className="text-xl" placeholder="Tìm kiếm" />
+            <CommandEmpty className="text-xl">Không tìm thấy</CommandEmpty>
             <CommandGroup className="pr-4" onWheel={(e) => e.stopPropagation()}>
-              {option.map((item) => (
-                <CommandItem
-                  key={item.value}
-                  value={item.label}
-                  onSelect={() => handleSelect(item)}
-                  className="flex cursor-pointer py-1 text-black transition-all duration-300 hover:pl-1"
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-6 w-6',
-                      value === item.value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <span className="max-w-[30rem] overflow-hidden text-ellipsis text-xl">
-                    {item.label}
-                  </span>
-                </CommandItem>
-              ))}
+              {option &&
+                option.length > 0 &&
+                option.map((item) => (
+                  <CommandItem
+                    key={item.value}
+                    value={item.label}
+                    onSelect={() => handleSelect(item)}
+                    className="flex py-1 hover:pl-1 transition-all duration-300 cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 w-6 h-6',
+                        value === item.value ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    <span className="max-w-[30rem] overflow-hidden text-xl text-ellipsis">
+                      {item.label}
+                    </span>
+                  </CommandItem>
+                ))}
             </CommandGroup>
           </CommandList>
         </Command>
