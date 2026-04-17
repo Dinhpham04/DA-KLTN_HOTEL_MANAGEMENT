@@ -267,7 +267,7 @@ function ReservationCreatePage() {
     // If a facility is selected, we could filter further but room types don't have facilityId
     // So we show all available room types
     return allTypes.map((rt) => ({
-      label: rt.roomTypeNameShort,
+      label: rt.roomTypeName,
       value: String(rt.roomTypeId),
     }))
   }, [roomTypesData])

@@ -17,10 +17,13 @@ export class ReservationRepository {
     checkinReceptionist: true,
     checkoutReceptionist: true,
     confirmStaff: true,
+    createdBy: true,
+    updatedBy: true,
   } as const;
 
   async findAll(filter: ReservationFilterDto) {
     const where: Prisma.ReserveWhereInput = { deletedAt: null };
+    const andConditions: Prisma.ReserveWhereInput[] = [];
 
     if (filter.dataStatus !== undefined) where.dataStatus = filter.dataStatus;
     if (filter.reserveStatus !== undefined) where.reserveStatus = filter.reserveStatus;
@@ -33,31 +36,259 @@ export class ReservationRepository {
     if (filter.checkinFlag !== undefined) where.checkinFlag = filter.checkinFlag;
     if (filter.confirmFlag !== undefined) where.confirmFlag = filter.confirmFlag;
     if (filter.draftFlag !== undefined) where.draftFlag = filter.draftFlag;
+    if (filter.createdStaffId !== undefined) where.createdStaffId = filter.createdStaffId;
+    if (filter.updatedStaffId !== undefined) where.updatedStaffId = filter.updatedStaffId;
 
-    if (filter.periodFrom || filter.periodTo) {
-      where.AND = [];
-      if (filter.periodFrom) {
-        (where.AND as Prisma.ReserveWhereInput[]).push({
-          periodTo: { gte: new Date(filter.periodFrom) },
-        });
-      }
-      if (filter.periodTo) {
-        (where.AND as Prisma.ReserveWhereInput[]).push({
-          periodFrom: { lte: new Date(filter.periodTo) },
-        });
-      }
+    if (filter.periodFrom) {
+      andConditions.push({
+        periodTo: { gte: new Date(filter.periodFrom) },
+      });
+    }
+
+    if (filter.periodTo) {
+      andConditions.push({
+        periodFrom: { lte: new Date(filter.periodTo) },
+      });
     }
 
     if (filter.search) {
-      where.OR = [
-        { note: { contains: filter.search, mode: 'insensitive' } },
-        { client: { clientName: { contains: filter.search, mode: 'insensitive' } } },
-        { client: { clientNameEn: { contains: filter.search, mode: 'insensitive' } } },
-      ];
+      andConditions.push({
+        OR: [
+          { note: { contains: filter.search, mode: 'insensitive' } },
+          { client: { is: { clientName: { contains: filter.search, mode: 'insensitive' } } } },
+          { client: { is: { clientNameEn: { contains: filter.search, mode: 'insensitive' } } } },
+          { client: { is: { companyName: { contains: filter.search, mode: 'insensitive' } } } },
+          { client: { is: { companyNameEn: { contains: filter.search, mode: 'insensitive' } } } },
+        ],
+      });
     }
 
-    const orderBy: Prisma.ReserveOrderByWithRelationInput =
+    if (filter.clientName) {
+      andConditions.push({
+        OR: [
+          { client: { is: { clientName: { contains: filter.clientName, mode: 'insensitive' } } } },
+          { client: { is: { clientNameEn: { contains: filter.clientName, mode: 'insensitive' } } } },
+          { client: { is: { companyName: { contains: filter.clientName, mode: 'insensitive' } } } },
+          { client: { is: { companyNameEn: { contains: filter.clientName, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+
+    if (filter.occupierName) {
+      andConditions.push({
+        reserveOccupiers: {
+          some: {
+            deletedAt: null,
+            OR: [
+              { occupierName: { contains: filter.occupierName, mode: 'insensitive' } },
+              { occupierNameEn: { contains: filter.occupierName, mode: 'insensitive' } },
+            ],
+          },
+        },
+      });
+    }
+
+    if (filter.chargeStaffName) {
+      andConditions.push({
+        OR: [
+          { chargeStaff: { is: { staffName: { contains: filter.chargeStaffName, mode: 'insensitive' } } } },
+          { chargeStaff2: { is: { staffName: { contains: filter.chargeStaffName, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+
+    if (filter.facilityOrRoom) {
+      const facilityOrRoomKeyword = filter.facilityOrRoom.trim();
+      const facilityOrRoomConditions: Prisma.ReserveWhereInput[] = [
+        {
+          facility: {
+            is: {
+              facilityNo: { contains: facilityOrRoomKeyword, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          facility: {
+            is: {
+              facilityName: { contains: facilityOrRoomKeyword, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          room: {
+            is: {
+              roomNumber: { contains: facilityOrRoomKeyword, mode: 'insensitive' },
+            },
+          },
+        },
+      ];
+
+      // Support combined keyword format: facilityNo-roomNumber.
+      const combinedDelimiterIndex = facilityOrRoomKeyword.lastIndexOf('-');
+      const hasCombinedFormat =
+        combinedDelimiterIndex > 0 &&
+        combinedDelimiterIndex < facilityOrRoomKeyword.length - 1;
+
+      if (hasCombinedFormat) {
+        const facilityNoKeyword = facilityOrRoomKeyword
+          .slice(0, combinedDelimiterIndex)
+          .trim();
+        const roomNumberKeyword = facilityOrRoomKeyword
+          .slice(combinedDelimiterIndex + 1)
+          .trim();
+
+        if (facilityNoKeyword && roomNumberKeyword) {
+          facilityOrRoomConditions.push({
+            AND: [
+              {
+                facility: {
+                  is: {
+                    facilityNo: {
+                      contains: facilityNoKeyword,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              },
+              {
+                room: {
+                  is: {
+                    roomNumber: {
+                      contains: roomNumberKeyword,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              },
+            ],
+          });
+        }
+      }
+
+      andConditions.push({
+        OR: facilityOrRoomConditions,
+      });
+    }
+
+    if (filter.telPhone) {
+      andConditions.push({
+        OR: [
+          { client: { is: { tel: { contains: filter.telPhone, mode: 'insensitive' } } } },
+          { client: { is: { telPhone: { contains: filter.telPhone, mode: 'insensitive' } } } },
+          { client: { is: { companyTel: { contains: filter.telPhone, mode: 'insensitive' } } } },
+          {
+            reserveOccupiers: {
+              some: {
+                deletedAt: null,
+                tel: { contains: filter.telPhone, mode: 'insensitive' },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    if (filter.roomTypeId !== undefined) {
+      andConditions.push({ room: { is: { roomTypeId: filter.roomTypeId } } });
+    }
+
+    if (filter.clientTypes?.length) {
+      const clientTypes = Array.from(new Set(filter.clientTypes)).filter((type) => type >= 1 && type <= 3);
+      if (clientTypes.length === 1) {
+        andConditions.push({ client: { is: { dataType: clientTypes[0] } } });
+      } else if (clientTypes.length > 1) {
+        andConditions.push({ client: { is: { dataType: { in: clientTypes } } } });
+      }
+    }
+
+    if (filter.ugFlag !== undefined) {
+      andConditions.push({ client: { is: { ugFlag: filter.ugFlag } } });
+    }
+
+    if (filter.confirmFlags?.length === 1) {
+      where.confirmFlag = filter.confirmFlags[0];
+    }
+
+    if (filter.deleteStatuses?.length) {
+      const deleteStatuses = Array.from(new Set(filter.deleteStatuses)).filter((status) => status >= 1 && status <= 3);
+      if (deleteStatuses.length === 1) {
+        where.deleteStatus = deleteStatuses[0];
+      } else if (deleteStatuses.length > 1) {
+        where.deleteStatus = { in: deleteStatuses };
+      }
+    }
+
+    if (filter.requestSaleTypes?.length) {
+      const requestSaleTypes = new Set(filter.requestSaleTypes);
+      const saleConditions: Prisma.ReserveWhereInput[] = [];
+
+      if (requestSaleTypes.has(0)) {
+        saleConditions.push({
+          OR: [{ requestAnnouncement: null }, { requestAnnouncement: '' }],
+        });
+      }
+
+      if (requestSaleTypes.has(1)) {
+        saleConditions.push({
+          OR: [{ saleAnnouncement: null }, { saleAnnouncement: '' }],
+        });
+      }
+
+      if (requestSaleTypes.has(2)) {
+        saleConditions.push({
+          OR: [
+            {
+              AND: [
+                { requestAnnouncement: { not: null } },
+                { requestAnnouncement: { not: '' } },
+                { OR: [{ saleAnnouncement: null }, { saleAnnouncement: '' }] },
+              ],
+            },
+            {
+              AND: [
+                { saleAnnouncement: { not: null } },
+                { saleAnnouncement: { not: '' } },
+                { OR: [{ requestAnnouncement: null }, { requestAnnouncement: '' }] },
+              ],
+            },
+          ],
+        });
+      }
+
+      if (saleConditions.length > 0) {
+        andConditions.push({ OR: saleConditions });
+      }
+    }
+
+    if (filter.leavingType) {
+      const now = new Date();
+
+      if (filter.leavingType === 'before') {
+        andConditions.push({ periodFrom: { gt: now } });
+      }
+
+      if (filter.leavingType === 'staying') {
+        andConditions.push({ periodFrom: { lte: now } });
+        andConditions.push({ OR: [{ periodTo: { gte: now } }, { periodTo: null }] });
+        andConditions.push({ cancelledAt: null });
+      }
+
+      if (filter.leavingType === 'left') {
+        andConditions.push({ OR: [{ checkoutAt: { not: null } }, { periodTo: { lt: now } }] });
+      }
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    const secondaryOrderBy: Prisma.ReserveOrderByWithRelationInput =
       filter.orderBy ? { [filter.orderBy]: filter.order } : { reserveId: 'desc' };
+
+    const orderBy: Prisma.ReserveOrderByWithRelationInput[] = [
+      { cancelledAt: { sort: 'asc', nulls: 'first' } },
+      secondaryOrderBy,
+    ];
 
     const [data, total] = await Promise.all([
       this.prisma.reserve.findMany({

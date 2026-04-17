@@ -87,7 +87,9 @@ export interface Reservation {
   // Joined fields
   clientName?: string
   clientNameEn?: string
+  clientTel?: string
   facilityName?: string
+  facilityNo?: string
   roomNumber?: string
   roomTypeName?: string
   roomClassName?: string
@@ -95,12 +97,28 @@ export interface Reservation {
   chargeStaffName?: string
   chargeStaff2Name?: string
   confirmStaffName?: string
+  createdStaffName?: string
+  updatedStaffName?: string
 }
 
 export interface ReservationFilterParams {
   page?: number
   limit?: number
   search?: string
+  clientName?: string
+  occupierName?: string
+  chargeStaffName?: string
+  facilityOrRoom?: string
+  telPhone?: string
+  roomTypeId?: number
+  createdStaffId?: number
+  updatedStaffId?: number
+  clientTypes?: number[]
+  confirmFlags?: boolean[]
+  deleteStatuses?: number[]
+  requestSaleTypes?: number[]
+  leavingType?: 'before' | 'staying' | 'left'
+  ugFlag?: boolean
   reserveStatus?: number
   clientId?: number
   facilityId?: number

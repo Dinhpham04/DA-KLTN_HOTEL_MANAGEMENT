@@ -11,6 +11,8 @@ type ReserveWithRelations = Reserve & {
   checkinReceptionist?: Staff | null;
   checkoutReceptionist?: Staff | null;
   confirmStaff?: Staff | null;
+  createdBy?: Staff | null;
+  updatedBy?: Staff | null;
 };
 
 export class ReservationResponseDto {
@@ -102,7 +104,9 @@ export class ReservationResponseDto {
   // Joined fields
   @ApiPropertyOptional() readonly clientName?: string;
   @ApiPropertyOptional() readonly clientNameEn?: string;
+  @ApiPropertyOptional() readonly clientTel?: string;
   @ApiPropertyOptional() readonly facilityName?: string;
+  @ApiPropertyOptional() readonly facilityNo?: string;
   @ApiPropertyOptional() readonly roomNumber?: string;
   @ApiPropertyOptional() readonly roomTypeName?: string;
   @ApiPropertyOptional() readonly roomClassName?: string;
@@ -110,6 +114,8 @@ export class ReservationResponseDto {
   @ApiPropertyOptional() readonly chargeStaffName?: string;
   @ApiPropertyOptional() readonly chargeStaff2Name?: string;
   @ApiPropertyOptional() readonly confirmStaffName?: string;
+  @ApiPropertyOptional() readonly createdStaffName?: string;
+  @ApiPropertyOptional() readonly updatedStaffName?: string;
 
   static fromEntity(reserve: ReserveWithRelations): ReservationResponseDto {
     return Object.assign(new ReservationResponseDto(), {
@@ -191,7 +197,9 @@ export class ReservationResponseDto {
 
       clientName: reserve.client?.clientName,
       clientNameEn: reserve.client?.clientNameEn,
+      clientTel: reserve.client?.tel,
       facilityName: reserve.facility?.facilityName,
+      facilityNo: reserve.facility?.facilityNo,
       roomNumber: reserve.room?.roomNumber,
       roomTypeName: reserve.room?.roomType?.roomTypeName,
       roomClassName: reserve.room?.roomType?.roomClass?.roomClassName,
@@ -199,6 +207,8 @@ export class ReservationResponseDto {
       chargeStaffName: reserve.chargeStaff?.staffName,
       chargeStaff2Name: reserve.chargeStaff2?.staffName,
       confirmStaffName: reserve.confirmStaff?.staffName,
+      createdStaffName: reserve.createdBy?.staffName,
+      updatedStaffName: reserve.updatedBy?.staffName,
     } satisfies Record<keyof ReservationResponseDto, unknown>);
   }
 }

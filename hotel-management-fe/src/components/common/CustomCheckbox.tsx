@@ -21,7 +21,7 @@ const CustomCheckbox = React.forwardRef<
     <CheckboxPrimitive.Root
       ref={ref}
       className={cn(
-        'hover:bg-gray-100 bg-white transition-all sm:h-[2.4rem] sm:w-[2.4rem] h-[2.2rem] w-[2.2rem] shrink-0 rounded-[0.4rem] border border-black ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:!bg-[#D9D9D9] data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:bg-gradient-to-b data-[state=checked]:from-gray-700 data-[state=checked]:from-0% data-[state=checked]:via-neutral-500 data-[state=checked]:via-0% data-[state=checked]:to-stone-100',
+        'hover:bg-gray-100 bg-white transition-all sm:h-[2.4rem] sm:w-[2.4rem] h-[2.2rem] w-[2.2rem] shrink-0 rounded-[0.4rem] border border-black ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:!bg-[#D9D9D9] data-[state=checked]:bg-primary data-[state=checked]:text-black data-[state=checked]:bg-gradient-to-b data-[state=checked]:from-gray-700 data-[state=checked]:from-0% data-[state=checked]:via-neutral-500 data-[state=checked]:via-0% data-[state=checked]:to-stone-100',
         'disabled:opacity-50',
         className
       )}

@@ -242,27 +242,27 @@ async function main(): Promise<void> {
 
   const roomTypesData = [
     // E-FLAT class
-    { roomClassId: rcEFlat.roomClassId, roomTypeName: '', roomTypeNameShort: 'EF(8)', acreage: 15, orderNum: 4, orderNumDeposit: 4 },
-    { roomClassId: rcEFlat.roomClassId, roomTypeName: '', roomTypeNameShort: 'EF', acreage: 14, orderNum: 3, orderNumDeposit: 3 },
-    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'L', roomTypeNameShort: 'EF-L', acreage: 16, orderNum: 2, orderNumDeposit: 2 },
-    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'LL', roomTypeNameShort: 'EF-LL', acreage: 17, orderNum: 3, orderNumDeposit: 3 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'E-FLAT - (8)', roomTypeNameShort: 'EF(8)', acreage: 15, orderNum: 4, orderNumDeposit: 4 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'E-FLAT -', roomTypeNameShort: 'EF', acreage: 14, orderNum: 3, orderNumDeposit: 3 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'E-FLAT - L', roomTypeNameShort: 'EF-L', acreage: 16, orderNum: 2, orderNumDeposit: 2 },
+    { roomClassId: rcEFlat.roomClassId, roomTypeName: 'E-FLAT - LL', roomTypeNameShort: 'EF-LL', acreage: 17, orderNum: 3, orderNumDeposit: 3 },
     // SINGLE class
-    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'SA', acreage: null, orderNum: 1, orderNumDeposit: 1 },
-    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'SB', acreage: null, orderNum: 2, orderNumDeposit: 1 },
-    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'SC', acreage: null, orderNum: 3, orderNumDeposit: 1 },
-    { roomClassId: rcSingle.roomClassId, roomTypeName: 'Loại D', roomTypeNameShort: 'SD', acreage: null, orderNum: 4, orderNumDeposit: null },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'SINGLE - A-Type', roomTypeNameShort: 'SA', acreage: null, orderNum: 1, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'SINGLE - B-Type', roomTypeNameShort: 'SB', acreage: null, orderNum: 2, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'SINGLE - C-Type', roomTypeNameShort: 'SC', acreage: null, orderNum: 3, orderNumDeposit: 1 },
+    { roomClassId: rcSingle.roomClassId, roomTypeName: 'SINGLE - D-Type', roomTypeNameShort: 'SD', acreage: null, orderNum: 4, orderNumDeposit: null },
     // TWIN class
-    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'TA', acreage: null, orderNum: 5, orderNumDeposit: 2 },
-    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'TB', acreage: null, orderNum: 6, orderNumDeposit: 1 },
-    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'TC', acreage: null, orderNum: 7, orderNumDeposit: null },
-    { roomClassId: rcTwin.roomClassId, roomTypeName: 'Loại D', roomTypeNameShort: 'TD', acreage: null, orderNum: 8, orderNumDeposit: 4 },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'TWIN - A-Type', roomTypeNameShort: 'TA', acreage: null, orderNum: 5, orderNumDeposit: 2 },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'TWIN - B-Type', roomTypeNameShort: 'TB', acreage: null, orderNum: 6, orderNumDeposit: 1 },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'TWIN - C-Type', roomTypeNameShort: 'TC', acreage: null, orderNum: 7, orderNumDeposit: null },
+    { roomClassId: rcTwin.roomClassId, roomTypeName: 'TWIN - D-Type', roomTypeNameShort: 'TD', acreage: null, orderNum: 8, orderNumDeposit: 4 },
     // FAMILY class
-    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại A', roomTypeNameShort: 'FA', acreage: null, orderNum: 9, orderNumDeposit: null },
-    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại B', roomTypeNameShort: 'FB', acreage: null, orderNum: 11, orderNumDeposit: null },
-    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại C', roomTypeNameShort: 'FC', acreage: null, orderNum: 12, orderNumDeposit: null },
-    { roomClassId: rcFamily.roomClassId, roomTypeName: 'Loại S', roomTypeNameShort: 'FS', acreage: null, orderNum: 13, orderNumDeposit: 0 },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'FAMILY - A-Type', roomTypeNameShort: 'FA', acreage: null, orderNum: 9, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'FAMILY - B-Type', roomTypeNameShort: 'FB', acreage: null, orderNum: 11, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'FAMILY - C-Type', roomTypeNameShort: 'FC', acreage: null, orderNum: 12, orderNumDeposit: null },
+    { roomClassId: rcFamily.roomClassId, roomTypeName: 'FAMILY - S-Type', roomTypeNameShort: 'FS', acreage: null, orderNum: 13, orderNumDeposit: 0 },
     // SUITE class
-    { roomClassId: rcSuite.roomClassId, roomTypeName: '', roomTypeNameShort: 'OS', acreage: null, orderNum: 12, orderNumDeposit: 1 },
+    { roomClassId: rcSuite.roomClassId, roomTypeName: 'Owners Suite', roomTypeNameShort: 'OS', acreage: null, orderNum: 12, orderNumDeposit: 1 },
   ];
 
   const roomTypes = [];

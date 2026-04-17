@@ -15,9 +15,13 @@ const CustomScrollArea = React.forwardRef<
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn(
-      'relative w-[calc(100%+2rem)] pr-8 [&>div]:border-b [&>div]:border-black',
+      'relative w-[calc(100%)] [&>div]:border-b [&>div]:border-black',
       className
     )}
+    // className={cn(
+    //   'relative w-[calc(100% + 2rem)] pr-8 [&>div]:border-b [&>div]:border-black',
+    //   className
+    // )}
     {...props}
   >
     <ScrollAreaPrimitive.Viewport className="rounded-[inherit] w-full h-full">
