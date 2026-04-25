@@ -11,9 +11,11 @@ const buttonVariants = cva('btn', {
       download: 'btn-download',
       copy: 'btn-copy',
       link: 'btn-link',
-      outline: 'btn-default border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+      outline:
+        'btn-default border border-input bg-background hover:bg-accent hover:text-accent-foreground',
       destructive: 'btn-default bg-destructive text-destructive-foreground hover:bg-destructive/90',
-      ghost: 'btn-default bg-transparent border-transparent hover:bg-accent hover:text-accent-foreground',
+      ghost:
+        'btn-default bg-transparent border-transparent hover:bg-accent hover:text-accent-foreground',
     },
     size: {
       default: '',
@@ -38,7 +40,10 @@ const NButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : 'button'
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }), 'border-[1px] bg-gray-100 border-black')}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          'border-[1px] bg-gray-100 border-black'
+        )}
         ref={ref}
         {...props}
       />

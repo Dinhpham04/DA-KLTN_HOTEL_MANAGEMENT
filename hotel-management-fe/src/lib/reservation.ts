@@ -36,3 +36,24 @@ export function formatDateValue(date: Date | Date[] | null, format: string): str
   if (!(date instanceof Date)) return ''
   return dayjs(date).format(format)
 }
+
+export function mergeDateAndTime(dateValue: string, timeValue?: string): string {
+  if (!dateValue) return ''
+
+  const parsedDate = dayjs(dateValue)
+  if (!parsedDate.isValid()) return ''
+
+  const normalizedDate = parsedDate.format('YYYY-MM-DD')
+  if (!timeValue) return normalizedDate
+
+  return `${normalizedDate}T${timeValue}:00`
+}
+
+export function extractTimeValue(dateTimeValue: string | null | undefined): string {
+  if (!dateTimeValue) return ''
+
+  const parsed = dayjs(dateTimeValue)
+  if (!parsed.isValid()) return ''
+
+  return parsed.format('HH:mm')
+}

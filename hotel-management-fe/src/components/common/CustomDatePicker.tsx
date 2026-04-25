@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import type * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import DateTimePicker, { type DateTimePickerProps } from 'react-datetime-picker'
 import 'react-datetime-picker/dist/DateTimePicker.css'
 import 'react-calendar/dist/Calendar.css'
@@ -17,7 +17,7 @@ type TypeDatePicker = DateTimePickerProps & {
   classNameWrapper?: string
   disable?: boolean
   isShow?: boolean
-  portalContainer?: HTMLElement
+  portalContainer?: HTMLElement | null
   monthOnly?: boolean
   defaultActiveStartDate?: Date
 }
@@ -45,8 +45,66 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
   )
   const [activeStartDate, setActiveStartDate] = useState<Date | undefined>(defaultActiveStartDate)
   const [isCalendarOpen, setIsCalendarOpen] = useState(isShow)
+  const [resolvedPortalContainer, setResolvedPortalContainer] = useState<HTMLElement | null>(() => {
+    if (portalContainer) return portalContainer
+    if (typeof document !== 'undefined') return document.body
+    return null
+  })
 
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  const positionCalendarToTrigger = useCallback(() => {
+    if (!isCalendarOpen || typeof document === 'undefined' || typeof window === 'undefined') {
+      return
+    }
+
+    if (resolvedPortalContainer !== document.body) {
+      return
+    }
+
+    const triggerElement = pickerRef.current?.querySelector('.react-datetime-picker') as
+      | HTMLElement
+      | null
+    const openCalendars = document.querySelectorAll('.react-datetime-picker__calendar--open')
+    const calendarElement = openCalendars[openCalendars.length - 1] as HTMLElement | undefined
+
+    if (!triggerElement || !calendarElement) {
+      return
+    }
+
+    const triggerRect = triggerElement.getBoundingClientRect()
+    const calendarRect = calendarElement.getBoundingClientRect()
+    const triggerStyles = window.getComputedStyle(triggerElement)
+    const calendarContentElement = calendarElement.querySelector('.react-calendar') as
+      | HTMLElement
+      | null
+    const viewportPadding = 8
+    const offset = 4
+
+    let left = triggerRect.left
+    if (left + calendarRect.width > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - calendarRect.width - viewportPadding
+    }
+    left = Math.max(viewportPadding, left)
+
+    let top = triggerRect.bottom + offset
+    const canOpenAbove = triggerRect.top - calendarRect.height - offset >= viewportPadding
+    if (top + calendarRect.height > window.innerHeight - viewportPadding && canOpenAbove) {
+      top = triggerRect.top - calendarRect.height - offset
+    }
+
+    calendarElement.style.position = 'fixed'
+    calendarElement.style.left = `${Math.round(left)}px`
+    calendarElement.style.top = `${Math.round(top)}px`
+    calendarElement.style.right = 'auto'
+    calendarElement.style.bottom = 'auto'
+    calendarElement.style.zIndex = '10050'
+
+    if (calendarContentElement) {
+      calendarContentElement.style.fontSize = triggerStyles.fontSize
+      calendarContentElement.style.fontFamily = triggerStyles.fontFamily
+    }
+  }, [isCalendarOpen, resolvedPortalContainer])
 
   const handleDateChange = (newDate: Date | null) => {
     setDateTime(newDate)
@@ -66,6 +124,19 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
   useEffect(() => {
     setIsCalendarOpen(isShow)
   }, [isShow])
+
+  useEffect(() => {
+    if (portalContainer) {
+      setResolvedPortalContainer(portalContainer)
+      return
+    }
+
+    if (typeof document !== 'undefined') {
+      setResolvedPortalContainer(document.body)
+    } else {
+      setResolvedPortalContainer(null)
+    }
+  }, [portalContainer])
 
   useEffect(() => {
     if (value) {
@@ -125,6 +196,8 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
           el.setAttribute('tabindex', '-1')
         })
       }
+
+      positionCalendarToTrigger()
     }, 100)
   }
 
@@ -164,6 +237,8 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
             for (const button of buttons) {
               button.setAttribute('tabindex', '-1')
             }
+
+            positionCalendarToTrigger()
           }
         }
       }
@@ -177,7 +252,32 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
     }
 
     return () => observer.disconnect()
-  }, [])
+  }, [positionCalendarToTrigger])
+
+  useEffect(() => {
+    if (!isCalendarOpen || typeof document === 'undefined' || typeof window === 'undefined') {
+      return
+    }
+
+    if (resolvedPortalContainer !== document.body) {
+      return
+    }
+
+    const reposition = () => {
+      positionCalendarToTrigger()
+    }
+
+    const frameId = window.requestAnimationFrame(reposition)
+
+    window.addEventListener('resize', reposition)
+    window.addEventListener('scroll', reposition, true)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', reposition)
+      window.removeEventListener('scroll', reposition, true)
+    }
+  }, [isCalendarOpen, positionCalendarToTrigger, resolvedPortalContainer])
 
   const vietnameseMonths = [
     'Tháng 1',
@@ -205,7 +305,7 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
         onClick={onClick}
         maxDate={otherProp.maxDate}
         minDate={otherProp.minDate}
-        portalContainer={portalContainer}
+        portalContainer={resolvedPortalContainer}
         calendarProps={{
           ...calendarProps,
           maxDetail: monthOnly ? 'year' : undefined,

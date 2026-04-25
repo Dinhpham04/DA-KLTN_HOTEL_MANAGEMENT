@@ -1,8 +1,8 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { ScrollBar } from '../ui/scroll-area'
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area'
+import { ScrollBar } from '../ui/scroll-area'
 
 interface ExtendedScrollProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
@@ -14,10 +14,7 @@ const CustomScrollArea = React.forwardRef<
 >(({ className, loading, children, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn(
-      'relative w-[calc(100%)] [&>div]:border-b [&>div]:border-black',
-      className
-    )}
+    className={cn('relative w-[calc(100%)] [&>div]:border-b [&>div]:border-black', className)}
     // className={cn(
     //   'relative w-[calc(100% + 2rem)] pr-8 [&>div]:border-b [&>div]:border-black',
     //   className
@@ -27,7 +24,10 @@ const CustomScrollArea = React.forwardRef<
     <ScrollAreaPrimitive.Viewport className="rounded-[inherit] w-full h-full">
       {loading && (
         <div className="z-20 absolute inset-0 bg-[#fff9]">
-          <div role="status" className="top-2/4 left-1/2 absolute -translate-x-1/2 -translate-y-1/2">
+          <div
+            role="status"
+            className="top-2/4 left-1/2 absolute -translate-x-1/2 -translate-y-1/2"
+          >
             <svg
               aria-hidden="true"
               className="h-w-10 w-10 text-white dark:text-gray-600 animate-spin fill-[#efefef]"
@@ -159,11 +159,7 @@ const CustomTableCaption = React.forwardRef<
   HTMLTableCaptionElement,
   React.HTMLAttributes<HTMLTableCaptionElement>
 >(({ className, ...props }, ref) => (
-  <caption
-    ref={ref}
-    className={cn('mt-4 text-sm text-muted-foreground', className)}
-    {...props}
-  />
+  <caption ref={ref} className={cn('mt-4 text-sm text-muted-foreground', className)} {...props} />
 ))
 CustomTableCaption.displayName = 'CustomTableCaption'
 

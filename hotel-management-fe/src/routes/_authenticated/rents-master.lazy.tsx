@@ -1222,7 +1222,7 @@ function NotDepositedTableHeader({ stayTypes }: { stayTypes: StayType[] }) {
         {/* Actions */}
         <TableHead className="flex-1 border font-bold min-w-[12rem]">Thao tác</TableHead>
       </TableRow>
-    </TableHeader >
+    </TableHeader>
   )
 }
 
@@ -1341,7 +1341,9 @@ function DepositedOver3TableHeader({ stayTypes }: { stayTypes: StayType[] }) {
         {superShortSt && (
           <>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[12rem]">Phí vệ sinh (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[12rem]">
+              Phí vệ sinh (ngày)
+            </TableHead>
             <TableHead className="flex-1 border font-bold min-w-[15rem]">
               Tiền thuê (trước thuế)
             </TableHead>
@@ -1353,8 +1355,12 @@ function DepositedOver3TableHeader({ stayTypes }: { stayTypes: StayType[] }) {
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/tháng</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/ngày</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">
+              Phí vệ sinh/ngày
+            </TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">
+              Phí vệ sinh/tháng
+            </TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (ngày)</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (tháng)</TableHead>
           </Fragment>
@@ -1420,7 +1426,9 @@ function DepositedTableHeader({ stayTypes }: { stayTypes: StayType[] }) {
         {superShortSt && (
           <>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[12rem]">Phí vệ sinh (ngày)</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[12rem]">
+              Phí vệ sinh (ngày)
+            </TableHead>
             <TableHead className="flex-1 border font-bold min-w-[15rem]">
               Tiền thuê (trước thuế)
             </TableHead>
@@ -1432,8 +1440,12 @@ function DepositedTableHeader({ stayTypes }: { stayTypes: StayType[] }) {
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền cọc</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/ngày</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tiền thuê/tháng</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/ngày</TableHead>
-            <TableHead className="flex-1 border font-bold min-w-[11rem]">Phí vệ sinh/tháng</TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">
+              Phí vệ sinh/ngày
+            </TableHead>
+            <TableHead className="flex-1 border font-bold min-w-[11rem]">
+              Phí vệ sinh/tháng
+            </TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (ngày)</TableHead>
             <TableHead className="flex-1 border font-bold min-w-[11rem]">Tổng (tháng)</TableHead>
           </Fragment>
@@ -1670,7 +1682,6 @@ function RentsMasterPage() {
     [depositFormData, putDeposited]
   )
 
-
   // Over3 handler (updates a single row via bulk)
   const handleOver3Submit = useCallback(
     (
@@ -1777,7 +1788,6 @@ function RentsMasterPage() {
           <span className="ml-[1.5rem]">Bảng giá phòng không đặt cọc</span>
         </div>
 
-
         <div className="flex flex-col mt-8 !overflow-auto scroll-table">
           <div className="flex w-fit">
             <Table className={TABLE_CLASSES}>
@@ -1800,8 +1810,8 @@ function RentsMasterPage() {
                         onSubmitRow={(data, isCreate, type) =>
                           handlePutRentNotDeposited(data, isCreate, index, type)
                         }
-                        onAddRow={() => { }}
-                        onCopyRow={() => { }}
+                        onAddRow={() => {}}
+                        onCopyRow={() => {}}
                         onDeleteRow={() => setIsAddNotDeposit(false)}
                         tableId="rent-not-deposit-table"
                         ref={(el) => {
@@ -1853,8 +1863,8 @@ function RentsMasterPage() {
                     onSubmitRow={(data, isCreate, type) =>
                       handlePutRentNotDeposited(data, isCreate, notDepositFormData.length, type)
                     }
-                    onAddRow={() => { }}
-                    onCopyRow={() => { }}
+                    onAddRow={() => {}}
+                    onCopyRow={() => {}}
                     onDeleteRow={() => setIsAddNotDeposit(false)}
                     tableId="rent-not-deposit-table"
                     ref={(el) => {
@@ -1874,7 +1884,7 @@ function RentsMasterPage() {
         {notDepositOver3.length > 0 && (
           <>
             <div className="flex items-center bg-white my-[4rem] h-[4.7rem] before:bg-primary before:w-[.4rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-              <span className='ml-[1.5rem]'>Bảng giá phòng 3 người trở lên không đặt cọc</span>
+              <span className="ml-[1.5rem]">Bảng giá phòng 3 người trở lên không đặt cọc</span>
             </div>
             <div className="flex flex-col mt-8 !overflow-auto">
               <div className="flex w-fit">
@@ -1900,7 +1910,9 @@ function RentsMasterPage() {
 
         {/* ════════════════ DEPOSITED ════════════════ */}
         <div className="flex items-center bg-white before:bg-green-600 mt-[1.5rem] mb-[1.5rem] before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-          <h2 className="ml-[1.2rem] font-semibold text-2xl sm:text-4xl">Bảng giá phòng Có đặt cọc</h2>
+          <h2 className="ml-[1.2rem] font-semibold text-2xl sm:text-4xl">
+            Bảng giá phòng Có đặt cọc
+          </h2>
         </div>
 
         <div className="flex flex-col mt-8 !overflow-auto scroll-table">
@@ -1925,8 +1937,8 @@ function RentsMasterPage() {
                         onSubmitRow={(data, isCreate, type) =>
                           handlePutRentDeposited(data, isCreate, index, type)
                         }
-                        onAddRow={() => { }}
-                        onCopyRow={() => { }}
+                        onAddRow={() => {}}
+                        onCopyRow={() => {}}
                         onDeleteRow={() => setIsAddDeposit(false)}
                         tableId="rent-deposit-table"
                         ref={(el) => {
@@ -1978,8 +1990,8 @@ function RentsMasterPage() {
                     onSubmitRow={(data, isCreate, type) =>
                       handlePutRentDeposited(data, isCreate, depositFormData.length, type)
                     }
-                    onAddRow={() => { }}
-                    onCopyRow={() => { }}
+                    onAddRow={() => {}}
+                    onCopyRow={() => {}}
                     onDeleteRow={() => setIsAddDeposit(false)}
                     tableId="rent-deposit-table"
                     ref={(el) => {
@@ -2001,9 +2013,7 @@ function RentsMasterPage() {
         {depositOver3.length > 0 && (
           <>
             <div className="flex items-center bg-white my-[4rem] h-[4.7rem] before:bg-primary before:w-[.4rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-              <span className='ml-[1.5rem]'>
-                Bảng giá đặt phòng 3 người trở lên có đặt cọc
-              </span>
+              <span className="ml-[1.5rem]">Bảng giá đặt phòng 3 người trở lên có đặt cọc</span>
             </div>
             <div className="flex flex-col mt-8 !overflow-auto">
               <div className="flex w-fit">
@@ -2015,7 +2025,9 @@ function RentsMasterPage() {
                         key={`do3-${rent.room_type_id}`}
                         rent={rent}
                         stayTypes={stayTypes}
-                        onSubmitRow={(data) => handleOver3Submit(data, depositFormData, putDeposited)}
+                        onSubmitRow={(data) =>
+                          handleOver3Submit(data, depositFormData, putDeposited)
+                        }
                       />
                     ))}
                   </TableBody>

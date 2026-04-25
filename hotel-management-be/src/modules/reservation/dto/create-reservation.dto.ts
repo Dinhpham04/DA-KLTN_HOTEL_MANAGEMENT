@@ -92,7 +92,7 @@ export class CreateReservationDto {
 
   @ApiPropertyOptional({
     description:
-      'Direct check-in type: 1=Front Desk, 2=Self Check-in (PIN/Lockbox), 3=Meet & Greet',
+      'Direct check-in type: 1=Front Desk, 2=Self Check-in (PIN), 3=Meet & Greet',
   })
   @IsOptional()
   @IsInt()
@@ -104,6 +104,16 @@ export class CreateReservationDto {
   @IsString()
   @MaxLength(256)
   readonly directcheckinNote?: string;
+
+  @ApiPropertyOptional({ description: 'Contacted flag' })
+  @IsOptional()
+  @IsBoolean()
+  readonly contactedFlag?: boolean;
+
+  @ApiPropertyOptional({ description: 'Check-in date (ISO 8601 datetime)' })
+  @IsOptional()
+  @IsDateString()
+  readonly checkinDate?: string | null;
 
   // Pet
   @ApiPropertyOptional({ description: 'Pet flag', default: false })

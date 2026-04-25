@@ -116,6 +116,11 @@ model Staff {
   usageStatusesUpdated      UsageStatus[]      @relation("UsageStatusUpdatedBy")
   usageStatusesDeleted      UsageStatus[]      @relation("UsageStatusDeletedBy")
 
+  // Phase 9: RoomPinCredential
+  roomPinCredentialsCreated RoomPinCredential[] @relation("RoomPinCredentialCreatedBy")
+  roomPinCredentialsUpdated RoomPinCredential[] @relation("RoomPinCredentialUpdatedBy")
+  roomPinCredentialsDeleted RoomPinCredential[] @relation("RoomPinCredentialDeletedBy")
+
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
   @@index([deletedStaffId], map: "staffs_deleted_staff_id_idx")
@@ -310,6 +315,7 @@ model Room {
 
   reserves            Reserve[]
   usageStatuses       UsageStatus[]
+  pinCredentials      RoomPinCredential[]
 
   @@index([facilityId], map: "rooms_facility_id_idx")
   @@index([roomTypeId], map: "rooms_room_type_id_idx")
@@ -574,7 +580,6 @@ model Client {
 
 model Reserve {
   reserveId               Int       @id @default(autoincrement()) @map("reserve_id")
-  parentReserveId         Int?      @map("parent_reserve_id")
   clientId                Int?      @map("client_id")
   facilityId              Int?      @map("facility_id")
   roomId                  Int?      @map("room_id")
@@ -590,7 +595,6 @@ model Reserve {
   rakutenFlag             Boolean   @default(false) @map("rakuten_flag")
   eternityDraft           Boolean   @default(false) @map("eternity_draft")
   hasSeen                 Boolean   @default(false) @map("has_seen")
-  originalFlag            Boolean   @default(false) @map("original_flag")
   autoExtendFlag          Boolean   @default(false) @map("auto_extend_flag")
   campaignPriceFlag       Boolean   @default(false) @map("campaign_price_flag")
   confirmFlag             Boolean   @default(false) @map("confirm_flag")
@@ -608,8 +612,6 @@ model Reserve {
   // Period
   periodFrom              DateTime? @map("period_from")
   periodTo                DateTime? @map("period_to")
-  originalPeriodFrom      DateTime? @map("original_period_from")
-  originalPeriodTo        DateTime? @map("original_period_to")
   periodBefore            DateTime? @map("period_before")
   periodType              String?   @map("period_type") @db.VarChar(32)
   expiredDate             Int?      @map("expired_date") @db.SmallInt
@@ -632,9 +634,7 @@ model Reserve {
   adjustmentUnitPrice     Int?      @map("adjustment_unit_price")
   deposit                 Int?
 
-  // Room move
-  movedFacilityId         Int?      @map("moved_facility_id")
-  movedRoomId             Int?      @map("moved_room_id")
+  // Time extension
   timeExtendNum           Int?      @map("time_extend_num") @db.SmallInt
   extensionTime           Int?      @map("extension_time") @db.SmallInt
 
@@ -646,16 +646,6 @@ model Reserve {
   // Direct check-in
   directcheckinType       Int?      @map("directcheckin_type") @db.SmallInt
   directcheckinNote       String?   @map("directcheckin_note") @db.VarChar(256)
-  keyboxId                Int?      @map("keybox_id")
-  keyboxPassword          String?   @map("keybox_password") @db.VarChar(32)
-
-  // Substitute room
-  substituteReserveId     Int?      @map("substitute_reserve_id")
-  substituteFacilityId    Int?      @map("substitute_facility_id")
-  substituteRoomId        Int?      @map("substitute_room_id")
-  substituteRoomFrom      DateTime? @map("substitute_room_from")
-  substituteRoomTo        DateTime? @map("substitute_room_to")
-  substituteRoomNote      String?   @map("substitute_room_note") @db.VarChar(1024)
 
   // Pet details
   dogCount                Int?      @map("dog_count") @db.SmallInt
@@ -665,9 +655,6 @@ model Reserve {
 
   // Deliverybox
   deliveryboxCardNumber   String?   @map("deliverybox_card_number") @db.VarChar(16)
-  boxUsagePeriodType      Int?      @map("box_usage_period_type") @db.SmallInt
-  boxUsageStartDate       DateTime? @map("box_usage_start_date") @db.Date
-  boxUsageEndDate         DateTime? @map("box_usage_end_date") @db.Date
 
   // Notes & announcements
   note                    String?   @db.VarChar(256)
@@ -703,8 +690,6 @@ model Reserve {
   deletedAt               DateTime? @map("deleted_at")
 
   // Relations
-  parentReserve           Reserve?  @relation("ReserveParent", fields: [parentReserveId], references: [reserveId])
-  childReserves           Reserve[] @relation("ReserveParent")
   client                  Client?   @relation(fields: [clientId], references: [clientId])
   facility                Facility? @relation(fields: [facilityId], references: [facilityId])
   room                    Room?     @relation(fields: [roomId], references: [roomId])
@@ -722,8 +707,8 @@ model Reserve {
 
   reserveOccupiers        ReserveOccupier[]
   usageStatuses           UsageStatus[]
+  pinCredentials          RoomPinCredential[]
 
-  @@index([parentReserveId], map: "reserves_parent_reserve_id_idx")
   @@index([clientId], map: "reserves_client_id_idx")
   @@index([facilityId], map: "reserves_facility_id_idx")
   @@index([roomId], map: "reserves_room_id_idx")
@@ -744,6 +729,53 @@ model Reserve {
   @@index([dataStatus], map: "reserves_data_status_idx")
 
   @@map("reserves")
+}
+
+// ─── RoomPinCredential (Smart lock PIN per room) ───
+
+model RoomPinCredential {
+  roomPinCredentialId  Int       @id @default(autoincrement()) @map("room_pin_credential_id")
+  roomId               Int       @map("room_id")
+  reserveId            Int?      @map("reserve_id")
+  dataStatus           Int       @default(1) @map("data_status") @db.SmallInt
+  encryptedPin         String    @map("encrypted_pin") @db.VarChar(512)
+  maskedPin            String    @map("masked_pin") @db.VarChar(32)
+  validFrom            DateTime  @map("valid_from")
+  validTo              DateTime  @map("valid_to")
+  status               Int       @default(1) @db.SmallInt
+  issuedAt             DateTime? @map("issued_at")
+  revokedAt            DateTime? @map("revoked_at")
+  expiredAt            DateTime? @map("expired_at")
+  providerCredentialId String?   @map("provider_credential_id") @db.VarChar(128)
+  providerPayload      Json?     @map("provider_payload")
+  lastSyncAt           DateTime? @map("last_sync_at")
+  syncError            String?   @map("sync_error") @db.VarChar(512)
+
+  // Audit
+  createdStaffId       Int       @map("created_staff_id")
+  updatedStaffId       Int?      @map("updated_staff_id")
+  deletedStaffId       Int?      @map("deleted_staff_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  room                 Room      @relation(fields: [roomId], references: [roomId])
+  reserve              Reserve?  @relation(fields: [reserveId], references: [reserveId])
+  createdBy            Staff     @relation("RoomPinCredentialCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy            Staff?    @relation("RoomPinCredentialUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy            Staff?    @relation("RoomPinCredentialDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([roomId], map: "room_pin_credentials_room_id_idx")
+  @@index([reserveId], map: "room_pin_credentials_reserve_id_idx")
+  @@index([status], map: "room_pin_credentials_status_idx")
+  @@index([validFrom], map: "room_pin_credentials_valid_from_idx")
+  @@index([validTo], map: "room_pin_credentials_valid_to_idx")
+  @@index([createdStaffId], map: "room_pin_credentials_created_staff_id_idx")
+  @@index([updatedStaffId], map: "room_pin_credentials_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "room_pin_credentials_deleted_staff_id_idx")
+  @@index([dataStatus], map: "room_pin_credentials_data_status_idx")
+
+  @@map("room_pin_credentials")
 }
 
 // ─── ReserveOccupier (Co-guest) ─────────────────────
@@ -797,8 +829,6 @@ model UsageStatus {
   periodTo            DateTime? @map("period_to")
   reserveStatus       Int       @map("reserve_status") @db.SmallInt
   // 1=確定(Yellow), 2=マンスリー(Red), 3=未確定, 4=英語サイト
-  substituteFlag      Boolean   @default(false) @map("substitute_flag")
-  roomMovedFlag       Boolean   @default(false) @map("room_moved_flag")
   directCheckinFlag   Boolean   @default(false) @map("direct_checkin_flag")
   campaignPriceFlag   Boolean   @default(false) @map("campaign_price_flag")
   extensionFlag       Boolean   @default(false) @map("extension_flag")

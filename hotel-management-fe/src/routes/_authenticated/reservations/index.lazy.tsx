@@ -104,8 +104,7 @@ const searchLabelClass =
 const searchInputClass = 'w-full sm:max-w-[21.2rem]'
 const searchSelectClass = 'h-[4rem] w-full sm:max-w-[21.2rem]'
 const searchCheckboxGroupClass = 'flex flex-wrap items-center gap-x-[4rem] gap-y-3'
-const searchCheckboxCardClass =
-  'px-4 py-3'
+const searchCheckboxCardClass = 'px-4 py-3'
 const searchCheckboxTitleClass = 'font-bold text-lg sm:text-2xl'
 
 const defaultFormValues: SearchFormType = {
@@ -248,7 +247,8 @@ function ReservationsPage() {
   const { data: staffsData, isLoading: staffsLoading } = useGetStaffs({})
 
   const roomTypeOptions = useMemo<Option[]>(() => {
-    const types = (roomTypesData as { data?: { roomTypeId: number; roomTypeName: string }[] })?.data ?? []
+    const types =
+      (roomTypesData as { data?: { roomTypeId: number; roomTypeName: string }[] })?.data ?? []
     return [
       { value: '', label: '---' },
       ...types.map((t) => ({ value: String(t.roomTypeId), label: t.roomTypeName })),
@@ -256,7 +256,8 @@ function ReservationsPage() {
   }, [roomTypesData])
 
   const staffOptions = useMemo<Option[]>(() => {
-    const staffs = (staffsData as { staffId: number; staffName: string; staffNameShort?: string }[]) ?? []
+    const staffs =
+      (staffsData as { staffId: number; staffName: string; staffNameShort?: string }[]) ?? []
     return [
       { value: '', label: '---' },
       ...staffs.map((s) => ({
@@ -330,7 +331,11 @@ function ReservationsPage() {
     if (formData.typeSale.mismatch) requestSaleTypes.push(2)
     if (requestSaleTypes.length > 0) filters.requestSaleTypes = requestSaleTypes
 
-    if (formData.typeQuit?.value === 'before' || formData.typeQuit?.value === 'staying' || formData.typeQuit?.value === 'left') {
+    if (
+      formData.typeQuit?.value === 'before' ||
+      formData.typeQuit?.value === 'staying' ||
+      formData.typeQuit?.value === 'left'
+    ) {
       filters.leavingType = formData.typeQuit.value
     }
 
@@ -405,13 +410,33 @@ function ReservationsPage() {
                 <CustomAccordionContent>
                   <div className="px-[1rem] pt-[2rem] pb-[3.2rem] sm:px-[2rem]">
                     <div className="space-y-6">
-                      <div className='flex items-center'>
+                      <div className="flex items-center">
                         <p className={cn(searchCheckboxTitleClass, 'mt-3 mr-[11.5rem]')}>Loại</p>
                         <div className={cn(searchCheckboxGroupClass, 'mt-3')}>
-                          <CheckboxField control={form.control} name="type.personal" id="cb-personal" label="Cá nhân" />
-                          <CheckboxField control={form.control} name="type.corporate" id="cb-corporate" label="Doanh nghiệp" />
-                          <CheckboxField control={form.control} name="type.special" id="cb-special" label="DN đặc biệt" />
-                          <CheckboxField control={form.control} name="ugFlag" id="cb-ug" label="UG" />
+                          <CheckboxField
+                            control={form.control}
+                            name="type.personal"
+                            id="cb-personal"
+                            label="Cá nhân"
+                          />
+                          <CheckboxField
+                            control={form.control}
+                            name="type.corporate"
+                            id="cb-corporate"
+                            label="Doanh nghiệp"
+                          />
+                          <CheckboxField
+                            control={form.control}
+                            name="type.special"
+                            id="cb-special"
+                            label="DN đặc biệt"
+                          />
+                          <CheckboxField
+                            control={form.control}
+                            name="ugFlag"
+                            id="cb-ug"
+                            label="UG"
+                          />
                         </div>
                       </div>
 
@@ -513,7 +538,7 @@ function ReservationsPage() {
                                     }}
                                     value={value ?? ''}
                                     className={searchInputClass}
-                                    placeholder='01-201'
+                                    placeholder="01-201"
                                   />
                                 )}
                               />
@@ -617,26 +642,66 @@ function ReservationsPage() {
                           <div className={searchCheckboxCardClass}>
                             <p className={searchCheckboxTitleClass}>Xác nhận</p>
                             <div className={cn(searchCheckboxGroupClass, 'mt-3')}>
-                              <CheckboxField control={form.control} name="typeDecide.undecided" id="cb-undecided" label="Chưa xác định" />
-                              <CheckboxField control={form.control} name="typeDecide.confirmed" id="cb-confirmed" label="Đã xác nhận" />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeDecide.undecided"
+                                id="cb-undecided"
+                                label="Chưa xác định"
+                              />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeDecide.confirmed"
+                                id="cb-confirmed"
+                                label="Đã xác nhận"
+                              />
                             </div>
                           </div>
 
                           <div className={searchCheckboxCardClass}>
                             <p className={searchCheckboxTitleClass}>Lý do thay đổi</p>
                             <div className={cn(searchCheckboxGroupClass, 'mt-3')}>
-                              <CheckboxField control={form.control} name="typeDelete.deleted" id="cb-deleted" label="Xóa" />
-                              <CheckboxField control={form.control} name="typeDelete.cancelled" id="cb-cancelled" label="Hủy" />
-                              <CheckboxField control={form.control} name="typeDelete.noShow" id="cb-no-show" label="No-Show" />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeDelete.deleted"
+                                id="cb-deleted"
+                                label="Xóa"
+                              />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeDelete.cancelled"
+                                id="cb-cancelled"
+                                label="Hủy"
+                              />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeDelete.noShow"
+                                id="cb-no-show"
+                                label="No-Show"
+                              />
                             </div>
                           </div>
 
                           <div className={searchCheckboxCardClass}>
                             <p className={searchCheckboxTitleClass}>Hóa đơn/Doanh thu</p>
                             <div className={cn(searchCheckboxGroupClass, 'mt-3')}>
-                              <CheckboxField control={form.control} name="typeSale.noRequest" id="cb-no-request" label="Chưa lập HĐ" />
-                              <CheckboxField control={form.control} name="typeSale.noSale" id="cb-no-sale" label="Chưa doanh thu" />
-                              <CheckboxField control={form.control} name="typeSale.mismatch" id="cb-mismatch" label="HĐ≠DT" />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeSale.noRequest"
+                                id="cb-no-request"
+                                label="Chưa lập HĐ"
+                              />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeSale.noSale"
+                                id="cb-no-sale"
+                                label="Chưa doanh thu"
+                              />
+                              <CheckboxField
+                                control={form.control}
+                                name="typeSale.mismatch"
+                                id="cb-mismatch"
+                                label="HĐ≠DT"
+                              />
                             </div>
                           </div>
                         </div>
@@ -836,10 +901,14 @@ function BookingTable({
               <CustomTableHead className="flex-1 shadow-none p-0 font-bold whitespace-nowrap min-w-[12.8rem]">
                 <div>
                   <div className="flex-1 border-black border-b border-dotted min-h-14 center-all">
-                    <div className="min-h-14 leading-none whitespace-nowrap center-all">Giờ nhận phòng</div>
+                    <div className="min-h-14 leading-none whitespace-nowrap center-all">
+                      Giờ nhận phòng
+                    </div>
                   </div>
                   <div>
-                    <div className="min-h-14 leading-none whitespace-nowrap center-all">Số chìa khóa</div>
+                    <div className="min-h-14 leading-none whitespace-nowrap center-all">
+                      Số chìa khóa
+                    </div>
                   </div>
                 </div>
               </CustomTableHead>
@@ -898,8 +967,7 @@ function BookingTable({
                 const isDeleted = row.cancelledAt !== null
                 const isCountMismatch = false // placeholder for request_details_count !== sale_details_count
                 const isDateMismatch = false // placeholder for staff_created_at !== staff_update_at
-                const isPastCheckoutPeriod =
-                  !!row.periodTo && dayjs(row.periodTo).isBefore(dayjs())
+                const isPastCheckoutPeriod = !!row.periodTo && dayjs(row.periodTo).isBefore(dayjs())
                 const isCheckedOut =
                   !!row.earlyExitDatetime ||
                   !!row.checkoutAt ||
@@ -975,9 +1043,7 @@ function BookingTable({
                             )}
                           >
                             {isCheckedOut ? (
-                              <span className="">
-                                Đã trả
-                              </span>
+                              <span className="">Đã trả</span>
                             ) : (
                               <span className="text-[1.2rem] text-gray-500">-</span>
                             )}
@@ -1002,9 +1068,9 @@ function BookingTable({
                           <div className="min-h-14 leading-none center-all">
                             {row.periodFrom
                               ? new Date(row.periodFrom).toLocaleTimeString('en-GB', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
                               : '-'}
                           </div>
                         </div>

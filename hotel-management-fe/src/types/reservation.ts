@@ -1,9 +1,9 @@
 export interface Reservation {
   reserveId: number
-  parentReserveId: number | null
   clientId: number | null
   facilityId: number | null
   roomId: number | null
+  roomTypeId: number | null
   stayTypeId: number | null
   dataStatus: number
   reserveStatus: number
@@ -17,6 +17,7 @@ export interface Reservation {
   checkinFlag: boolean
   directcheckinFlag: boolean
   directcheckinType: number | null
+  directcheckinNote: string | null
   petFlag: boolean
   futonFlag: boolean
   deliveryboxFlag: boolean
@@ -28,13 +29,13 @@ export interface Reservation {
   // Period
   periodFrom: string | null
   periodTo: string | null
-  originalPeriodFrom: string | null
-  originalPeriodTo: string | null
 
   // Dates
   checkedInAt: string | null
   checkoutAt: string | null
   checkinDate: string | null
+  boxUsageStartDate: string | null
+  boxUsageEndDate: string | null
   lastStayDate: string | null
   earlyExitDatetime: string | null
   paymentDueDate: string | null
@@ -56,6 +57,9 @@ export interface Reservation {
   returnKeys: number | null
   keyReturnContactType: number | null
   keyReturnFlag: boolean | null
+  keyboxId: number | null
+  keyboxPassword: string | null
+  boxUsagePeriodType: number | null
 
   // Notes
   note: string | null
@@ -185,12 +189,17 @@ export interface CreateReservationBody {
   chargeStaffId?: number
   chargeStaffId2?: number
   diContactStaffId?: number
+  keyboxPassword?: string | null
+  contactedFlag?: boolean
+  checkinDate?: string | null
+  boxUsagePeriodType?: number | null
+  boxUsageStartDate?: string | null
+  boxUsageEndDate?: string | null
 }
 
 export interface UpdateReservationBody extends Partial<CreateReservationBody> {
   reserveId: number
   dataStatus?: number
-  contactedFlag?: boolean
   rentalKeys?: number
   returnKeys?: number
   keyReturnContactType?: number

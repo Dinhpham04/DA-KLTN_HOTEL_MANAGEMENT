@@ -307,6 +307,11 @@ a:hover {
   display: none !important;
 }
 
+.react-datetime-picker__calendar,
+.react-datetime-picker__calendar--open {
+  z-index: 10050 !important;
+}
+
 /* Destructive text size override */
 .text-destructive {
   font-size: 1.4rem;

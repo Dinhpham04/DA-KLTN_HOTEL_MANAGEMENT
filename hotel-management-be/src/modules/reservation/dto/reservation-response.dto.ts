@@ -17,10 +17,10 @@ type ReserveWithRelations = Reserve & {
 
 export class ReservationResponseDto {
   @ApiProperty() readonly reserveId!: number;
-  @ApiPropertyOptional() readonly parentReserveId!: number | null;
   @ApiPropertyOptional() readonly clientId!: number | null;
   @ApiPropertyOptional() readonly facilityId!: number | null;
   @ApiPropertyOptional() readonly roomId!: number | null;
+  @ApiPropertyOptional() readonly roomTypeId!: number | null;
   @ApiPropertyOptional() readonly stayTypeId!: number | null;
   @ApiProperty() readonly dataStatus!: number;
   @ApiProperty() readonly reserveStatus!: number;
@@ -34,6 +34,7 @@ export class ReservationResponseDto {
   @ApiProperty() readonly checkinFlag!: boolean;
   @ApiProperty() readonly directcheckinFlag!: boolean;
   @ApiPropertyOptional() readonly directcheckinType!: number | null;
+  @ApiPropertyOptional() readonly directcheckinNote!: string | null;
   @ApiProperty() readonly petFlag!: boolean;
   @ApiProperty() readonly futonFlag!: boolean;
   @ApiProperty() readonly deliveryboxFlag!: boolean;
@@ -45,8 +46,6 @@ export class ReservationResponseDto {
   // Period
   @ApiPropertyOptional() readonly periodFrom!: Date | null;
   @ApiPropertyOptional() readonly periodTo!: Date | null;
-  @ApiPropertyOptional() readonly originalPeriodFrom!: Date | null;
-  @ApiPropertyOptional() readonly originalPeriodTo!: Date | null;
 
   // Dates
   @ApiPropertyOptional() readonly checkedInAt!: Date | null;
@@ -120,10 +119,10 @@ export class ReservationResponseDto {
   static fromEntity(reserve: ReserveWithRelations): ReservationResponseDto {
     return Object.assign(new ReservationResponseDto(), {
       reserveId: reserve.reserveId,
-      parentReserveId: reserve.parentReserveId,
       clientId: reserve.clientId,
       facilityId: reserve.facilityId,
       roomId: reserve.roomId,
+      roomTypeId: reserve.room?.roomTypeId ?? null,
       stayTypeId: reserve.stayTypeId,
       dataStatus: reserve.dataStatus,
       reserveStatus: reserve.reserveStatus,
@@ -136,6 +135,7 @@ export class ReservationResponseDto {
       checkinFlag: reserve.checkinFlag,
       directcheckinFlag: reserve.directcheckinFlag,
       directcheckinType: reserve.directcheckinType,
+      directcheckinNote: reserve.directcheckinNote,
       petFlag: reserve.petFlag,
       futonFlag: reserve.futonFlag,
       deliveryboxFlag: reserve.deliveryboxFlag,
@@ -146,8 +146,6 @@ export class ReservationResponseDto {
 
       periodFrom: reserve.periodFrom,
       periodTo: reserve.periodTo,
-      originalPeriodFrom: reserve.originalPeriodFrom,
-      originalPeriodTo: reserve.originalPeriodTo,
 
       checkedInAt: reserve.checkedInAt,
       checkoutAt: reserve.checkoutAt,

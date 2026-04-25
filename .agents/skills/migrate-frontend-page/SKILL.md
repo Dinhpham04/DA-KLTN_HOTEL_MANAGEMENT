@@ -13,6 +13,7 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 **Yêu cầu code**:
 - **BƯỚC TIỀN QUYẾT (QUAN TRỌNG NHẤT)**: Khi bắt đầu migration frontend, **BẮT BUỘC PHẢI KIỂM TRA** xem code backend (Controllers, DTO, Database) đã được migrate đúng nghiệp vụ và đủ chưa. Nếu chưa, PHẢI DỪNG LẠI và thực hiện migration backend trước tiên (bằng skill `migrate-php-to-nestjs`). Tuyệt đối không làm FE mù quáng khi BE chưa sẵn sàng.
 - Dù UI giữ nguyên, code bên dưới phải được refactor thành cấu trúc rõ ràng, chuẩn clean code và tách biệt logic.
+- **NGUYÊN TẮC GỌI API (CRITICAL)**: TUYỆT ĐỐI KHÔNG import và gọi trực tiếp `apiClient` / `axios` trong các file UI/Component (`.tsx`). Mọi API call phải được định nghĩa ở `src/api/` và cung cấp cho Component qua React Query Hooks (`src/hooks/`).
 - **Dữ liệu map với Backend**: KHÔNG được migrate 100% data shape của source cũ một cách máy móc. Phải nhìn vào API và DTO thực tế của Backend (`hotel-management-be`) xem trả về chính xác loại dữ liệu/tên biến thế nào để dùng gọi lên UI.
 
 ## Intent (Mục tiêu)
@@ -55,7 +56,7 @@ Convert frontend page từ source (Japanese) sang target (Vietnamese).
 - Biome: single quotes, no semicolons, 2-space indent
 - Path alias: `@/*` → `src/*`
 - Hooks: separate files (`useGetFeatures.ts`, `useCreateFeature.ts`)
-- API: separate file (`feature.api.ts`)
+- API: separate file (`feature.api.ts`). **CẤM import `apiClient` trực tiếp vào UI components.**
 - Types: separate file (`feature.ts`)
 
 ### Japanese Features to REMOVE (Tính năng Nhật Bản cần loại bỏ)
@@ -185,6 +186,18 @@ interface UseCreateFeatureParams {
 }
 ```
 
+**⚠️ QUAN TRỌNG VỀ API PHÂN TRANG (PAGINATION)**:
+**TUYỆT ĐỐI KHÔNG** viết thêm các hàm `normalize` hay adapter code để xào nấu lại Cấu trúc Data trả về (từ `{ items, meta }` thành `{ data, meta }`) bên trong hook `useQuery`. 
+Lí do: Frontend đã có cơ chế tự động chuyển đổi từ interceptor của `axios.ts` và tự động trả về đúng chuẩn `{ data, meta }`. Bạn CHỈ CẦN ép kiểu trực tiếp `response.data` sang interface mong muốn:
+```typescript
+queryFn: async () => {
+  const response = await featureApi.getList(params)
+  // TRỰC TIẾP return response.data 
+  return response.data as PaginatedFeatureResponse
+}
+// KHÔNG LÀM THẾ NÀY: return normalizeData(response.data)
+```
+
 ### Step 7: Add Translations
 
 <!-- TẠM THỜI KHÔNG DÙNG i18n, CHỈ HARDCODE TIẾNG VIỆT ĐỂ DỄ DEBUG
@@ -272,7 +285,18 @@ onSuccess?: (data: unknown) => void
 **4. Anti-Pattern của React Query v5**
 Tuyệt đối KHÔNG ĐƯỢC tự chế/truyền tham số `onSuccess`, `onError` vào các api gọi data (như `useGetFeatures({ onSuccess })`) rồi nhét vào `queryFn`. Cách làm này sẽ gây bug khi dữ liệu lấy từ cache. Thay vào đó hãy dùng trực tiếp `data` ra từ hook.
 
-**5. Locale in DatePicker**
+**5. Gọi apiClient trong file Component (.tsx)**
+```typescript
+// ⛔ SAI: Vi phạm nguyên tắc tách biệt logic (gọi trực tiếp apiClient trong hook nội bộ/component)
+import apiClient from '@/lib/axios'
+const fetchData = async () => await apiClient.get('/data')
+
+// ✅ ĐÚNG: Định nghĩa api ở src/api/, và tạo custom hook React Query ở src/hooks/
+import { useGetData } from '@/hooks/queries/useGetData'
+const { data } = useGetData()
+```
+
+**6. Locale in DatePicker**
 ```typescript
 // Sai: useState không cần thiết
 const [locale, setLocale] = useState('vi-VN')

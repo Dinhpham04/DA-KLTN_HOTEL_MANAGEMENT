@@ -100,4 +100,12 @@ export const BILLING_ADVANCE_HEADERS = [
   'Thao tác',
 ]
 
-export const OCCUPIER_HEADERS = ['Họ tên', 'Ngày sinh', 'Tuổi', 'Giới tính', 'Địa chỉ', 'SĐT', 'Thao tác']
+export const OCCUPIER_HEADERS = [
+  'Họ tên',
+  'Ngày sinh',
+  'Tuổi',
+  'Giới tính',
+  'Địa chỉ',
+  'SĐT',
+  'Thao tác',
+]

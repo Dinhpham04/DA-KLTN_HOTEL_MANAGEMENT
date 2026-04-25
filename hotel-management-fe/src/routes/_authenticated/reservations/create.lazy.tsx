@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { type Control, Controller, type FieldValues, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
 import { useDocumentTitle } from 'usehooks-ts'
 import { z } from 'zod'
@@ -14,12 +14,6 @@ import {
   CustomAccordionTrigger,
 } from '@/components/common/CustomAccordion'
 import { CustomCheckbox } from '@/components/common/CustomCheckbox'
-import {
-  CustomCollapsible,
-  CustomCollapsibleContent,
-  CustomCollapsibleTrigger,
-} from '@/components/common/CustomCollapsible'
-
 import CustomDatePicker from '@/components/common/CustomDatePicker'
 import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
@@ -28,22 +22,15 @@ import type { Option } from '@/components/common/CustomSelectClean'
 import CustomSelectClean from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
-import {
-  ADVERTISING_TYPE_OPTIONS,
-  CONFIRM_FLAG_OPTIONS,
-  DATA_TYPE_OPTIONS,
-  DIRECTCHECKIN_TYPE_OPTIONS,
-  MOCK_KEYBOX_OPTIONS,
-  NORESERVE_COUNT_OPTIONS,
-  RENTAL_KEYS_OPTIONS,
-  SEX_OPTIONS,
-  USED_MESSY_LEVEL_OPTIONS,
-} from '@/constants/reservation'
+import ReservationInfoCommonSection from '@/components/reservation/ReservationInfoCommonSection'
+import ReservationRequestNormalSection from '@/components/reservation/ReservationRequestNormalSection'
 import { DialogClose } from '@/components/ui/dialog'
 import { NButton } from '@/components/ui/new-button'
+import { DATA_TYPE_OPTIONS, SEX_OPTIONS, USED_MESSY_LEVEL_OPTIONS } from '@/constants/reservation'
 
 import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import SearchClientModal from '@/components/dialogs/SearchClientModal'
+import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
@@ -51,7 +38,18 @@ import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
 import { useCreateReservation } from '@/hooks/queries/useReservations'
-import { calculateStayTypeId, formatDateValue } from '@/lib/reservation'
+import { useDirectCheckinSmartLock } from '@/hooks/useDirectCheckinSmartLock'
+import { calculateStayTypeId, formatDateValue, mergeDateAndTime } from '@/lib/reservation'
+import {
+  getReservationClientDefaultValues,
+  getReservationCreateReserveDefaultValues,
+  reservationClientSchema,
+  reservationCreateReserveSchema,
+} from '@/lib/reservation-form'
+import {
+  generateSmartLockPin,
+  resolveSelfCheckinSmartLockState,
+} from '@/lib/smart-lock-directcheckin'
 import { cn } from '@/lib/utils'
 
 export const Route = createLazyFileRoute('/_authenticated/reservations/create')({
@@ -59,129 +57,26 @@ export const Route = createLazyFileRoute('/_authenticated/reservations/create')(
 })
 
 // ─── Schema ──────────────────────────────────────────────────────────
-const clientSchema = z.object({
-  data_type: z.string().default('1'),
-  client_id: z.string().optional(),
-  client_name: z.string().max(128).optional(),
-  company_name: z.string().max(128).optional(),
-  contact_name: z.string().max(128).optional(),
-  birthday: z.string().optional(),
-  sex: z.string().optional(),
-  country_id: z.string().optional(),
-  zip_code: z.string().optional(),
-  address1: z.string().max(256).optional(),
-  address2: z.string().max(256).optional(),
-  company_zip_code: z.string().optional(),
-  company_address1: z.string().max(256).optional(),
-  company_address2: z.string().max(256).optional(),
-  email: z.string().optional(),
-  tel: z.string().optional(),
-  tel_phone: z.string().optional(),
-  tel_emergency: z.string().optional(),
-  emergency_relation: z.string().optional(),
-  company_tel: z.string().optional(),
-  fax: z.string().optional(),
-  use_count: z.string().optional(),
-  memo: z.string().max(1024).optional(),
-  stay_duration_auto_flag: z.boolean().default(false),
-  used_messy_level: z.string().default('0'),
-  ug_flag: z.boolean().default(false),
-  postpaid_flag: z.boolean().default(false),
-  advertising_type: z.boolean().default(false),
-})
-
-const reserveSchema = z.object({
-  facility_id: z.string().optional(),
-  room_type_id: z.string().optional(),
-  room_id: z.string().optional(),
-  directcheckin_type: z.string().default('1'),
-  directcheckin_flag: z.boolean().default(false),
-  keybox_name: z.string().optional(),
-  keybox_password: z.string().optional(),
-  di_contact_staff_id: z.string().optional(),
-  contacted_flag: z.boolean().default(false),
-  pre_delivery_key_flag: z.boolean().default(false),
-  checkin_date: z.string().optional(),
-  advertising_type: z.string().default('0'),
-  noreserve_count_before: z.string().default('0'),
-  period_from: z.string().optional(),
-  period_to: z.string().optional(),
-  noreserve_count_after: z.string().default('0'),
-  stay_type_id: z.string().optional(),
-  auto_extend_flag: z.boolean().default(true),
-  confirm_flag: z.string().default('0'),
-  rental_keys: z.string().default('0'),
-  checkin_time: z.string().optional(),
-  payment_due_date: z.string().optional(),
-  note: z.string().max(1024).optional(),
-  overdue_debt_note: z.string().max(1024).optional(),
-  disable_reservation: z.boolean().default(false),
-})
-
 const formSchema = z.object({
-  client: clientSchema,
-  reserve: reserveSchema,
+  client: reservationClientSchema,
+  reserve: reservationCreateReserveSchema.extend({
+    directcheckin_note: z.string().max(256).optional(),
+    smart_lock_pin: z.string().optional(),
+    smart_lock_valid_from: z.string().optional(),
+    smart_lock_valid_to: z.string().optional(),
+  }),
 })
 
 type FormValues = z.infer<typeof formSchema>
 
 const defaultValues: FormValues = {
-  client: {
-    data_type: '1',
-    client_id: '',
-    client_name: '',
-    company_name: '',
-    contact_name: '',
-    birthday: '',
-    sex: '',
-    country_id: '',
-    zip_code: '',
-    address1: '',
-    address2: '',
-    company_zip_code: '',
-    company_address1: '',
-    company_address2: '',
-    email: '',
-    tel: '',
-    tel_phone: '',
-    tel_emergency: '',
-    emergency_relation: '',
-    company_tel: '',
-    fax: '',
-    use_count: '0',
-    memo: '',
-    stay_duration_auto_flag: false,
-    used_messy_level: '0',
-    ug_flag: false,
-    postpaid_flag: false,
-    advertising_type: false,
-  },
+  client: getReservationClientDefaultValues(),
   reserve: {
-    facility_id: '',
-    room_type_id: '',
-    room_id: '',
-    directcheckin_type: '1',
-    directcheckin_flag: false,
-    keybox_name: '',
-    keybox_password: '',
-    di_contact_staff_id: '',
-    contacted_flag: false,
-    pre_delivery_key_flag: false,
-    checkin_date: '',
-    advertising_type: '0',
-    noreserve_count_before: '0',
-    period_from: '',
-    period_to: '',
-    noreserve_count_after: '0',
-    stay_type_id: '',
-    auto_extend_flag: true,
-    confirm_flag: '0',
-    rental_keys: '0',
-    checkin_time: '',
-    payment_due_date: '',
-    note: '',
-    overdue_debt_note: '',
-    disable_reservation: false,
+    ...getReservationCreateReserveDefaultValues(),
+    directcheckin_note: '',
+    smart_lock_pin: '',
+    smart_lock_valid_from: '',
+    smart_lock_valid_to: '',
   },
 }
 
@@ -202,6 +97,7 @@ function ReservationCreatePage() {
   const dataType = form.watch('client.data_type')
   const ugFlag = form.watch('client.ug_flag')
   const directcheckinFlag = form.watch('reserve.directcheckin_flag')
+  const directcheckinType = form.watch('reserve.directcheckin_type')
   const contactedFlag = form.watch('reserve.contacted_flag')
 
   // ─── Data Hooks ──────────────────────────────────────────────────
@@ -231,6 +127,7 @@ function ReservationCreatePage() {
   })
 
   const { mutateAsync: createReservation, isPending: isCreating } = useCreateReservation()
+  const { mutateAsync: createSmartLockPin } = useCreateSmartLockPin()
   const navigate = useNavigate()
 
   // ─── Options ─────────────────────────────────────────────────────
@@ -302,53 +199,22 @@ function ReservationCreatePage() {
   // Night count calculation
   const periodFrom = form.watch('reserve.period_from')
   const periodTo = form.watch('reserve.period_to')
+  const checkinTime = form.watch('reserve.checkin_time')
   const nightCount = useMemo(() => {
     if (!periodFrom || !periodTo) return 0
     return dayjs(periodTo).add(1, 'day').diff(dayjs(periodFrom), 'day')
   }, [periodFrom, periodTo])
 
-  const clearDirectcheckinDetails = () => {
-    form.setValue('reserve.keybox_name', '')
-    form.setValue('reserve.keybox_password', '')
-    form.setValue('reserve.di_contact_staff_id', '')
-    form.setValue('reserve.contacted_flag', false)
-    form.setValue('reserve.pre_delivery_key_flag', false)
-    form.setValue('reserve.checkin_date', '')
-  }
-
-  const syncDirectcheckinFlagByType = (type: string) => {
-    const isSelfCheckin = type === '2'
-    form.setValue('reserve.directcheckin_flag', isSelfCheckin)
-
-    if (!isSelfCheckin) {
-      clearDirectcheckinDetails()
-    }
-  }
-
-  const toggleDirectcheckinFlag = (checked: boolean) => {
-    form.setValue('reserve.directcheckin_flag', checked)
-
-    if (checked) {
-      form.setValue('reserve.directcheckin_type', '2')
-      return
-    }
-
-    form.setValue('reserve.directcheckin_type', '1')
-    clearDirectcheckinDetails()
-  }
-
-  const handleContactedFlagChange = (checked: boolean, onChange: (value: boolean) => void) => {
-    onChange(checked)
-
-    if (checked) {
-      if (!form.getValues('reserve.checkin_date')) {
-        form.setValue('reserve.checkin_date', dayjs().format('YYYY-MM-DD HH:mm'))
-      }
-      return
-    }
-
-    form.setValue('reserve.checkin_date', '')
-  }
+  const { syncDirectcheckinFlagByType, toggleDirectcheckinFlag, handleContactedFlagChange } =
+    useDirectCheckinSmartLock({
+      getValues: form.getValues,
+      setValue: form.setValue,
+      periodFrom,
+      periodTo,
+      checkinTime,
+      directcheckinFlag,
+      directcheckinType,
+    })
 
   useEffect(() => {
     if (!periodFrom || !periodTo) return
@@ -421,14 +287,37 @@ function ReservationCreatePage() {
       return
     }
 
+    const {
+      isSelfCheckin,
+      smartLockPin,
+      smartLockValidFrom,
+      smartLockValidTo,
+      smartLockValidationError,
+    } = resolveSelfCheckinSmartLockState({
+      directcheckinFlag: values.reserve.directcheckin_flag,
+      directcheckinType: values.reserve.directcheckin_type,
+      roomId: values.reserve.room_id,
+      smartLockPin: values.reserve.smart_lock_pin,
+      smartLockValidFrom: values.reserve.smart_lock_valid_from,
+      smartLockValidTo: values.reserve.smart_lock_valid_to,
+      periodFrom: values.reserve.period_from,
+      periodTo: values.reserve.period_to,
+      checkinTime: values.reserve.checkin_time,
+    })
+
+    if (smartLockValidationError) {
+      toast.error(smartLockValidationError)
+      return
+    }
+
     setIsLoading(true)
     try {
-      await createReservation({
+      const reservationResponse = await createReservation({
         clientId: Number(values.client.client_id),
         facilityId: values.reserve.facility_id ? Number(values.reserve.facility_id) : undefined,
         roomId: values.reserve.room_id ? Number(values.reserve.room_id) : undefined,
         stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
-        periodFrom: values.reserve.period_from,
+        periodFrom: mergeDateAndTime(values.reserve.period_from, values.reserve.checkin_time),
         periodTo: values.reserve.period_to,
         advertisingType: values.reserve.advertising_type
           ? Number(values.reserve.advertising_type)
@@ -437,14 +326,53 @@ function ReservationCreatePage() {
           ? Number(values.reserve.directcheckin_type)
           : undefined,
         directcheckinFlag: values.reserve.directcheckin_flag,
+        directcheckinNote: values.reserve.directcheckin_note || undefined,
         diContactStaffId: values.reserve.di_contact_staff_id
           ? Number(values.reserve.di_contact_staff_id)
           : undefined,
+        contactedFlag: values.reserve.contacted_flag,
+        checkinDate: values.reserve.checkin_date
+          ? dayjs(values.reserve.checkin_date).format('YYYY-MM-DDTHH:mm:ss')
+          : null,
         confirmFlag: values.reserve.confirm_flag === '1',
         autoExtendFlag: values.reserve.auto_extend_flag,
         note: values.reserve.note,
         memo: values.client.memo,
       })
+
+      if (isSelfCheckin && values.reserve.room_id && smartLockPin) {
+        const createdReserveId =
+          typeof reservationResponse.data === 'object' &&
+          reservationResponse.data !== null &&
+          'reserveId' in reservationResponse.data &&
+          typeof reservationResponse.data.reserveId === 'number'
+            ? reservationResponse.data.reserveId
+            : null
+
+        if (!createdReserveId) {
+          toast.warning('Đặt phòng đã tạo nhưng không lấy được mã đặt phòng để tạo PIN smart lock')
+        } else {
+          try {
+            const smartLockValidFromIso = dayjs(smartLockValidFrom).toISOString()
+            const smartLockValidToIso = dayjs(smartLockValidTo).toISOString()
+
+            await createSmartLockPin({
+              reserveId: createdReserveId,
+              roomId: Number(values.reserve.room_id),
+              pin: smartLockPin,
+              validFrom: smartLockValidFromIso,
+              validTo: smartLockValidToIso,
+              status: 1,
+              dataStatus: 1,
+            })
+          } catch {
+            toast.warning(
+              'Đặt phòng đã tạo nhưng tạo PIN smart lock thất bại. Vui lòng kiểm tra lại.'
+            )
+          }
+        }
+      }
+
       navigate({ to: '/reservations' })
     } catch {
       // Error is handled by the mutation hook
@@ -1097,631 +1025,37 @@ function ReservationCreatePage() {
                     </CustomAccordionTrigger>
                     <CustomAccordionContent className="pb-0">
                       <div className="px-16 pt-[3.4rem] pb-16 w-full overflow-x-auto">
-                        <h5 className="font-bold text-[2.3rem] leading-none">
-                          ■ Thông tin đặt phòng
-                        </h5>
+                        <ReservationInfoCommonSection
+                          control={form.control as unknown as Control<FieldValues>}
+                          periodFrom={periodFrom}
+                          nightCount={nightCount}
+                          facilityOptions={facilityOptions}
+                          selectedFacilityShortLabel={selectedFacilityShortLabel}
+                          onFacilityChange={handleFacilityChange}
+                          roomTypeOptions={roomTypeOptions}
+                          selectedRoomTypeShortLabel={selectedRoomTypeShortLabel}
+                          onRoomTypeChange={handleRoomTypeChange}
+                          roomOptions={roomOptions}
+                          onRoomChange={handleRoomChange}
+                          isFacilitySelected={!!selectedFacilityId}
+                          stayTypeOptions={stayTypeOptions}
+                          checkinTimeFieldName="reserve.checkin_time"
+                          disableRentalKeysSelect
+                          directcheckinFlag={directcheckinFlag}
+                          contactedFlag={contactedFlag}
+                          staffOptions={staffOptions}
+                          onSyncDirectcheckinFlagByType={syncDirectcheckinFlagByType}
+                          onToggleDirectcheckinFlag={toggleDirectcheckinFlag}
+                          onContactedFlagChange={handleContactedFlagChange}
+                          onGenerateSmartLockPin={generateSmartLockPin}
+                        />
 
-                        {/* ─── Row 1: Main grid (Facility → RoomType → Room → Dates → StayType → Flags) ─── */}
-                        <div className="flex items-center mt-[1.6rem]">
-                          {/* Cơ sở (Facility) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Cơ sở
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.facility_id"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      isAll
-                                      option={facilityOptions}
-                                      selected={facilityOptions.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      selectedLabel={selectedFacilityShortLabel}
-                                      change={(o) => handleFacilityChange(o.value)}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Loại phòng (Room Type) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Loại phòng
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.room_type_id"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      isAll
-                                      option={roomTypeOptions}
-                                      selected={roomTypeOptions.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      selectedLabel={selectedRoomTypeShortLabel}
-                                      change={(o) => handleRoomTypeChange(o.value)}
-                                      disabledSelect={!selectedFacilityId}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Số phòng (Room) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Số phòng
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.room_id"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      isAll
-                                      option={roomOptions}
-                                      selected={roomOptions.find((o) => o.value === field.value)}
-                                      change={(o) => handleRoomChange(o.value)}
-                                      disabledSelect={!selectedFacilityId}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Trước × (noreserve_count_before) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[7rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Trước
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.noreserve_count_before"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      option={NORESERVE_COUNT_OPTIONS}
-                                      selected={NORESERVE_COUNT_OPTIONS.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Thời gian lưu trú (Period) */}
-                          <div className="flex-1 my-0 ml-[-0.1rem] first:ml-0 min-w-[28.6rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Thời gian lưu trú ({nightCount} đêm)
-                              </p>
-                              <div className="flex items-center">
-                                <div className="relative flex-2 !m-0">
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.period_from"
-                                    render={({ field }) => (
-                                      <CustomDatePicker
-                                        format="yyyy/MM/dd"
-                                        className={cn(
-                                          'flex-none [&>div]:px-[0.4rem] [&>div]:border-black w-[12.3rem] h-16 font-bold [&_input::placeholder]:text-[#999] lowercase cursor-pointer'
-                                        )}
-                                        change={(e) => {
-                                          field.onChange(formatDateValue(e, 'YYYY-MM-DD'))
-                                        }}
-                                        value={field.value ? new Date(field.value) : null}
-                                      />
-                                    )}
-                                  />
-                                </div>
-                                <div className="flex flex-1 justify-center items-center !mt-0 border-black border-y min-w-[4rem] h-16 font-bold text-[1.4rem]">
-                                  ~
-                                </div>
-                                <div className="relative flex-2 !m-0">
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.period_to"
-                                    render={({ field }) => (
-                                      <CustomDatePicker
-                                        format="yyyy/MM/dd"
-                                        className={cn(
-                                          'flex-none !mt-0 [&>div]:px-[0.4rem] [&>div]:border-black w-[12.3rem] h-16 font-bold [&_input::placeholder]:text-[#999] lowercase cursor-pointer'
-                                        )}
-                                        change={(e) => {
-                                          field.onChange(formatDateValue(e, 'YYYY-MM-DD'))
-                                        }}
-                                        value={field.value ? new Date(field.value) : null}
-                                        defaultActiveStartDate={
-                                          periodFrom ? new Date(periodFrom) : undefined
-                                        }
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Sau × (noreserve_count_after) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[7rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Sau
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.noreserve_count_after"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      option={NORESERVE_COUNT_OPTIONS}
-                                      selected={NORESERVE_COUNT_OPTIONS.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Loại lưu trú (Stay Type) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[20.3rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Loại lưu trú
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.stay_type_id"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      isAll
-                                      option={stayTypeOptions}
-                                      selected={stayTypeOptions.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Tự động gia hạn (Auto Extend Flag) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[14rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem] leading-8">
-                                Tự động gia hạn
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.auto_extend_flag"
-                                  render={({ field }) => (
-                                    <div className="flex justify-center items-center border border-black h-16">
-                                      <CustomCheckbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                      />
-                                    </div>
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Xác nhận (Confirm Flag) */}
-                          <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[16.4rem]">
-                            <div className="flex flex-col">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                Xác nhận
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.confirm_flag"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      option={CONFIRM_FLAG_OPTIONS}
-                                      selected={CONFIRM_FLAG_OPTIONS.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-full h-16 rounded-none border-black"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Check-in method row */}
-                        <div className="my-8 w-full">
-                          <div className="flex">
-                            <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.4rem] h-[4.8rem] font-bold text-[1.6rem]">
-                              Cách nhận phòng
-                            </div>
-                            <div className="flex flex-1 justify-between items-center px-8 py-2 border border-black">
-                              <Controller
-                                control={form.control}
-                                name="reserve.directcheckin_type"
-                                render={({ field }) => (
-                                  <CustomRadio
-                                    value={field.value}
-                                    onValueChange={(value) => {
-                                      field.onChange(value)
-                                      syncDirectcheckinFlagByType(value)
-                                    }}
-                                    className="flex flex-wrap md:flex-nowrap gap-x-8 gap-y-4 !mt-0"
-                                  >
-                                    {DIRECTCHECKIN_TYPE_OPTIONS.map((opt) => (
-                                      <div key={opt.id} className="flex items-center">
-                                        <CustomRadioItems value={opt.value} />
-                                        <label className="ml-2 font-medium text-[1.4rem] cursor-pointer">
-                                          {opt.name}
-                                        </label>
-                                      </div>
-                                    ))}
-                                  </CustomRadio>
-                                )}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Advertising type row */}
-                        <div className="mt-[-0.1rem] w-full">
-                          <div className="flex">
-                            <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.4rem] h-[4.8rem] font-bold text-[1.6rem]">
-                              Kênh quảng cáo
-                            </div>
-                            <div className="flex flex-1 justify-between items-center px-8 py-2 border border-black">
-                              <Controller
-                                control={form.control}
-                                name="reserve.advertising_type"
-                                render={({ field }) => (
-                                  <CustomRadio
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    className="flex flex-wrap md:flex-nowrap gap-x-8 gap-y-4 !mt-0"
-                                  >
-                                    {ADVERTISING_TYPE_OPTIONS.map((opt) => (
-                                      <div key={opt.id} className="flex items-center">
-                                        <CustomRadioItems value={opt.value} />
-                                        <label className="ml-2 font-medium text-[1.4rem] cursor-pointer">
-                                          {opt.name}
-                                        </label>
-                                      </div>
-                                    ))}
-                                  </CustomRadio>
-                                )}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ─── Row 2: Keys + Checkin Time + Payment Due Date ─── */}
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center mt-[1.6rem] mr-4">
-                            {/* Số chìa khóa (Rental Keys) */}
-                            <div className="my-0 ml-[-0.1rem] first:ml-0 w-[6.5rem]">
-                              <div className="flex flex-col">
-                                <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                  🔑
-                                </p>
-                                <div className="relative w-full">
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.rental_keys"
-                                    render={({ field }) => (
-                                      <CustomSelectClean
-                                        option={RENTAL_KEYS_OPTIONS}
-                                        selected={RENTAL_KEYS_OPTIONS.find(
-                                          (o) => o.value === field.value
-                                        )}
-                                        change={(o) => field.onChange(o.value)}
-                                        disabledSelect
-                                        customClassMain="w-full h-16 rounded-none border-black"
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Giờ nhận phòng dự kiến */}
-                            <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[14rem]">
-                              <div className="flex flex-col">
-                                <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                  Giờ nhận phòng
-                                </p>
-                                <div className={cn('relative w-full')}>
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.checkin_time"
-                                    render={({ field }) => (
-                                      <CustomInput
-                                        type="time"
-                                        value={field.value ?? ''}
-                                        onChange={field.onChange}
-                                        className="h-16 border border-black rounded-none text-center font-medium text-[1.4rem]"
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Hạn thanh toán */}
-                            <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[14rem]">
-                              <div className="flex flex-col">
-                                <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-                                  Hạn thanh toán
-                                </p>
-                                <div className={cn('relative w-full')}>
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.payment_due_date"
-                                    render={({ field }) => (
-                                      <CustomDatePicker
-                                        format="yyyy/MM/dd"
-                                        className={cn(
-                                          'flex-none [&>div]:px-[0.4rem] [&>div]:border-black w-full h-16 font-medium [&_input::placeholder]:text-black lowercase cursor-pointer'
-                                        )}
-                                        change={(e) => {
-                                          field.onChange(formatDateValue(e, 'YYYY-MM-DD'))
-                                        }}
-                                        value={field.value ? new Date(field.value) : null}
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Ghi chú đặt phòng (Note) */}
-                          <div className="mt-[1.6rem] w-[51.7rem]">
-                            <div className="flex">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 min-w-[10.6rem] min-h-[6.9rem] font-bold text-[1.6rem]">
-                                Ghi chú
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.note"
-                                  render={({ field }) => (
-                                    <CustomTextarea
-                                      {...field}
-                                      className="flex-1 !mt-0 py-4 border border-black border-solid rounded-none h-[6.9rem] min-h-full font-bold text-[1.4rem]"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ─── Row 3: Disable reservation checkbox + Overdue debt note ─── */}
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Controller
-                              control={form.control}
-                              name="reserve.disable_reservation"
-                              render={({ field }) => (
-                                <div className="flex justify-center items-center h-16">
-                                  <CustomCheckbox
-                                    id="disable_reservation"
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </div>
-                              )}
-                            />
-                            <label
-                              className="font-bold text-[1.6rem] leading-none cursor-pointer"
-                              htmlFor="disable_reservation"
-                            >
-                              Không cho phép đặt phòng tiếp theo sau đặt phòng này
-                            </label>
-                          </div>
-
-                          <div className="mt-[1.6rem] w-[51.7rem]">
-                            <div className="flex">
-                              <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 min-w-[10.6rem] min-h-[6.9rem] font-bold text-[1.6rem]">
-                                Nợ quá hạn
-                              </p>
-                              <div className="relative w-full">
-                                <Controller
-                                  control={form.control}
-                                  name="reserve.overdue_debt_note"
-                                  render={({ field }) => (
-                                    <CustomTextarea
-                                      {...field}
-                                      className="flex-1 !mt-0 py-4 border border-black border-solid h-[6.9rem] rounded-none min-h-full font-bold text-[1.4rem]"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Direct check-in setting (show when self check-in is selected) */}
-                        <CustomCollapsible className="my-8">
-                          <CustomCollapsibleTrigger className="[&>svg]:hidden">
-                            <div className="flex items-center gap-2">
-                              <Controller
-                                control={form.control}
-                                name="reserve.directcheckin_flag"
-                                render={({ field }) => (
-                                  <CustomCheckbox
-                                    checked={field.value}
-                                    onCheckedChange={(checked) => {
-                                      toggleDirectcheckinFlag(checked === true)
-                                    }}
-                                  />
-                                )}
-                              />
-                              <h5 className="font-bold text-[1.6rem] leading-none">
-                                Cài đặt nhận phòng trực tiếp
-                              </h5>
-                            </div>
-                          </CustomCollapsibleTrigger>
-
-                          {directcheckinFlag && (
-                            <CustomCollapsibleContent className="my-4">
-                              <div className="flex items-center flex-wrap gap-y-4">
-                                {/* Box */}
-                                <div className="ml-[-0.1rem] first:ml-0 min-w-[23.3rem]">
-                                  <div className="flex">
-                                    <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
-                                      Box
-                                    </p>
-                                    <div className="flex items-center border border-black w-[10.9rem] h-[7.5rem] px-2">
-                                      <Controller
-                                        control={form.control}
-                                        name="reserve.keybox_name"
-                                        render={({ field }) => (
-                                          <CustomSelectClean
-                                            isAll
-                                            option={MOCK_KEYBOX_OPTIONS}
-                                            selected={MOCK_KEYBOX_OPTIONS.find(
-                                              (o) => o.value === field.value
-                                            )}
-                                            change={(o) => field.onChange(o.value)}
-                                            customClassMain="w-[8rem] h-14"
-                                          />
-                                        )}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* PIN */}
-                                <div className="ml-[-0.1rem] first:ml-0 min-w-[23.3rem]">
-                                  <div className="flex">
-                                    <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
-                                      Mật khẩu
-                                    </p>
-                                    <div className="flex items-center border border-black h-[7.5rem] px-2">
-                                      <CustomInput
-                                        {...form.register('reserve.keybox_password')}
-                                        className="w-[16rem] h-[2.5rem] text-center"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* DI Contact staff + flags */}
-                                <div className="ml-[-0.1rem] first:ml-0 min-w-[33rem]">
-                                  <div className="flex">
-                                    <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[12.4rem] h-[7.5rem] font-bold text-[1.6rem]">
-                                      NV đặt phòng
-                                    </p>
-                                    <div className="flex flex-col justify-center border border-black h-[7.5rem] px-2 gap-2">
-                                      <Controller
-                                        control={form.control}
-                                        name="reserve.di_contact_staff_id"
-                                        render={({ field }) => (
-                                          <CustomSelectClean
-                                            isAll
-                                            option={staffOptions}
-                                            selected={staffOptions.find((o) => o.value === field.value)}
-                                            change={(o) => field.onChange(o.value)}
-                                            customClassMain="w-[16rem]"
-                                          />
-                                        )}
-                                      />
-
-                                      <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-1">
-                                          <Controller
-                                            control={form.control}
-                                            name="reserve.contacted_flag"
-                                            render={({ field }) => (
-                                              <CustomCheckbox
-                                                checked={field.value}
-                                                onCheckedChange={(checked) => {
-                                                  handleContactedFlagChange(checked === true, field.onChange)
-                                                }}
-                                              />
-                                            )}
-                                          />
-                                          <label className="text-[1.2rem] font-bold cursor-pointer">
-                                            Đã liên hệ
-                                          </label>
-                                        </div>
-
-                                        <div className="flex items-center gap-1">
-                                          <Controller
-                                            control={form.control}
-                                            name="reserve.pre_delivery_key_flag"
-                                            render={({ field }) => (
-                                              <CustomCheckbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                              />
-                                            )}
-                                          />
-                                          <label className="text-[1.2rem] font-bold cursor-pointer">
-                                            Giao chìa khóa trước
-                                          </label>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {contactedFlag && (
-                                <div className="flex items-center mt-4">
-                                  <p className="min-w-[10rem] font-bold text-[1.6rem]">Ngày giờ</p>
-                                  <Controller
-                                    control={form.control}
-                                    name="reserve.checkin_date"
-                                    render={({ field }) => (
-                                      <CustomDatePicker
-                                        value={field.value ? new Date(field.value) : null}
-                                        format="yyyy/MM/dd HH:mm"
-                                        className="w-[20rem] h-16"
-                                        change={(date: Date | Date[] | null) => {
-                                          field.onChange(formatDateValue(date, 'YYYY-MM-DD HH:mm'))
-                                        }}
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              )}
-                            </CustomCollapsibleContent>
-                          )}
-                        </CustomCollapsible>
+                        <ReservationRequestNormalSection
+                          control={form.control as unknown as Control<FieldValues>}
+                          periodFrom={periodFrom}
+                          periodTo={periodTo}
+                          staffOptions={staffOptions}
+                        />
                       </div>
                     </CustomAccordionContent>
                   </CustomAccordionItem>

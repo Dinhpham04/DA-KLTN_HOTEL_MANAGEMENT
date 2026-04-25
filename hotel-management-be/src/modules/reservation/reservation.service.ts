@@ -107,6 +107,8 @@ export class ReservationService {
       directcheckinFlag: dto.directcheckinFlag ?? false,
       directcheckinType: dto.directcheckinType,
       directcheckinNote: dto.directcheckinNote,
+      contactedFlag: dto.contactedFlag,
+      checkinDate: dto.checkinDate ? new Date(dto.checkinDate) : null,
       futonFlag: dto.futonFlag ?? false,
       deliveryboxFlag: dto.deliveryboxFlag ?? false,
       deliveryboxCardNumber: dto.deliveryboxCardNumber,
@@ -215,6 +217,9 @@ export class ReservationService {
       ...(dto.directcheckinType !== undefined && { directcheckinType: dto.directcheckinType }),
       ...(dto.directcheckinNote !== undefined && { directcheckinNote: dto.directcheckinNote }),
       ...(dto.contactedFlag !== undefined && { contactedFlag: dto.contactedFlag }),
+      ...(dto.checkinDate !== undefined && {
+        checkinDate: dto.checkinDate ? new Date(dto.checkinDate) : null,
+      }),
       ...(dto.rentalKeys !== undefined && { rentalKeys: dto.rentalKeys }),
       ...(dto.returnKeys !== undefined && { returnKeys: dto.returnKeys }),
       ...(dto.keyReturnContactType !== undefined && { keyReturnContactType: dto.keyReturnContactType }),

@@ -6,7 +6,14 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 
-import { validate, appConfig, databaseConfig, jwtConfig, throttleConfig, cloudinaryConfig } from '@config/index';
+import {
+  validate,
+  appConfig,
+  databaseConfig,
+  jwtConfig,
+  throttleConfig,
+  cloudinaryConfig,
+} from '@config/index';
 import { DatabaseModule } from '@database/index';
 import { AuthModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -25,6 +32,7 @@ import { StayTypeModule } from '@modules/stay-type/stay-type.module';
 import { ParkingModule } from '@modules/parking/parking.module';
 import { BicycleParkingModule } from '@modules/bicycle-parking/bicycle-parking.module';
 import { RentModule } from '@modules/rent/rent.module';
+import { SmartLockPinModule } from '@modules/smart-lock-pin/smart-lock-pin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -94,6 +102,7 @@ import { AppService } from './app.service';
     ParkingModule,
     BicycleParkingModule,
     RentModule,
+    SmartLockPinModule,
   ],
   controllers: [AppController],
   providers: [
@@ -105,4 +114,4 @@ import { AppService } from './app.service';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

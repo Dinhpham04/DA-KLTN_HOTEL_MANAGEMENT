@@ -23,6 +23,10 @@ Tạo CRUD management page hoàn chỉnh với DataTable + CustomDialog form the
 - **shadcn/ui**: Button, Dialog, Input, Select, etc.
 - **react-hook-form + Zod**: Form state + validation
 
+### Architectural Rules (CRITICAL)
+- **TUYỆT ĐỐI CẤM**: Không được import và gọi trực tiếp `apiClient` hoặc `axios` trong các file UI/Components (`.tsx`). 
+- Mọi thao tác gọi API phải được định nghĩa trong folder `src/api/` và sử dụng trong component thông qua custom hooks (`src/hooks/queries/` hoặc `src/hooks/mutations/`).
+
 ### Page Layout Pattern
 ```
 ┌─────────────────────────────────────┐
