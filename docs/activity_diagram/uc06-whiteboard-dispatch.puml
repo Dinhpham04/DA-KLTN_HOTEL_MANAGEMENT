@@ -1,0 +1,18 @@
+@startuml uc06_whiteboard_dispatch
+title UC06 - Whiteboard điều phối phòng
+start
+:Mở Whiteboard;
+:Tải trạng thái phòng theo timeline;
+:Áp dụng bộ lọc;
+if (Cần điều phối?) then (Có)
+  :Chọn đổi phòng hoặc đổi lịch;
+  :Kiểm tra quyền và xung đột;
+  if (Đủ điều kiện?) then (Có)
+    :Lưu điều phối;
+    :Làm mới Whiteboard;
+  else (Không)
+    :Thông báo không thể điều phối;
+  endif
+endif
+stop
+@enduml

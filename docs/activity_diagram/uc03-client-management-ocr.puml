@@ -1,0 +1,17 @@
+@startuml uc03_client_management_ocr
+title UC03 - Quản lý khách hàng
+start
+:Mở form khách hàng;
+:Nhập thông tin cơ bản;
+if (Có tải ảnh giấy tờ?) then (Có)
+  :Lưu ảnh giấy tờ vào hệ thống;
+endif
+:Kiểm tra trùng số điện thoại hoặc email;
+if (Cho phép lưu?) then (Có)
+  :Lưu hồ sơ khách hàng;
+  :Hiển thị chi tiết khách hàng;
+else (Không)
+  :Thông báo trùng dữ liệu;
+endif
+stop
+@enduml

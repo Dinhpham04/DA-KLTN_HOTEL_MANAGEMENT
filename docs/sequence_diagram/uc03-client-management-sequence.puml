@@ -1,0 +1,27 @@
+@startuml uc03_client_management_sequence
+title UC03 - Quản lý khách hàng (không OCR AI)
+autonumber
+
+actor "Nhân viên vận hành" as Staff
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+
+Staff -> FE: Mở form khách hàng
+Staff -> FE: Nhập thông tin khách hàng
+FE -> BE: POST /clients
+BE -> BE: Validate dữ liệu đầu vào
+BE -> DB: Kiểm tra trùng email/số điện thoại
+DB --> BE: Kết quả kiểm tra
+
+alt Trùng dữ liệu
+  BE --> FE: 409 + thông báo trùng
+  FE --> Staff: Yêu cầu xác nhận dùng hồ sơ cũ hoặc sửa dữ liệu
+else Không trùng
+  BE -> DB: Lưu hồ sơ khách hàng
+  DB --> BE: Tạo thành công (clientId)
+  BE --> FE: Trả chi tiết khách hàng
+  FE --> Staff: Hiển thị hồ sơ vừa tạo
+end
+
+@enduml

@@ -1,0 +1,68 @@
+@startuml uc09_invoice_payment_sequence
+title UC09 - Lập hóa đơn và ghi nhận thanh toán
+autonumber
+
+actor "Nhân viên vận hành" as Staff
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "Cổng thanh toán" as PG
+participant "n8n" as N8N
+participant "Email/SMS" as Notif
+
+Staff -> FE: Mở đặt phòng và chọn tạo hóa đơn
+FE -> BE: POST /invoices/from-reservation
+BE -> DB: Lấy dữ liệu đặt phòng + hạng mục phát sinh
+DB --> BE: Dữ liệu tính phí
+BE -> DB: Tạo hóa đơn nháp
+DB --> BE: invoiceId + tổng tiền
+BE --> FE: Trả chi tiết hóa đơn
+FE --> Staff: Hiển thị hóa đơn để kiểm tra
+
+Staff -> FE: Điều chỉnh hạng mục (nếu cần)
+FE -> BE: PATCH /invoices/{id}
+BE -> BE: Kiểm tra quyền sửa hóa đơn
+
+alt Không đủ quyền sửa hóa đơn đã chốt
+  BE --> FE: 403 + từ chối chỉnh sửa
+  FE --> Staff: Hiển thị lý do
+else Được phép chỉnh sửa
+  BE -> DB: Cập nhật hạng mục và tổng tiền
+  DB --> BE: OK
+  BE --> FE: Trả hóa đơn đã cập nhật
+  FE --> Staff: Hiển thị số tiền cần thanh toán
+
+  Staff -> FE: Chọn phương thức thanh toán
+  alt Thanh toán qua cổng
+    FE -> BE: POST /payments/gateway
+    BE -> PG: Tạo giao dịch thanh toán
+    PG --> BE: Kết quả giao dịch
+    alt Giao dịch thành công
+      BE -> DB: Cập nhật đã thanh toán + giảm công nợ
+      DB --> BE: OK
+    else Giao dịch thất bại/timeout
+      BE -> DB: Cập nhật trạng thái chờ xử lý
+      DB --> BE: OK
+    end
+  else Thanh toán tại quầy
+    FE -> BE: POST /payments/manual
+    BE -> DB: Ghi nhận thanh toán tiền mặt/chuyển khoản
+    DB --> BE: OK
+  end
+
+  opt Còn công nợ
+    BE -->> N8N: Phát sự kiện DebtOutstanding
+    N8N -> Notif: Gửi nhắc thanh toán định kỳ
+  end
+
+  opt Xuất chứng từ
+    FE -> BE: GET /invoices/{id}/pdf
+    BE -> BE: Tạo file PDF hóa đơn/biên nhận
+    BE --> FE: Trả file PDF
+  end
+
+  BE --> FE: Trả trạng thái hóa đơn mới nhất
+  FE --> Staff: Hiển thị kết quả thanh toán
+end
+
+@enduml

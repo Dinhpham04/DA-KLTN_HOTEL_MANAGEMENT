@@ -1,0 +1,23 @@
+@startuml uc09_invoice_payment
+title UC09 - Lập hóa đơn và ghi nhận thanh toán
+start
+:Tạo hóa đơn từ đặt phòng;
+:Cập nhật hạng mục thu phí;
+:Lưu hóa đơn;
+:Chọn phương thức thanh toán;
+if (Thanh toán qua cổng?) then (Có)
+  :Gọi cổng thanh toán;
+  if (Giao dịch thành công?) then (Có)
+    :Cập nhật đã thanh toán;
+  else (Không)
+    :Cập nhật chờ xử lý hoặc cho thử lại;
+  endif
+else (Không)
+  :Ghi nhận thanh toán tại quầy;
+endif
+if (Còn công nợ?) then (Có)
+  :n8n gửi nhắc thanh toán định kỳ;
+endif
+:Xuất PDF hóa đơn hoặc biên nhận;
+stop
+@enduml

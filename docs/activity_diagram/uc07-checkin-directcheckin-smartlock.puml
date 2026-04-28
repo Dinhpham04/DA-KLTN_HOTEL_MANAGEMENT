@@ -1,0 +1,24 @@
+@startuml uc07_checkin_directcheckin_smartlock
+title UC07 - Check-in (kèm Direct Check-in và Smart Lock)
+start
+:Mở chi tiết đặt phòng;
+:Kiểm tra điều kiện check-in;
+if (Phòng sẵn sàng?) then (Có)
+  :Xác nhận check-in;
+  :Cập nhật trạng thái phòng đang ở;
+  if (Bật Direct Check-in?) then (Có)
+    :n8n gửi hướng dẫn check-in;
+    if (Cần cấp PIN khóa?) then (Có)
+      :Gọi Smart Lock API tạo PIN;
+      if (Tạo PIN thành công?) then (Có)
+        :Lưu PIN vào đặt phòng;
+      else (Không)
+        :Thông báo lỗi cấp PIN;
+      endif
+    endif
+  endif
+else (Không)
+  :Từ chối check-in và thông báo lý do;
+endif
+stop
+@enduml

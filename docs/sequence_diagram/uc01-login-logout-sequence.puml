@@ -1,0 +1,34 @@
+@startuml uc01_login_logout_sequence
+title UC01 - Đăng nhập / Đăng xuất
+autonumber
+
+actor "Người dùng" as User
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+
+User -> FE: Mở trang đăng nhập
+User -> FE: Nhập tài khoản/mật khẩu
+FE -> BE: POST /auth/login
+BE -> BE: Kiểm tra dữ liệu đầu vào
+BE -> DB: Tìm tài khoản theo email/username
+DB --> BE: Thông tin tài khoản
+
+alt Thông tin không hợp lệ hoặc tài khoản bị khóa
+  BE --> FE: 401/403 + thông báo lỗi
+  FE --> User: Hiển thị lỗi đăng nhập
+else Đăng nhập thành công
+  BE -> BE: Tạo access token + refresh token
+  BE --> FE: Trả về token + thông tin vai trò
+  FE --> User: Điều hướng màn hình theo quyền
+end
+
+opt Đăng xuất
+  User -> FE: Chọn đăng xuất
+  FE -> BE: POST /auth/logout
+  BE -> BE: Thu hồi phiên/token
+  BE --> FE: Xác nhận đăng xuất
+  FE --> User: Quay về màn hình đăng nhập
+end
+
+@enduml

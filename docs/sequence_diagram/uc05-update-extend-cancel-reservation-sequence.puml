@@ -1,0 +1,39 @@
+@startuml uc05_update_extend_cancel_reservation_sequence
+title UC05 - Cập nhật / Gia hạn / Hủy đặt phòng
+autonumber
+
+actor "Nhân viên vận hành" as Staff
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+
+Staff -> FE: Mở chi tiết đặt phòng
+Staff -> FE: Chọn thao tác (cập nhật/gia hạn/hủy)
+FE -> BE: PATCH/POST thao tác đặt phòng
+BE -> BE: Kiểm tra quyền + validate trạng thái
+
+alt Hủy đặt phòng
+  BE -> DB: Kiểm tra điều kiện được phép hủy
+  DB --> BE: Kết quả
+  alt Không được phép hủy
+    BE --> FE: 400 + lý do từ chối
+    FE --> Staff: Hiển thị lỗi
+  else Được phép hủy
+    BE -> DB: Cập nhật trạng thái đã hủy
+    DB --> BE: OK
+    BE --> FE: Hủy thành công
+  end
+else Cập nhật hoặc gia hạn
+  BE -> DB: Kiểm tra xung đột lịch
+  DB --> BE: Kết quả kiểm tra
+  alt Có xung đột
+    BE --> FE: 409 + yêu cầu chọn lại
+    FE --> Staff: Thông báo xung đột
+  else Hợp lệ
+    BE -> DB: Lưu thay đổi/gia hạn
+    DB --> BE: OK
+    BE --> FE: Cập nhật thành công
+  end
+end
+
+@enduml

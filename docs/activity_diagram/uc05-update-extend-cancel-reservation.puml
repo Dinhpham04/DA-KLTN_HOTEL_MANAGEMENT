@@ -1,0 +1,25 @@
+@startuml uc05_update_extend_cancel_reservation
+title UC05 - Cập nhật / Gia hạn / Hủy đặt phòng
+start
+:Tìm và mở đặt phòng;
+:Chọn thao tác (Cập nhật, Gia hạn hoặc Hủy);
+if (Là thao tác hủy?) then (Có)
+  :Nhập lý do hủy;
+  :Kiểm tra điều kiện hủy;
+  if (Được phép hủy?) then (Có)
+    :Cập nhật trạng thái đã hủy;
+  else (Không)
+    :Thông báo không thể hủy;
+  endif
+else (Không)
+  :Cập nhật thời gian hoặc phòng;
+  :Kiểm tra xung đột lịch;
+  if (Hợp lệ?) then (Có)
+    :Lưu thay đổi hoặc gia hạn;
+  else (Không)
+    :Thông báo xung đột và yêu cầu chọn lại;
+  endif
+endif
+:Ghi Lịch sử thay đổi;
+stop
+@enduml

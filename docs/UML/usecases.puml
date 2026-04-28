@@ -1,0 +1,274 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Admin" as Admin
+actor "Quản lý" as Manager
+actor "Nhân viên vận hành/Lễ tân" as Ops
+actor "Quản lý vệ sinh" as CleanMgr
+actor "Nhân viên vệ sinh" as Cleaner
+
+actor "AI Engine" as AI <<external>>
+actor "n8n Automation" as N8N <<external>>
+actor "Smart Lock API" as SmartLock <<external>>
+actor "Cổng thanh toán" as Pay <<external>>
+actor "Email/SMS" as Notif <<external>>
+
+rectangle "HOTEL-MANAGEMENT" {
+
+  package "Xác thực & phân quyền" {
+    usecase "Đăng nhập / Đăng xuất" as UC_Auth
+    usecase "Quản lý nhân viên" as UC_Staff
+    usecase "Quản lý vai trò & phân quyền" as UC_RBAC
+  }
+
+  package "Danh mục & Phòng" {
+    usecase "Quản lý cơ sở/tòa nhà" as UC_Facility
+    usecase "Quản lý hạng phòng" as UC_RoomClass
+    usecase "Quản lý loại phòng" as UC_RoomType
+    usecase "Quản lý phòng" as UC_Room
+    usecase "Quản lý loại lưu trú" as UC_StayType
+  }
+
+  package "Khách hàng & Đặt phòng" {
+    usecase "Quản lý khách hàng" as UC_Client
+    usecase "Tạo đặt phòng" as UC_CreateRes
+    usecase "Cập nhật/Điều chỉnh đặt phòng" as UC_UpdateRes
+    usecase "Hủy đặt phòng" as UC_CancelRes
+    usecase "Tra cứu danh sách đặt phòng" as UC_SearchRes
+    usecase "Kiểm tra phòng trống & trùng lịch" as UC_Availability
+    usecase "Quản lý người ở cùng" as UC_Occupiers
+    usecase "Ghi chú vận hành" as UC_Notes
+    usecase "Gợi ý phòng phù hợp (AI)" as UC_AIRecommendRoom
+  }
+
+  package "Điều phối & Lưu trú" {
+    usecase "Bảng tình trạng phòng (Whiteboard)" as UC_Whiteboard
+    usecase "Điều phối phòng/lịch ở" as UC_Dispatch
+
+    usecase "Check-in" as UC_CheckIn
+    usecase "Check-out" as UC_CheckOut
+    usecase "Tự check-in / Direct check-in" as UC_DirectCheckIn
+
+    usecase "Cấp PIN khóa cửa" as UC_SmartLockPin
+    usecase "Cập nhật trạng thái phòng" as UC_RoomStatus
+  }
+
+  package "Hóa đơn & Thanh toán" {
+    usecase "Tạo hóa đơn" as UC_Invoice
+    usecase "Ghi nhận thanh toán" as UC_Payment
+    usecase "Xuất PDF hóa đơn/biên nhận" as UC_InvoicePDF
+    usecase "Theo dõi công nợ" as UC_Debt
+  }
+
+  package "Dọn dẹp" {
+    usecase "Lập lịch/ca dọn dẹp" as UC_CleanShift
+    usecase "Phân công dọn dẹp" as UC_AssignClean
+    usecase "Cập nhật trạng thái dọn dẹp" as UC_CleanStatus
+  }
+
+  package "Báo cáo" {
+    usecase "Dashboard tổng quan" as UC_Dashboard
+    usecase "Báo cáo vận hành ngày" as UC_DailyOpsReport
+    usecase "Báo cáo doanh thu" as UC_SalesReport
+    usecase "Xuất báo cáo" as UC_ExportReport
+  }
+
+  package "AI & Tự động hóa (n8n)" {
+    usecase "Trợ lý AI tra cứu & tóm tắt" as UC_AIAssistant
+
+    usecase "Tự động nhắc việc/nhắc thanh toán" as UC_AutoReminder
+    usecase "Tự động tạo task dọn dẹp sau check-out" as UC_AutoCleanTask
+    usecase "Tự động gửi báo cáo định kỳ" as UC_AutoScheduledReports
+
+    usecase "Gửi thông báo (Email/SMS)" as UC_SendNotif
+  }
+}
+
+' --- Actor -> Use cases
+Admin --> UC_Auth
+Admin --> UC_Staff
+Admin --> UC_RBAC
+Admin --> UC_Facility
+Admin --> UC_RoomClass
+Admin --> UC_RoomType
+Admin --> UC_Room
+Admin --> UC_StayType
+Admin --> UC_Dashboard
+Admin --> UC_SalesReport
+
+Manager --> UC_Auth
+Manager --> UC_Whiteboard
+Manager --> UC_Dispatch
+Manager --> UC_SearchRes
+Manager --> UC_Dashboard
+Manager --> UC_DailyOpsReport
+Manager --> UC_SalesReport
+Manager --> UC_AIAssistant
+
+Ops --> UC_Auth
+Ops --> UC_Client
+Ops --> UC_CreateRes
+Ops --> UC_UpdateRes
+Ops --> UC_CancelRes
+Ops --> UC_SearchRes
+Ops --> UC_CheckIn
+Ops --> UC_CheckOut
+Ops --> UC_Invoice
+Ops --> UC_Payment
+Ops --> UC_InvoicePDF
+Ops --> UC_Notes
+Ops --> UC_AIAssistant
+
+CleanMgr --> UC_Auth
+CleanMgr --> UC_CleanShift
+CleanMgr --> UC_AssignClean
+CleanMgr --> UC_CleanStatus
+CleanMgr --> UC_DailyOpsReport
+
+Cleaner --> UC_Auth
+Cleaner --> UC_CleanStatus
+
+' --- External systems
+AI --> UC_AIAssistant
+AI --> UC_AIRecommendRoom
+
+N8N --> UC_AutoReminder
+N8N --> UC_AutoCleanTask
+N8N --> UC_AutoScheduledReports
+
+SmartLock --> UC_SmartLockPin
+Pay --> UC_Payment
+Notif --> UC_SendNotif
+
+' --- Includes / Extends (tổng quát)
+UC_CreateRes ..> UC_Availability : <<include>>
+UC_UpdateRes ..> UC_Availability : <<include>>
+
+UC_CheckIn ..> UC_RoomStatus : <<include>>
+UC_CheckOut ..> UC_RoomStatus : <<include>>
+
+UC_CreateRes ..> UC_AIRecommendRoom : <<extend>>
+
+UC_DirectCheckIn ..> UC_SmartLockPin : <<include>>
+
+UC_CheckOut ..> UC_AutoCleanTask : <<extend>>
+UC_CreateRes ..> UC_AutoReminder : <<extend>>
+UC_SalesReport ..> UC_AutoScheduledReports : <<extend>>
+
+UC_AutoReminder ..> UC_SendNotif : <<include>>
+UC_AutoScheduledReports ..> UC_SendNotif : <<include>>
+
+@enduml
+
+
+@startuml
+' --- Cấu hình giao diện ---
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actorStyle stickman
+skinparam usecase {
+    BackgroundColor White
+    BorderColor DarkSlateGray
+}
+
+' --- Định nghĩa Actor chính (Bên trái) ---
+actor "Nhân viên vệ sinh" as Cleaner
+actor "Quản lý vệ sinh" as CleanMgr
+actor "Lễ tân/Vận hành" as Ops
+actor "Quản lý" as Manager
+actor "Admin" as Admin
+
+' --- Thiết lập kế thừa để giảm đường kẻ ---
+Ops <|-- Manager
+Manager <|-- Admin
+Cleaner <|-- CleanMgr
+
+' --- Định nghĩa Actor hệ thống (Bên phải) ---
+actor "AI Engine" as AI <<external>>
+actor "n8n Automation" as N8N <<external>>
+actor "Smart Lock API" as SmartLock <<external>>
+actor "Cổng thanh toán" as Pay <<external>>
+actor "Email/SMS" as Notif <<external>>
+
+rectangle "HOTEL-MANAGEMENT" {
+
+  package "Hệ thống & Danh mục" {
+    usecase "Quản lý nhân viên & Phân quyền" as UC_Admin_Staff
+    usecase "Thiết lập danh mục (Phòng/Cơ sở)" as UC_Admin_Config
+    usecase "Đăng nhập / Đăng xuất" as UC_Auth
+  }
+
+  package "Nghiệp vụ Đặt phòng" {
+    usecase "Quản lý khách hàng" as UC_Client
+    usecase "Tạo/Điều chỉnh đặt phòng" as UC_Booking
+    usecase "Tra cứu & Kiểm tra phòng trống" as UC_Search
+    usecase "Gợi ý phòng phù hợp (AI)" as UC_AIRecommendRoom
+  }
+
+  package "Vận hành & Lưu trú" {
+    usecase "Điều phối (Whiteboard)" as UC_Whiteboard
+    usecase "Check-in / Check-out" as UC_InOut
+    usecase "Tự check-in (Direct)" as UC_DirectCheckIn
+    usecase "Cấp PIN khóa cửa" as UC_SmartLockPin
+  }
+
+  package "Thanh toán & Báo cáo" {
+    usecase "Xử lý hóa đơn & Thanh toán" as UC_Finance
+    usecase "Theo dõi công nợ" as UC_Debt
+    usecase "Dashboard & Báo cáo" as UC_Reports
+  }
+
+  package "Dọn dẹp" {
+    usecase "Quản lý lịch dọn dẹp" as UC_CleanTask
+    usecase "Cập nhật trạng thái dọn dẹp" as UC_CleanStatus
+  }
+
+  package "AI & Tự động hóa (n8n)" {
+    usecase "Trợ lý AI tra cứu & tóm tắt" as UC_AIAssistant
+    usecase "Tự động nhắc việc & Gửi báo cáo" as UC_AutoFlow
+    usecase "Gửi thông báo (Email/SMS)" as UC_SendNotif
+  }
+}
+
+' --- Kết nối Actor chính (Chỉ nối với cấp thấp nhất tương ứng) ---
+Cleaner --> UC_Auth
+Cleaner --> UC_CleanStatus
+
+CleanMgr --> UC_CleanTask
+CleanMgr --> UC_Reports
+
+Ops --> UC_Client
+Ops --> UC_Booking
+Ops --> UC_Search
+Ops --> UC_InOut
+Ops --> UC_Finance
+Ops --> UC_AIAssistant
+
+' Admin và Manager không cần nối lại những cái Ops đã nối (vì đã có mũi tên kế thừa)
+Manager --> UC_Whiteboard
+Manager --> UC_Reports
+
+Admin --> UC_Admin_Staff
+Admin --> UC_Admin_Config
+
+' --- Kết nối Actor hệ thống (Bên phải) ---
+UC_AIRecommendRoom -- AI
+UC_AIAssistant -- AI
+
+UC_AutoFlow -- N8N
+UC_AutoFlow -- Notif
+
+UC_SmartLockPin -- SmartLock
+UC_Finance -- Pay
+
+' --- Quan hệ giữa các Use Case (Chỉ giữ lại cái quan trọng) ---
+UC_Booking ..> UC_Search : <<include>>
+UC_Booking <.. UC_AIRecommendRoom : <<extend>>
+UC_InOut ..> UC_Finance : <<include>>
+UC_DirectCheckIn ..> UC_SmartLockPin : <<include>>
+UC_Finance ..> UC_AutoFlow : <<extend>>
+
+@enduml

@@ -1,0 +1,34 @@
+@startuml uc06_whiteboard_dispatch_sequence
+title UC06 - Whiteboard điều phối phòng
+autonumber
+
+actor "Quản lý" as Manager
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+
+Manager -> FE: Mở Whiteboard
+FE -> BE: GET dữ liệu trạng thái phòng
+BE -> DB: Truy vấn phòng + đặt phòng theo timeline
+DB --> BE: Dữ liệu Whiteboard
+BE --> FE: Trả dữ liệu hiển thị
+FE --> Manager: Hiển thị bảng trạng thái
+
+opt Điều phối phòng/lịch ở
+  Manager -> FE: Chọn đổi phòng/đổi lịch
+  FE -> BE: PATCH điều phối
+  BE -> BE: Kiểm tra quyền thao tác
+  BE -> DB: Kiểm tra xung đột lịch
+  DB --> BE: Kết quả
+  alt Có xung đột
+    BE --> FE: 409 + gợi ý phương án khác
+    FE --> Manager: Hiển thị cảnh báo
+  else Không xung đột
+    BE -> DB: Lưu điều phối
+    DB --> BE: OK
+    BE --> FE: Trả dữ liệu mới
+    FE --> Manager: Làm mới Whiteboard
+  end
+end
+
+@enduml

@@ -1,0 +1,46 @@
+@startuml uc07_checkin_directcheckin_smartlock_sequence
+title UC07 - Check-in (kèm Direct Check-in và Smart Lock)
+autonumber
+
+actor "Nhân viên vận hành" as Staff
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "Smart Lock API" as SmartLock
+participant "n8n" as N8N
+participant "Email/SMS" as Notif
+
+Staff -> FE: Chọn check-in
+FE -> BE: POST /reservations/{id}/check-in
+BE -> DB: Kiểm tra trạng thái đặt phòng và phòng
+DB --> BE: Kết quả
+
+alt Không đủ điều kiện check-in
+  BE --> FE: 400 + lý do
+  FE --> Staff: Hiển thị cảnh báo
+else Check-in hợp lệ
+  BE -> DB: Cập nhật check-in + trạng thái phòng
+  DB --> BE: OK
+
+  opt Bật Direct Check-in
+    BE -->> N8N: Phát sự kiện gửi hướng dẫn
+    N8N -> Notif: Gửi hướng dẫn check-in
+  end
+
+  opt Cần cấp PIN khóa cửa
+    BE -> SmartLock: Tạo PIN theo thời gian hiệu lực
+    SmartLock --> BE: Kết quả tạo PIN
+    alt Tạo PIN thành công
+      BE -> DB: Lưu PIN vào đặt phòng
+      DB --> BE: OK
+    else Lỗi Smart Lock
+      BE -> DB: Ghi nhận lỗi cấp PIN
+      DB --> BE: OK
+    end
+  end
+
+  BE --> FE: Check-in thành công
+  FE --> Staff: Hiển thị kết quả
+end
+
+@enduml

@@ -1,0 +1,16 @@
+@startuml uc02_master_data_management
+title UC02 - Cấu hình dữ liệu nền
+start
+:Admin mở menu quản lý;
+:Chọn danh mục cần thao tác;
+:Nhập thông tin tạo mới hoặc cập nhật;
+:Kiểm tra ràng buộc dữ liệu;
+if (Dữ liệu hợp lệ?) then (Có)
+  :Lưu dữ liệu;
+  :Ghi lịch sử thay đổi;
+  :Hiển thị danh sách sau cập nhật;
+else (Không)
+  :Thông báo lỗi và yêu cầu nhập lại;
+endif
+stop
+@enduml

@@ -1,0 +1,23 @@
+@startuml uc01_login_logout
+title UC01 - Đăng nhập / Đăng xuất
+start
+:Mở trang đăng nhập;
+:Nhập tài khoản và mật khẩu;
+:Kiểm tra dữ liệu đầu vào;
+if (Thông tin hợp lệ?) then (Có)
+  :Xác thực tài khoản;
+  if (Tài khoản hoạt động?) then (Có)
+    :Tạo phiên đăng nhập;
+    :Điều hướng theo vai trò;
+    :Người dùng thao tác nghiệp vụ;
+    :Chọn đăng xuất;
+    :Hủy phiên;
+    :Quay về màn hình đăng nhập;
+  else (Không)
+    :Thông báo tài khoản không hợp lệ hoặc bị khóa;
+  endif
+else (Không)
+  :Thông báo thiếu hoặc sai định dạng dữ liệu;
+endif
+stop
+@enduml

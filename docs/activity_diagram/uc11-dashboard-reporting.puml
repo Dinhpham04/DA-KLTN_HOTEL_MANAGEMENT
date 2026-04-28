@@ -1,0 +1,13 @@
+@startuml uc11_dashboard_reporting
+title UC11 - Dashboard và báo cáo
+start
+:Mở Dashboard;
+:Tổng hợp KPI vận hành và doanh thu;
+:Chọn báo cáo và bộ lọc;
+:Hiển thị kết quả;
+if (Cần xuất file?) then (Có)
+  :Xuất Excel hoặc PDF;
+endif
+:n8n gửi báo cáo định kỳ cho quản lý;
+stop
+@enduml

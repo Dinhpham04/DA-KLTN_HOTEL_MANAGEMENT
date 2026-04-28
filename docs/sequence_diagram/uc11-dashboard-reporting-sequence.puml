@@ -1,0 +1,47 @@
+@startuml uc11_dashboard_reporting_sequence
+title UC11 - Dashboard và báo cáo
+autonumber
+
+actor "Quản lý" as Manager
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "n8n" as N8N
+participant "Email/SMS" as Notif
+
+Manager -> FE: Mở Dashboard
+FE -> BE: GET /dashboard
+BE -> DB: Tổng hợp KPI vận hành + doanh thu
+DB --> BE: Bộ chỉ số
+BE --> FE: Trả dữ liệu dashboard
+FE --> Manager: Hiển thị KPI
+
+Manager -> FE: Chọn báo cáo và bộ lọc
+FE -> BE: GET /reports?filters=...
+BE -> BE: Kiểm tra quyền truy cập báo cáo
+
+alt Không đủ quyền xem báo cáo nhạy cảm
+  BE --> FE: 403 + từ chối truy cập
+  FE --> Manager: Hiển thị cảnh báo
+else Đủ quyền truy cập
+  BE -> DB: Truy vấn dữ liệu báo cáo theo bộ lọc
+  DB --> BE: Kết quả báo cáo
+  BE --> FE: Trả dữ liệu báo cáo
+  FE --> Manager: Hiển thị bảng/biểu đồ
+
+  opt Xuất Excel/PDF
+    FE -> BE: GET /reports/export?format=excel|pdf
+    BE -> BE: Tạo file báo cáo
+    BE --> FE: Trả file xuất
+  end
+end
+
+opt Tự động gửi báo cáo định kỳ
+  N8N -> BE: Trigger workflow tổng hợp báo cáo theo lịch
+  BE -> DB: Lấy dữ liệu báo cáo định kỳ
+  DB --> BE: Kết quả tổng hợp
+  BE --> N8N: Trả nội dung hoặc link báo cáo
+  N8N -> Notif: Gửi báo cáo cho quản lý
+end
+
+@enduml

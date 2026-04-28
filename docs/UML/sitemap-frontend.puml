@@ -1,0 +1,46 @@
+@startwbs frontend_sitemap
+title Sitemap - Quản lý khách sạn
+
+' Loại bỏ màu nền chung và thiết lập màu đường nối xám đơn giản
+skinparam BackgroundColor #FFFFFF
+skinparam ArrowColor #9A9A9A
+skinparam ArrowThickness 1
+
+' Thiết lập kiểu dáng khối cấp 1 (như Home)
+* Dashboard
+
+' Thiết lập kiểu dáng khối cấp 2 (như Product, Resources)
+' Giữ lại in đậm để phân biệt, không sử dụng màu nền
+** <b>Khu vực công khai</b>
+*** Trang gốc (tự chuyển hướng)
+*** Trang đăng nhập
+
+** <b>Đặt phòng</b>
+*** Danh sách đặt phòng
+*** Tạo đặt phòng
+*** Chi tiết đặt phòng
+*** Chỉnh sửa đặt phòng
+
+** <b>Khách hàng</b>
+*** Danh sách khách hàng
+*** Tạo khách hàng
+*** Chi tiết khách hàng
+*** Chỉnh sửa khách hàng
+
+** <b>Dữ liệu nền</b>
+*** Quản lý cơ sở
+*** Quản lý phòng
+*** Quản lý khu vực phòng
+*** Quản lý bảng giá thuê
+*** Quản lý nhân viên
+*** Quản lý bãi đỗ xe
+*** Quản lý bãi đỗ xe đạp
+
+** <b>Vận hành</b>
+*** Tổng quan hệ thống
+*** Tình trạng phòng
+*** Tra cứu bãi đỗ xe
+*** Dọn dẹp
+*** Hóa đơn
+
+@endwbs

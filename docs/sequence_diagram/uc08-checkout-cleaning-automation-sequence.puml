@@ -1,0 +1,30 @@
+@startuml uc08_checkout_cleaning_automation_sequence
+title UC08 - Check-out (kèm tự động hóa dọn dẹp)
+autonumber
+
+actor "Nhân viên vận hành" as Staff
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "n8n" as N8N
+participant "Email/SMS" as Notif
+
+Staff -> FE: Chọn check-out
+FE -> BE: POST /reservations/{id}/check-out
+BE -> DB: Kiểm tra công nợ và điều kiện check-out
+DB --> BE: Kết quả
+
+alt Còn công nợ bắt buộc
+  BE --> FE: 400 + yêu cầu xử lý thanh toán
+  FE --> Staff: Hiển thị cảnh báo
+else Đủ điều kiện check-out
+  BE -> DB: Cập nhật check-out + trạng thái phòng chờ dọn
+  DB --> BE: OK
+  BE -->> N8N: Phát sự kiện ReservationCheckedOut
+  N8N -> DB: Tạo task dọn dẹp
+  N8N -> Notif: Gửi thông báo cho quản lý vệ sinh
+  BE --> FE: Check-out thành công
+  FE --> Staff: Hiển thị kết quả
+end
+
+@enduml

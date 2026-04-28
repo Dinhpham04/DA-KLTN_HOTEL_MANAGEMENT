@@ -1,0 +1,34 @@
+@startuml uc12_ai_assistant_sequence
+title UC12 - Trợ lý AI tra cứu và tóm tắt
+autonumber
+
+actor "Người dùng nội bộ" as User
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "AI Engine" as AI
+
+User -> FE: Nhập câu hỏi nghiệp vụ
+FE -> BE: POST /ai-assistant/query
+BE -> BE: Xác thực phiên + kiểm tra quyền truy cập
+
+alt Câu hỏi vượt phạm vi dữ liệu cho phép
+  BE --> FE: 403/200 + phản hồi giới hạn dữ liệu
+  FE --> User: Hiển thị thông báo và hướng dẫn màn hình phù hợp
+else Được phép truy vấn
+  BE -> DB: Thu thập ngữ cảnh dữ liệu theo quyền
+  DB --> BE: Ngữ cảnh đã lọc
+  BE -> AI: Gửi prompt + ngữ cảnh nghiệp vụ
+
+  alt AI lỗi hoặc timeout
+    AI --> BE: Lỗi/timeout
+    BE --> FE: 502/504 + cho phép thử lại
+    FE --> User: Thông báo lỗi AI
+  else AI phản hồi thành công
+    AI --> BE: Câu trả lời tóm tắt + liên kết liên quan
+    BE --> FE: Trả kết quả cho frontend
+    FE --> User: Hiển thị tóm tắt và liên kết chi tiết
+  end
+end
+
+@enduml

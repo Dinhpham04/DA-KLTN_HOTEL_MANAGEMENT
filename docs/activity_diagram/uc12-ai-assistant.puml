@@ -1,0 +1,18 @@
+@startuml uc12_ai_assistant
+title UC12 - Trợ lý AI tra cứu và tóm tắt
+start
+:Người dùng nhập câu hỏi nghiệp vụ;
+:Kiểm tra quyền truy cập dữ liệu;
+if (Đủ quyền?) then (Có)
+  :Thu thập ngữ cảnh theo phạm vi cho phép;
+  :Gọi AI tạo câu trả lời;
+  if (AI phản hồi thành công?) then (Có)
+    :Hiển thị tóm tắt và liên kết chi tiết;
+  else (Không)
+    :Thông báo lỗi AI và cho phép thử lại;
+  endif
+else (Không)
+  :Từ chối truy cập và thông báo;
+endif
+stop
+@enduml

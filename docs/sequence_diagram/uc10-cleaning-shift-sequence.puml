@@ -1,0 +1,48 @@
+@startuml uc10_cleaning_shift_sequence
+title UC10 - Dọn dẹp: lập ca, phân công, cập nhật trạng thái
+autonumber
+
+actor "Quản lý vệ sinh" as HkManager
+actor "Nhân viên vệ sinh" as Cleaner
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+participant "Email/SMS" as Notif
+
+HkManager -> FE: Tạo ca dọn dẹp theo ngày
+FE -> BE: POST /cleaning-shifts
+BE -> DB: Lưu thông tin ca dọn
+DB --> BE: shiftId
+
+BE -> DB: Lấy danh sách phòng cần dọn
+DB --> BE: Phòng check-out/phòng cần dọn
+BE --> FE: Trả danh sách gợi ý
+FE --> HkManager: Hiển thị phòng cần phân công
+
+HkManager -> FE: Phân công phòng cho nhân viên
+FE -> BE: POST /cleaning-tasks/assign
+BE -> DB: Lưu nhiệm vụ dọn dẹp
+DB --> BE: OK
+BE -> Notif: Gửi thông báo phân công
+BE --> FE: Trả danh sách nhiệm vụ
+
+loop Mỗi phòng được xử lý
+  Cleaner -> FE: Cập nhật trạng thái (chưa dọn/đang dọn/đã dọn)
+  FE -> BE: PATCH /cleaning-tasks/{id}/status
+  BE -> DB: Cập nhật trạng thái nhiệm vụ
+  DB --> BE: OK
+
+  alt Phát sinh sự cố phòng
+    BE -> DB: Đánh dấu sự cố + chuyển trạng thái phòng phù hợp
+    DB --> BE: OK
+    BE -> Notif: Thông báo vận hành xử lý sự cố
+  else Hoàn tất dọn dẹp
+    BE -> DB: Cập nhật phòng sang trạng thái sẵn sàng
+    DB --> BE: OK
+  end
+end
+
+BE --> FE: Trả trạng thái phòng mới nhất
+FE --> HkManager: Theo dõi tiến độ ca dọn
+
+@enduml

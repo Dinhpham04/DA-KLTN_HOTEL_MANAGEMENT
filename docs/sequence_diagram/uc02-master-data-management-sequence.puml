@@ -1,0 +1,29 @@
+@startuml uc02_master_data_management_sequence
+title UC02 - Cấu hình dữ liệu nền
+autonumber
+
+actor "Admin" as Admin
+participant "Frontend" as FE
+participant "Backend API" as BE
+database "CSDL" as DB
+
+Admin -> FE: Mở màn hình danh mục
+Admin -> FE: Nhập dữ liệu tạo mới/cập nhật
+FE -> BE: Gửi yêu cầu lưu danh mục
+BE -> BE: Kiểm tra quyền + validate dữ liệu
+BE -> DB: Kiểm tra trùng mã/tên theo quy tắc
+DB --> BE: Kết quả kiểm tra
+
+alt Dữ liệu không hợp lệ
+  BE --> FE: 400 + danh sách lỗi
+  FE --> Admin: Hiển thị lỗi và yêu cầu nhập lại
+else Dữ liệu hợp lệ
+  BE -> DB: Insert/Update bản ghi danh mục
+  DB --> BE: Lưu thành công
+  BE -> DB: Ghi lịch sử thay đổi (audit)
+  DB --> BE: OK
+  BE --> FE: Trả dữ liệu sau cập nhật
+  FE --> Admin: Hiển thị danh sách mới
+end
+
+@enduml
