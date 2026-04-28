@@ -20,6 +20,9 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCleaningRouteImport } from './routes/_authenticated/cleaning'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
 
+const AuthenticatedUsageSituationLazyRouteImport = createFileRoute(
+  '/_authenticated/usage-situation',
+)()
 const AuthenticatedStoreMasterLazyRouteImport = createFileRoute(
   '/_authenticated/store-master',
 )()
@@ -31,6 +34,9 @@ const AuthenticatedRoomAreaMasterLazyRouteImport = createFileRoute(
 )()
 const AuthenticatedRentsMasterLazyRouteImport = createFileRoute(
   '/_authenticated/rents-master',
+)()
+const AuthenticatedParkingSearchLazyRouteImport = createFileRoute(
+  '/_authenticated/parking-search',
 )()
 const AuthenticatedParkingMasterLazyRouteImport = createFileRoute(
   '/_authenticated/parking-master',
@@ -77,6 +83,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUsageSituationLazyRoute =
+  AuthenticatedUsageSituationLazyRouteImport.update({
+    id: '/usage-situation',
+    path: '/usage-situation',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/usage-situation.lazy').then((d) => d.Route),
+  )
 const AuthenticatedStoreMasterLazyRoute =
   AuthenticatedStoreMasterLazyRouteImport.update({
     id: '/store-master',
@@ -110,6 +124,14 @@ const AuthenticatedRentsMasterLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/rents-master.lazy').then((d) => d.Route),
+  )
+const AuthenticatedParkingSearchLazyRoute =
+  AuthenticatedParkingSearchLazyRouteImport.update({
+    id: '/parking-search',
+    path: '/parking-search',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/parking-search.lazy').then((d) => d.Route),
   )
 const AuthenticatedParkingMasterLazyRoute =
   AuthenticatedParkingMasterLazyRouteImport.update({
@@ -242,10 +264,12 @@ export interface FileRoutesByFullPath {
   '/staff-master': typeof AuthenticatedStaffMasterRoute
   '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
   '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
+  '/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
   '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
   '/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/clients/': typeof AuthenticatedClientsIndexLazyRoute
@@ -265,10 +289,12 @@ export interface FileRoutesByTo {
   '/staff-master': typeof AuthenticatedStaffMasterRoute
   '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
   '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
+  '/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
   '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
   '/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/clients': typeof AuthenticatedClientsIndexLazyRoute
@@ -290,10 +316,12 @@ export interface FileRoutesById {
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
   '/_authenticated/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
   '/_authenticated/parking-master': typeof AuthenticatedParkingMasterLazyRoute
+  '/_authenticated/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/_authenticated/rents-master': typeof AuthenticatedRentsMasterLazyRoute
   '/_authenticated/room-area-master': typeof AuthenticatedRoomAreaMasterLazyRoute
   '/_authenticated/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/_authenticated/store-master': typeof AuthenticatedStoreMasterLazyRoute
+  '/_authenticated/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
   '/_authenticated/clients/create': typeof AuthenticatedClientsCreateLazyRoute
   '/_authenticated/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexLazyRoute
@@ -315,10 +343,12 @@ export interface FileRouteTypes {
     | '/staff-master'
     | '/bicycle-parking-master'
     | '/parking-master'
+    | '/parking-search'
     | '/rents-master'
     | '/room-area-master'
     | '/room-master'
     | '/store-master'
+    | '/usage-situation'
     | '/clients/create'
     | '/reservations/create'
     | '/clients/'
@@ -338,10 +368,12 @@ export interface FileRouteTypes {
     | '/staff-master'
     | '/bicycle-parking-master'
     | '/parking-master'
+    | '/parking-search'
     | '/rents-master'
     | '/room-area-master'
     | '/room-master'
     | '/store-master'
+    | '/usage-situation'
     | '/clients/create'
     | '/reservations/create'
     | '/clients'
@@ -362,10 +394,12 @@ export interface FileRouteTypes {
     | '/_authenticated/staff-master'
     | '/_authenticated/bicycle-parking-master'
     | '/_authenticated/parking-master'
+    | '/_authenticated/parking-search'
     | '/_authenticated/rents-master'
     | '/_authenticated/room-area-master'
     | '/_authenticated/room-master'
     | '/_authenticated/store-master'
+    | '/_authenticated/usage-situation'
     | '/_authenticated/clients/create'
     | '/_authenticated/reservations/create'
     | '/_authenticated/clients/'
@@ -405,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/usage-situation': {
+      id: '/_authenticated/usage-situation'
+      path: '/usage-situation'
+      fullPath: '/usage-situation'
+      preLoaderRoute: typeof AuthenticatedUsageSituationLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/store-master': {
       id: '/_authenticated/store-master'
       path: '/store-master'
@@ -431,6 +472,13 @@ declare module '@tanstack/react-router' {
       path: '/rents-master'
       fullPath: '/rents-master'
       preLoaderRoute: typeof AuthenticatedRentsMasterLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/parking-search': {
+      id: '/_authenticated/parking-search'
+      path: '/parking-search'
+      fullPath: '/parking-search'
+      preLoaderRoute: typeof AuthenticatedParkingSearchLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/parking-master': {
@@ -549,10 +597,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
   AuthenticatedBicycleParkingMasterLazyRoute: typeof AuthenticatedBicycleParkingMasterLazyRoute
   AuthenticatedParkingMasterLazyRoute: typeof AuthenticatedParkingMasterLazyRoute
+  AuthenticatedParkingSearchLazyRoute: typeof AuthenticatedParkingSearchLazyRoute
   AuthenticatedRentsMasterLazyRoute: typeof AuthenticatedRentsMasterLazyRoute
   AuthenticatedRoomAreaMasterLazyRoute: typeof AuthenticatedRoomAreaMasterLazyRoute
   AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
   AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
+  AuthenticatedUsageSituationLazyRoute: typeof AuthenticatedUsageSituationLazyRoute
   AuthenticatedClientsCreateLazyRoute: typeof AuthenticatedClientsCreateLazyRoute
   AuthenticatedReservationsCreateLazyRoute: typeof AuthenticatedReservationsCreateLazyRoute
   AuthenticatedClientsIndexLazyRoute: typeof AuthenticatedClientsIndexLazyRoute
@@ -572,10 +622,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBicycleParkingMasterLazyRoute:
     AuthenticatedBicycleParkingMasterLazyRoute,
   AuthenticatedParkingMasterLazyRoute: AuthenticatedParkingMasterLazyRoute,
+  AuthenticatedParkingSearchLazyRoute: AuthenticatedParkingSearchLazyRoute,
   AuthenticatedRentsMasterLazyRoute: AuthenticatedRentsMasterLazyRoute,
   AuthenticatedRoomAreaMasterLazyRoute: AuthenticatedRoomAreaMasterLazyRoute,
   AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,
   AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
+  AuthenticatedUsageSituationLazyRoute: AuthenticatedUsageSituationLazyRoute,
   AuthenticatedClientsCreateLazyRoute: AuthenticatedClientsCreateLazyRoute,
   AuthenticatedReservationsCreateLazyRoute:
     AuthenticatedReservationsCreateLazyRoute,

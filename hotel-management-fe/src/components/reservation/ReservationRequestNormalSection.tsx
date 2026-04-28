@@ -13,13 +13,15 @@ import CustomDatePicker from '@/components/common/CustomDatePicker'
 import { CustomInput } from '@/components/common/CustomInput'
 import type { Option } from '@/components/common/CustomSelectClean'
 import { NButton } from '@/components/ui/new-button'
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface ReservationRequestNormalSectionProps {
   control: Control<FieldValues>
@@ -127,9 +129,7 @@ function ReservationRequestNormalSection({
         <Table className="border-black border-l w-full min-w-[120rem] font-bold text-[1.6rem] border-separate border-spacing-0">
           <TableHeader className="z-10 bg-[#EEEEEE] [&_tr]:border-0">
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="top-0 z-10 sticky bg-[#EEEEEE] border-black border-t border-r border-b w-[7rem] h-16 text-center">
-                
-              </TableHead>
+              <TableHead className="top-0 z-10 sticky bg-[#EEEEEE] border-black border-t border-r border-b w-[7rem] h-16 text-center"></TableHead>
               <TableHead className="top-0 z-10 sticky bg-[#EEEEEE] border-black border-t border-r border-b min-w-[20rem] h-16 text-center">
                 Hạng mục
               </TableHead>
@@ -166,7 +166,10 @@ function ReservationRequestNormalSection({
                 const rowTotal = toNumber(row.unit_price) * toNumber(row.count)
 
                 return (
-                  <TableRow key={field.id} className="border-t max-h-[20rem] overflow-auto hover:bg-transparent">
+                  <TableRow
+                    key={field.id}
+                    className="border-t max-h-[20rem] overflow-auto hover:bg-transparent"
+                  >
                     <TableCell className="p-0 border-black border-r border-b w-[7rem] h-14 font-bold text-center">
                       <Controller
                         control={control}
@@ -328,13 +331,13 @@ function ReservationRequestNormalSection({
 
                     <TableCell className="p-0 border-black border-r border-b w-[16.6rem] h-14 font-bold text-center">
                       <div className="flex justify-center items-center gap-2 px-2 h-full">
-                      <NButton
-                        type="button"
-                        className="bg-[#EEEEEE] w-[4.9rem] h-[1.8rem] !min-h-[1.8rem]"
-                        onClick={() => remove(index)}
-                      >
-                        <span className="!px-1 font-bold text-[1.1rem]">Xóa</span>
-                      </NButton>
+                        <NButton
+                          type="button"
+                          className="bg-[#EEEEEE] w-[4.9rem] h-[1.8rem] !min-h-[1.8rem]"
+                          onClick={() => remove(index)}
+                        >
+                          <span className="!px-1 font-bold text-[1.1rem]">Xóa</span>
+                        </NButton>
                       </div>
                     </TableCell>
                   </TableRow>

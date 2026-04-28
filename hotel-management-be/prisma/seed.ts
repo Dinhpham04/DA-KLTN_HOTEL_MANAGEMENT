@@ -1032,8 +1032,8 @@ async function main(): Promise<void> {
     { parentFacilityId: f('01').facilityId, number: '2', heightLimit: 1.8, notice: null, orderNum: 2 },
     { parentFacilityId: f('01').facilityId, number: '3', heightLimit: 1.8, notice: 'Hai bên là tường gạch', orderNum: 3 },
     // Facility 02 - Nguyễn Huệ (2 chỗ)
-    { parentFacilityId: f('02').facilityId, number: '1', heightLimit: 2.0, notice: null, orderNum: 1 },
-    { parentFacilityId: f('02').facilityId, number: '2', heightLimit: 2.0, notice: 'Góc hẹp, xe nhỏ ưu tiên', orderNum: 2 },
+    { parentFacilityId: f('02').facilityId, number: '1', dataStatus: 0, heightLimit: 2.0, notice: 'Đang bảo trì', orderNum: 1 },
+    { parentFacilityId: f('02').facilityId, number: '2', dataStatus: 1, heightLimit: 2.0, notice: 'Góc hẹp, xe nhỏ ưu tiên', orderNum: 2 },
     // Facility 04 - Phú Mỹ Hưng (3 chỗ)
     { parentFacilityId: f('04').facilityId, number: '1', heightLimit: 2.5, notice: null, orderNum: 1 },
     { parentFacilityId: f('04').facilityId, number: '2', heightLimit: 2.5, notice: null, orderNum: 2 },
@@ -1128,9 +1128,9 @@ async function main(): Promise<void> {
     { parentFacilityId: f('02').facilityId, number: '001', notice: null, orderNum: 1 },
     { parentFacilityId: f('02').facilityId, number: '002', notice: null, orderNum: 2 },
     // Facility 04 - Phú Mỹ Hưng (3 chỗ)
-    { parentFacilityId: f('04').facilityId, number: '001', notice: null, orderNum: 1 },
-    { parentFacilityId: f('04').facilityId, number: '002', notice: null, orderNum: 2 },
-    { parentFacilityId: f('04').facilityId, number: '003', notice: 'Không bán', orderNum: 3 },
+    { parentFacilityId: f('04').facilityId, number: '001', dataStatus: 1, notice: null, orderNum: 1 },
+    { parentFacilityId: f('04').facilityId, number: '002', dataStatus: 1, notice: null, orderNum: 2 },
+    { parentFacilityId: f('04').facilityId, number: '003', dataStatus: 0, notice: 'Không bán', orderNum: 3 },
     // Facility 06 - Đà Nẵng (2 chỗ)
     { parentFacilityId: f('06').facilityId, number: '001', notice: null, orderNum: 1 },
     { parentFacilityId: f('06').facilityId, number: '002', notice: 'Xe đạp và xe máy chuyên dụng', orderNum: 2 },
@@ -1427,6 +1427,135 @@ async function main(): Promise<void> {
   for (const { clientId, useCount } of useCountMap) {
     await prisma.client.update({ where: { clientId }, data: { useCount } });
   }
+
+  // ─── Parking Reserves ─────────────────────────────────
+  console.log('\nSeeding parking reserves...');
+
+  const parkingReservesData = [
+    {
+      parkingId: parkings[0].parkingId, // Bến Thành 1
+      reserveId: reserves[0].reserveId,
+      clientId: client1.clientId,
+      periodFrom: new Date('2026-04-01'),
+      periodTo: new Date('2026-04-08'),
+      stayTypeId: stayTypes[0].stayTypeId,
+      confirmFlag: true,
+      checkinFlag: false,
+      checkoutFlag: false,
+      carType: 'Toyota Vios',
+      licensePlate: '51G-123.45',
+      note: 'Khách cần đỗ xe trong suốt thời gian lưu trú',
+      createdStaffId: admin.staffId,
+    },
+    {
+      parkingId: parkings[1].parkingId, // Bến Thành 2
+      reserveId: reserves[1].reserveId,
+      clientId: client2.clientId,
+      periodFrom: new Date('2026-03-01'),
+      periodTo: new Date('2026-03-31'),
+      stayTypeId: stayTypes[3].stayTypeId,
+      confirmFlag: true,
+      checkinFlag: true,
+      checkoutFlag: false,
+      carType: 'Honda CRV',
+      licensePlate: '29A-678.90',
+      note: 'Khách đang sử dụng',
+      createdStaffId: admin.staffId,
+    },
+    {
+      parkingId: parkings[2].parkingId, // Bến Thành 3
+      reserveId: null,
+      clientId: null,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-15'),
+      stayTypeId: null,
+      confirmFlag: false,
+      checkinFlag: false,
+      checkoutFlag: false,
+      carType: 'Ford Ranger',
+      licensePlate: '60C-345.67',
+      note: 'Khách ngoài thuê chỗ đỗ',
+      createdStaffId: admin.staffId,
+    },
+    {
+      parkingId: parkings[4].parkingId, // Nguyễn Huệ 2
+      reserveId: null,
+      clientId: client4.clientId,
+      periodFrom: new Date('2026-01-01'),
+      periodTo: new Date('2026-01-15'),
+      stayTypeId: stayTypes[0].stayTypeId,
+      confirmFlag: true,
+      checkinFlag: true,
+      checkoutFlag: true,
+      carType: 'Mazda 3',
+      licensePlate: '43A-123.45',
+      note: 'Khách đã trả chỗ',
+      createdStaffId: admin.staffId,
+    }
+  ];
+
+  let prCount = 0;
+  for (const data of parkingReservesData) {
+    const existing = await prisma.parkingReserve.findFirst({
+      where: { parkingId: data.parkingId, periodFrom: data.periodFrom, deletedAt: null },
+    });
+    if (!existing) {
+      await prisma.parkingReserve.create({ data });
+      prCount++;
+    }
+  }
+  console.log(`  ParkingReserves created: ${prCount}`);
+
+  // ─── Bicycle Parking Reserves ─────────────────────────
+  console.log('\nSeeding bicycle parking reserves...');
+  
+  const bp_nguyenHue_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('02').facilityId, number: '001', deletedAt: null }});
+  const bp_phuMyHung_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('04').facilityId, number: '001', deletedAt: null }});
+
+  let bprCount = 0;
+  if (bp_nguyenHue_1 && bp_phuMyHung_1) {
+    const bicycleParkingReservesData = [
+      {
+        bicycleParkingId: bp_nguyenHue_1.bicycleParkingId,
+        reserveId: null,
+        clientId: client3.clientId,
+        periodFrom: new Date('2026-04-15'),
+        periodTo: new Date('2026-04-29'),
+        stayTypeId: stayTypes[1].stayTypeId,
+        confirmFlag: true,
+        checkinFlag: false,
+        checkoutFlag: false,
+        bicycleTypeNote: 'Xe máy Honda Vision',
+        note: null,
+        createdStaffId: admin.staffId,
+      },
+      {
+        bicycleParkingId: bp_phuMyHung_1.bicycleParkingId,
+        reserveId: null,
+        clientId: client1.clientId,
+        periodFrom: new Date('2026-04-01'),
+        periodTo: new Date('2026-04-05'),
+        stayTypeId: stayTypes[0].stayTypeId,
+        confirmFlag: true,
+        checkinFlag: true,
+        checkoutFlag: false,
+        bicycleTypeNote: 'Xe đạp thể thao',
+        note: 'Gửi tạm vài ngày',
+        createdStaffId: admin.staffId,
+      }
+    ];
+
+    for (const data of bicycleParkingReservesData) {
+      const existing = await prisma.bicycleParkingReserve.findFirst({
+        where: { bicycleParkingId: data.bicycleParkingId, periodFrom: data.periodFrom, deletedAt: null },
+      });
+      if (!existing) {
+        await prisma.bicycleParkingReserve.create({ data });
+        bprCount++;
+      }
+    }
+  }
+  console.log(`  BicycleParkingReserves created: ${bprCount}`);
 
   await prisma.$disconnect();
 

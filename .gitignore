@@ -1,6 +1,8 @@
 # ─── Reference / Source projects (không push lên repo này) ───────────────────
-aic-yokohama-weekly-mansion/
-aic-yokohama-weekly-mansion-FE/
+
+
+aic-yokohama-weekly-mansion-FE
+aic-yokohama-weekly-mansion
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 node_modules/

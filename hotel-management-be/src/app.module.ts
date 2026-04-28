@@ -33,6 +33,10 @@ import { ParkingModule } from '@modules/parking/parking.module';
 import { BicycleParkingModule } from '@modules/bicycle-parking/bicycle-parking.module';
 import { RentModule } from '@modules/rent/rent.module';
 import { SmartLockPinModule } from '@modules/smart-lock-pin/smart-lock-pin.module';
+import { ParkingStatusModule } from '@modules/parking-status/parking-status.module';
+import { ParkingReserveModule } from '@modules/parking-reserve/parking-reserve.module';
+import { WhiteboardModule } from '@modules/whiteboard/whiteboard.module';
+import { CleaningShiftModule } from '@modules/cleaning-shift/cleaning-shift.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -103,6 +107,10 @@ import { AppService } from './app.service';
     BicycleParkingModule,
     RentModule,
     SmartLockPinModule,
+    ParkingStatusModule,
+    ParkingReserveModule,
+    WhiteboardModule,
+    CleaningShiftModule,
   ],
   controllers: [AppController],
   providers: [

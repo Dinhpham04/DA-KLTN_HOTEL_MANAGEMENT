@@ -78,7 +78,7 @@ html {
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 217.2 32.6% 17.5%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
@@ -193,6 +193,41 @@ html {
 
   .btn-ghost:hover {
     @apply bg-accent text-accent-foreground;
+  }
+
+  /* Default button — white background, matches legacy btn-default */
+  .btn-default {
+    @apply bg-white text-black;
+    border: 1px solid #ccc;
+  }
+  .btn-default:hover {
+    @apply bg-gray-100;
+  }
+
+  .button-detail {
+    width: 2.4rem;
+    height: 2.4rem;
+    min-width: 2.4rem;
+    min-height: 2.4rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    padding-top: 0.25rem;
+    background-color: #fff;
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .button-detail.flag::after {
+    content: "";
+    position: absolute;
+    width: 2.4rem;
+    height: 2.4rem;
+    background-color: #df2727;
+    top: -1.3rem;
+    right: -1.3rem;
+    z-index: -1;
+    transform: rotate(45deg);
   }
 
   /* Small button */

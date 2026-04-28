@@ -11,13 +11,23 @@ const RESERVATION_KEYS = {
   detail: (id: number) => [...RESERVATION_KEYS.details(), id] as const,
 }
 
-export function useReservations(params?: ReservationFilterParams) {
+interface UseReservationsOptions {
+  enabled?: boolean
+}
+
+export function useReservations(
+  params?: ReservationFilterParams,
+  options: UseReservationsOptions = {}
+) {
+  const { enabled = true } = options
+
   return useQuery({
     queryKey: RESERVATION_KEYS.list(params),
     queryFn: async () => {
       const response = await reservationApi.getList(params)
       return response.data
     },
+    enabled,
   })
 }
 

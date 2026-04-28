@@ -62,9 +62,9 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
       return
     }
 
-    const triggerElement = pickerRef.current?.querySelector('.react-datetime-picker') as
-      | HTMLElement
-      | null
+    const triggerElement = pickerRef.current?.querySelector(
+      '.react-datetime-picker'
+    ) as HTMLElement | null
     const openCalendars = document.querySelectorAll('.react-datetime-picker__calendar--open')
     const calendarElement = openCalendars[openCalendars.length - 1] as HTMLElement | undefined
 
@@ -75,9 +75,9 @@ const CustomDatePicker: React.FC<TypeDatePicker> = ({
     const triggerRect = triggerElement.getBoundingClientRect()
     const calendarRect = calendarElement.getBoundingClientRect()
     const triggerStyles = window.getComputedStyle(triggerElement)
-    const calendarContentElement = calendarElement.querySelector('.react-calendar') as
-      | HTMLElement
-      | null
+    const calendarContentElement = calendarElement.querySelector(
+      '.react-calendar'
+    ) as HTMLElement | null
     const viewportPadding = 8
     const offset = 4
 

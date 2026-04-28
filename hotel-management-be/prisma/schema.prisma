@@ -116,10 +116,32 @@ model Staff {
   usageStatusesUpdated      UsageStatus[]      @relation("UsageStatusUpdatedBy")
   usageStatusesDeleted      UsageStatus[]      @relation("UsageStatusDeletedBy")
 
+  // Phase 10: ParkingReserve
+  parkingReservesCreated         ParkingReserve[]         @relation("ParkingReserveCreatedBy")
+  parkingReservesUpdated         ParkingReserve[]         @relation("ParkingReserveUpdatedBy")
+  parkingReservesDeleted         ParkingReserve[]         @relation("ParkingReserveDeletedBy")
+  bicycleParkingReservesCreated  BicycleParkingReserve[]  @relation("BicycleParkingReserveCreatedBy")
+  bicycleParkingReservesUpdated  BicycleParkingReserve[]  @relation("BicycleParkingReserveUpdatedBy")
+  bicycleParkingReservesDeleted  BicycleParkingReserve[]  @relation("BicycleParkingReserveDeletedBy")
+
   // Phase 9: RoomPinCredential
   roomPinCredentialsCreated RoomPinCredential[] @relation("RoomPinCredentialCreatedBy")
   roomPinCredentialsUpdated RoomPinCredential[] @relation("RoomPinCredentialUpdatedBy")
   roomPinCredentialsDeleted RoomPinCredential[] @relation("RoomPinCredentialDeletedBy")
+
+  // Phase 11: CleaningShift
+  cleansCreated             Cleans[]            @relation("CleansCreatedBy")
+  cleansUpdated             Cleans[]            @relation("CleansUpdatedBy")
+  cleansDeleted             Cleans[]            @relation("CleansDeletedBy")
+  cleaningDetailsCreated    CleaningDetail[]    @relation("CleaningDetailCreatedBy")
+  cleaningDetailsUpdated    CleaningDetail[]    @relation("CleaningDetailUpdatedBy")
+  cleaningDetailsDeleted    CleaningDetail[]    @relation("CleaningDetailDeletedBy")
+  cleaningDetailsAsMain     CleaningDetail[]    @relation("CleaningDetailMainStaff")
+  cleaningDetailsAsSub      CleaningDetail[]    @relation("CleaningDetailSubStaff")
+  cleaningDetailsAsCheck    CleaningDetail[]    @relation("CleaningDetailCheckStaff")
+  cleanDetailNotesCreated   CleanDetailNote[]   @relation("CleanDetailNoteCreatedBy")
+  cleanDetailNotesUpdated   CleanDetailNote[]   @relation("CleanDetailNoteUpdatedBy")
+  cleanDetailNotesDeleted   CleanDetailNote[]   @relation("CleanDetailNoteDeletedBy")
 
   @@index([createdStaffId], map: "staffs_created_staff_id_idx")
   @@index([updatedStaffId], map: "staffs_updated_staff_id_idx")
@@ -202,6 +224,8 @@ model Facility {
   parkingRents        ParkingRent[]
   bicycleParkings     BicycleParking[]
   usageStatuses       UsageStatus[]
+  cleans              Cleans[]
+  cleaningDetails     CleaningDetail[]
 
   @@index([facilityNo], map: "facilities_facility_no_idx")
   @@index([createdStaffId], map: "facilities_created_staff_id_idx")
@@ -316,6 +340,7 @@ model Room {
   reserves            Reserve[]
   usageStatuses       UsageStatus[]
   pinCredentials      RoomPinCredential[]
+  cleaningDetails     CleaningDetail[]
 
   @@index([facilityId], map: "rooms_facility_id_idx")
   @@index([roomTypeId], map: "rooms_room_type_id_idx")
@@ -387,6 +412,7 @@ model Parking {
   deletedBy           Staff?    @relation("ParkingDeletedBy", fields: [deletedStaffId], references: [staffId])
 
   parkingRents        ParkingRent[]
+  parkingReserves     ParkingReserve[]
 
   @@index([parentFacilityId], map: "parkings_parent_facility_id_idx")
   @@index([createdStaffId], map: "parkings_created_staff_id_idx")
@@ -504,6 +530,8 @@ model BicycleParking {
   updatedBy           Staff?    @relation("BicycleParkingUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy           Staff?    @relation("BicycleParkingDeletedBy", fields: [deletedStaffId], references: [staffId])
 
+  bicycleParkingReserves BicycleParkingReserve[]
+
   @@index([parentFacilityId], map: "bicycle_parkings_parent_facility_id_idx")
   @@index([createdStaffId], map: "bicycle_parkings_created_staff_id_idx")
   @@index([updatedStaffId], map: "bicycle_parkings_updated_staff_id_idx")
@@ -562,9 +590,11 @@ model Client {
   updatedBy           Staff?    @relation("ClientUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy           Staff?    @relation("ClientDeletedBy", fields: [deletedStaffId], references: [staffId])
 
-  reserves            Reserve[]
-  reserveOccupiers    ReserveOccupier[]
-  identifications     Identification[]
+  reserves              Reserve[]
+  reserveOccupiers      ReserveOccupier[]
+  identifications       Identification[]
+  parkingReserves       ParkingReserve[]
+  bicycleParkingReserves BicycleParkingReserve[]
 
   @@index([countryId], map: "clients_country_id_idx")
   @@index([createdStaffId], map: "clients_created_staff_id_idx")
@@ -708,6 +738,9 @@ model Reserve {
   reserveOccupiers        ReserveOccupier[]
   usageStatuses           UsageStatus[]
   pinCredentials          RoomPinCredential[]
+  parkingReserves         ParkingReserve[]
+  bicycleParkingReserves  BicycleParkingReserve[]
+  cleaningDetails         CleaningDetail[]
 
   @@index([clientId], map: "reserves_client_id_idx")
   @@index([facilityId], map: "reserves_facility_id_idx")
@@ -764,6 +797,7 @@ model RoomPinCredential {
   createdBy            Staff     @relation("RoomPinCredentialCreatedBy", fields: [createdStaffId], references: [staffId])
   updatedBy            Staff?    @relation("RoomPinCredentialUpdatedBy", fields: [updatedStaffId], references: [staffId])
   deletedBy            Staff?    @relation("RoomPinCredentialDeletedBy", fields: [deletedStaffId], references: [staffId])
+  cleaningDetails      CleaningDetail[]
 
   @@index([roomId], map: "room_pin_credentials_room_id_idx")
   @@index([reserveId], map: "room_pin_credentials_reserve_id_idx")
@@ -946,4 +980,247 @@ model ImageIdentification {
   deletedAt             DateTime? @map("deleted_at")
 
   @@map("image_identifications")
+}
+
+// ─── ParkingReserve (Car Parking Reservation) ───────
+
+model ParkingReserve {
+  parkingReserveId    Int       @id @default(autoincrement()) @map("parking_reserve_id")
+  parkingId           Int       @map("parking_id")
+  reserveId           Int?      @map("reserve_id")
+  clientId            Int?      @map("client_id")
+  dataStatus          Int       @default(1) @map("data_status") @db.SmallInt
+  periodFrom          DateTime  @map("period_from") @db.Date
+  periodTo            DateTime? @map("period_to") @db.Date
+  stayTypeId          Int?      @map("stay_type_id")
+  confirmFlag         Boolean   @default(false) @map("confirm_flag")
+  checkinFlag         Boolean   @default(false) @map("checkin_flag")
+  checkoutFlag        Boolean   @default(false) @map("checkout_flag")
+  carType             String?   @map("car_type") @db.VarChar(128)
+  licensePlate        String?   @map("license_plate") @db.VarChar(128)
+  note                String?   @db.VarChar(512)
+  saleDate            DateTime? @map("sale_date") @db.Date
+
+  // Audit
+  createdStaffId      Int       @map("created_staff_id")
+  updatedStaffId      Int?      @map("updated_staff_id")
+  deletedStaffId      Int?      @map("deleted_staff_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  parking             Parking   @relation(fields: [parkingId], references: [parkingId])
+  reserve             Reserve?  @relation(fields: [reserveId], references: [reserveId])
+  client              Client?   @relation(fields: [clientId], references: [clientId])
+  createdBy           Staff     @relation("ParkingReserveCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy           Staff?    @relation("ParkingReserveUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy           Staff?    @relation("ParkingReserveDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([parkingId], map: "parking_reserves_parking_id_idx")
+  @@index([reserveId], map: "parking_reserves_reserve_id_idx")
+  @@index([clientId], map: "parking_reserves_client_id_idx")
+  @@index([periodFrom], map: "parking_reserves_period_from_idx")
+  @@index([createdStaffId], map: "parking_reserves_created_staff_id_idx")
+  @@index([updatedStaffId], map: "parking_reserves_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "parking_reserves_deleted_staff_id_idx")
+  @@index([dataStatus], map: "parking_reserves_data_status_idx")
+
+  @@map("parking_reserves")
+}
+
+// ─── BicycleParkingReserve (Bicycle Parking Reservation) ─
+
+model BicycleParkingReserve {
+  bicycleParkingReserveId  Int       @id @default(autoincrement()) @map("bicycle_parking_reserve_id")
+  bicycleParkingId         Int       @map("bicycle_parking_id")
+  reserveId                Int?      @map("reserve_id")
+  clientId                 Int?      @map("client_id")
+  dataStatus               Int       @default(1) @map("data_status") @db.SmallInt
+  periodFrom               DateTime  @map("period_from") @db.Date
+  periodTo                 DateTime? @map("period_to") @db.Date
+  stayTypeId               Int?      @map("stay_type_id")
+  confirmFlag              Boolean   @default(false) @map("confirm_flag")
+  checkinFlag              Boolean   @default(false) @map("checkin_flag")
+  checkoutFlag             Boolean   @default(false) @map("checkout_flag")
+  bicycleTypeNote          String?   @map("bicycle_type_note") @db.VarChar(256)
+  note                     String?   @db.VarChar(512)
+  saleDate                 DateTime? @map("sale_date") @db.Date
+
+  // Audit
+  createdStaffId           Int       @map("created_staff_id")
+  updatedStaffId           Int?      @map("updated_staff_id")
+  deletedStaffId           Int?      @map("deleted_staff_id")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  deletedAt                DateTime? @map("deleted_at")
+
+  bicycleParking           BicycleParking @relation(fields: [bicycleParkingId], references: [bicycleParkingId])
+  reserve                  Reserve?       @relation(fields: [reserveId], references: [reserveId])
+  client                   Client?        @relation(fields: [clientId], references: [clientId])
+  createdBy                Staff          @relation("BicycleParkingReserveCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy                Staff?         @relation("BicycleParkingReserveUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy                Staff?         @relation("BicycleParkingReserveDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([bicycleParkingId], map: "bicycle_parking_reserves_bicycle_parking_id_idx")
+  @@index([reserveId], map: "bicycle_parking_reserves_reserve_id_idx")
+  @@index([clientId], map: "bicycle_parking_reserves_client_id_idx")
+  @@index([periodFrom], map: "bicycle_parking_reserves_period_from_idx")
+  @@index([createdStaffId], map: "bicycle_parking_reserves_created_staff_id_idx")
+  @@index([updatedStaffId], map: "bicycle_parking_reserves_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "bicycle_parking_reserves_deleted_staff_id_idx")
+  @@index([dataStatus], map: "bicycle_parking_reserves_data_status_idx")
+
+  @@map("bicycle_parking_reserves")
+}
+
+// ─── Cleans (Cleaning shift header per facility per date) ─
+
+model Cleans {
+  cleanId         Int       @id @default(autoincrement()) @map("clean_id")
+  facilityId      Int       @map("facility_id")
+  cleaningDate    DateTime  @map("cleaning_date") @db.Date
+  note            String?   @db.VarChar(1024)
+  restTimeFrom    DateTime? @map("rest_time_from")
+  restTimeTo      DateTime? @map("rest_time_to")
+
+  // Audit
+  dataStatus      Int       @default(1) @map("data_status") @db.SmallInt
+  createdStaffId  Int       @map("created_staff_id")
+  updatedStaffId  Int?      @map("updated_staff_id")
+  deletedStaffId  Int?      @map("deleted_staff_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  facility        Facility  @relation(fields: [facilityId], references: [facilityId])
+  createdBy       Staff     @relation("CleansCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy       Staff?    @relation("CleansUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy       Staff?    @relation("CleansDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  details         CleaningDetail[]
+
+  @@unique([facilityId, cleaningDate], map: "cleans_facility_date_uniq")
+  @@index([cleaningDate], map: "cleans_cleaning_date_idx")
+  @@index([facilityId], map: "cleans_facility_id_idx")
+  @@index([createdStaffId], map: "cleans_created_staff_id_idx")
+  @@index([updatedStaffId], map: "cleans_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "cleans_deleted_staff_id_idx")
+  @@index([dataStatus], map: "cleans_data_status_idx")
+
+  @@map("cleans")
+}
+
+// ─── CleaningDetail (one row per room/area/key task) ─
+
+model CleaningDetail {
+  cleaningDetailId       Int       @id @default(autoincrement()) @map("cleaning_detail_id")
+  cleanId                Int       @map("clean_id")
+  facilityId             Int       @map("facility_id")
+  roomId                 Int?      @map("room_id")
+  reserveId              Int?      @map("reserve_id")
+
+  // 1=ROOM, 2=COMMON_AREA, 3=KEY_SAFETY (smart-lock confirmation)
+  dataType               Int       @map("data_type") @db.SmallInt
+
+  // Free-form label for Type 2 (common area name) when roomId is null
+  areaName               String?   @map("area_name") @db.VarChar(256)
+
+  // Staff assignment
+  mainStaffId            Int?      @map("main_staff_id")
+  subStaffId             Int?      @map("sub_staff_id")
+  checkStaffId           Int?      @map("check_staff_id")
+  mainStaffExternalFlag  Boolean   @default(false) @map("main_staff_external_flag")
+  subStaffExternalFlag   Boolean   @default(false) @map("sub_staff_external_flag")
+  checkStaffExternalFlag Boolean   @default(false) @map("check_staff_external_flag")
+
+  // Schedule + execution
+  scheduledDate          DateTime? @map("scheduled_date") @db.Date
+  startDatetime          DateTime? @map("start_datetime")
+  endDatetime            DateTime? @map("end_datetime")
+  finishDatetime         DateTime? @map("finish_datetime")
+
+  // Status (1..7) — see CleaningStatus enum in code
+  cleanStatus            Int       @default(1) @map("clean_status") @db.SmallInt
+
+  // Type 3 specific
+  checkSafetyFlag        Boolean   @default(false) @map("check_safety_flag")
+  roomPinCredentialId    Int?      @map("room_pin_credential_id")
+  pinRevokedConfirmedAt  DateTime? @map("pin_revoked_confirmed_at")
+
+  comment                String?   @db.VarChar(1024)
+  reportImg1             String?   @map("report_img1") @db.VarChar(512)
+  reportImg2             String?   @map("report_img2") @db.VarChar(512)
+  reportImg3             String?   @map("report_img3") @db.VarChar(512)
+  reportImg4             String?   @map("report_img4") @db.VarChar(512)
+
+  orderNum               Int?      @map("order_num") @db.SmallInt
+
+  // Audit
+  dataStatus             Int       @default(1) @map("data_status") @db.SmallInt
+  createdStaffId         Int       @map("created_staff_id")
+  updatedStaffId         Int?      @map("updated_staff_id")
+  deletedStaffId         Int?      @map("deleted_staff_id")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  deletedAt              DateTime? @map("deleted_at")
+
+  cleans                 Cleans              @relation(fields: [cleanId], references: [cleanId])
+  facility               Facility            @relation(fields: [facilityId], references: [facilityId])
+  room                   Room?               @relation(fields: [roomId], references: [roomId])
+  reserve                Reserve?            @relation(fields: [reserveId], references: [reserveId])
+  mainStaff              Staff?              @relation("CleaningDetailMainStaff", fields: [mainStaffId], references: [staffId])
+  subStaff               Staff?              @relation("CleaningDetailSubStaff", fields: [subStaffId], references: [staffId])
+  checkStaff             Staff?              @relation("CleaningDetailCheckStaff", fields: [checkStaffId], references: [staffId])
+  roomPinCredential      RoomPinCredential?  @relation(fields: [roomPinCredentialId], references: [roomPinCredentialId])
+  createdBy              Staff               @relation("CleaningDetailCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy              Staff?              @relation("CleaningDetailUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy              Staff?              @relation("CleaningDetailDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  notes                  CleanDetailNote[]
+
+  @@index([cleanId], map: "cleaning_details_clean_id_idx")
+  @@index([facilityId, scheduledDate], map: "cleaning_details_facility_date_idx")
+  @@index([roomId], map: "cleaning_details_room_id_idx")
+  @@index([reserveId], map: "cleaning_details_reserve_id_idx")
+  @@index([dataType, cleanStatus], map: "cleaning_details_type_status_idx")
+  @@index([roomPinCredentialId], map: "cleaning_details_room_pin_credential_id_idx")
+  @@index([mainStaffId], map: "cleaning_details_main_staff_id_idx")
+  @@index([subStaffId], map: "cleaning_details_sub_staff_id_idx")
+  @@index([checkStaffId], map: "cleaning_details_check_staff_id_idx")
+  @@index([createdStaffId], map: "cleaning_details_created_staff_id_idx")
+  @@index([updatedStaffId], map: "cleaning_details_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "cleaning_details_deleted_staff_id_idx")
+  @@index([dataStatus], map: "cleaning_details_data_status_idx")
+
+  @@map("cleaning_details")
+}
+
+// ─── CleanDetailNote (note thread per cleaning detail) ─
+
+model CleanDetailNote {
+  cleanDetailNoteId  Int       @id @default(autoincrement()) @map("clean_detail_note_id")
+  cleaningDetailId   Int       @map("cleaning_detail_id")
+  noteContent        String    @map("note_content") @db.VarChar(2048)
+
+  // Audit
+  dataStatus         Int       @default(1) @map("data_status") @db.SmallInt
+  createdStaffId     Int       @map("created_staff_id")
+  updatedStaffId     Int?      @map("updated_staff_id")
+  deletedStaffId     Int?      @map("deleted_staff_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  cleaningDetail     CleaningDetail @relation(fields: [cleaningDetailId], references: [cleaningDetailId])
+  createdBy          Staff          @relation("CleanDetailNoteCreatedBy", fields: [createdStaffId], references: [staffId])
+  updatedBy          Staff?         @relation("CleanDetailNoteUpdatedBy", fields: [updatedStaffId], references: [staffId])
+  deletedBy          Staff?         @relation("CleanDetailNoteDeletedBy", fields: [deletedStaffId], references: [staffId])
+
+  @@index([cleaningDetailId], map: "clean_detail_notes_detail_id_idx")
+  @@index([createdStaffId], map: "clean_detail_notes_created_staff_id_idx")
+  @@index([updatedStaffId], map: "clean_detail_notes_updated_staff_id_idx")
+  @@index([deletedStaffId], map: "clean_detail_notes_deleted_staff_id_idx")
+  @@index([dataStatus], map: "clean_detail_notes_data_status_idx")
+
+  @@map("clean_detail_notes")
 }

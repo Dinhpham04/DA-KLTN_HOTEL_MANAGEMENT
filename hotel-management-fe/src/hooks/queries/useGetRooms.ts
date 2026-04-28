@@ -6,6 +6,7 @@ interface UseGetRoomsParams {
   params?: RoomFilterParams
   onSuccess?: (data: Room[]) => void
   onError?: (error: unknown) => void
+  enabled?: boolean
 }
 
 function isRoomArray(payload: unknown): payload is Room[] {
@@ -59,7 +60,12 @@ function normalizeRoomsResponse(payload: unknown): PaginatedRoomResponse {
   return { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } }
 }
 
-export function useGetRooms({ params, onSuccess, onError }: UseGetRoomsParams = {}) {
+export function useGetRooms({
+  params,
+  onSuccess,
+  onError,
+  enabled = true,
+}: UseGetRoomsParams = {}) {
   return useQuery({
     queryKey: ['get-rooms', params],
     queryFn: async () => {
@@ -73,5 +79,6 @@ export function useGetRooms({ params, onSuccess, onError }: UseGetRoomsParams = 
         throw error
       }
     },
+    enabled,
   })
 }

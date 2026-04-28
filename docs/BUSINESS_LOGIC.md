@@ -1020,6 +1020,33 @@ Mỗi request detail có thể có 0 hoặc nhiều sale details (thu nhiều l�
 
 ---
 
+## 5. Usage Situation (Whiteboard)
+
+### 5.1 UI Behavior Rules
+
+- Facility header hien thi: Phong trong = Tong so phong - so phong dang o.
+- Dinh nghia "phong dang o": co it nhat 1 reserve checkin_flag = true va period_from <= hom nay.
+- Room duoc group theo room_type_id; hang tieu de hien thi room type, cac muc gia theo stay type (stayTypeRents) va dien tich.
+- Reserve plate hien thi mau theo quy tac:
+  - rakuten_flag = true -> do
+  - draft_flag = true -> xam
+  - Con lai -> mau deterministic theo reserveId.
+- Badge tren plate:
+  - IN khi checkin_flag = true
+  - D khi draft_flag = true
+  - R khi rakuten_flag = true
+- Khi user co filter periodFrom/periodTo, hien thi checkbox theo tung room type "Hien thi phong dang o":
+  - Mac dinh tat: an cac phong dang o.
+  - Bat checkbox: hien lai tat ca phong dang o.
+
+### 5.2 Scope Removal
+
+- Khong migrate cac tinh nang room change (doi phong) tu source.
+- Khong migrate flow construction/repair (sua chua, cong trinh) tu source.
+- API whiteboard hien tai tra constructions: [], memos: [] de du phong nhung chua dung o FE.
+
+---
+
 ## Changelog
 
 | Ngày | Nội dung cập nhật |
@@ -1033,6 +1060,7 @@ Mỗi request detail có thể có 0 hoặc nhiều sale details (thu nhiều l�
 | 2026-04-09 | Mở rộng tài liệu Rents Master — cấu trúc 4 bảng, stay types, cột chi tiết, công thức, vấn đề hardcode header |
 | 2026-04-21 | Bổ sung UI behavior cho block `この予約の請求情報` trên màn hình Tạo đặt phòng (không gồm đổi phòng) |
 | 2026-04-21 | Migrate full section `この予約の請求情報` trên màn hình Tạo đặt phòng: thêm/xóa dòng và tính tổng phụ phía frontend |
+| 2026-04-28 | Bo sung business logic/UI behavior cho man hinh Usage Situation (Whiteboard), bao gom quy tac dem phong trong va loai bo room change/construction |
 
 ---
 
@@ -1041,3 +1069,6 @@ Mỗi request detail có thể có 0 hoặc nhiều sale details (thu nhiều l�
 - **SQL Schema**: `docs/hotel_management_sql_create.sql`
 - **Legacy Source**: PHP/Laravel codebase (đã migrate)
 - **Frontend Constants**: `hotel-management-fe/src/constants/common.ts`
+
+
+

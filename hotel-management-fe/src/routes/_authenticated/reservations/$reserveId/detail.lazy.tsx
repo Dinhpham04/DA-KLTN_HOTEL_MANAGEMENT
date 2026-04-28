@@ -158,8 +158,8 @@ interface ReservationDetail extends Reservation {
   movedRoomNumber?: string
   extensionTime?: number
   keyboxName?: string
-  keyboxPassword?: string
-  directcheckinNote?: string
+  keyboxPassword: string | null
+  directcheckinNote: string | null
   parkingReserves?: {
     facilityName: string
     roomNumber: string

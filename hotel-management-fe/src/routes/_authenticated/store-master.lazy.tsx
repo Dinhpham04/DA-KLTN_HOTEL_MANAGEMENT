@@ -1385,9 +1385,6 @@ function StoreMasterPage() {
     refetch,
   } = useGetFacilities({
     params: { page: 1, limit: 500 },
-    onError(error) {
-      toast.error(getErrorMessage(error))
-    },
   })
 
   useEffect(() => {

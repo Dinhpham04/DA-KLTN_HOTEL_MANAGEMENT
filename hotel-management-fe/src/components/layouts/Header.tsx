@@ -57,6 +57,8 @@ export function Header() {
     { id: 4, item: t('nav.clients'), url: '/clients' },
     { id: 5, item: t('nav.billing'), url: '/billing' },
     { id: 6, item: t('nav.cleaning'), url: '/cleaning' },
+    { id: 8, item: t('nav.parkingSearch'), url: '/parking-search' },
+    { id: 9, item: t('nav.usageSituation'), url: '/usage-situation' },
     {
       id: 7,
       item: t('nav.master'),
@@ -155,7 +157,7 @@ export function Header() {
             </div>
           </Drawer>
 
-          {/* Reservations button */}
+          {/* whiteboard button */}
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
@@ -181,50 +183,54 @@ export function Header() {
             </div>
           </Drawer>
 
-          {/* Rooms button */}
+          {/* Parking button */}
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
                 className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/rooms' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  location.pathname === '/parking-search' ? 'bg-[#666666]' : 'bg-[#204172]'
                 }`}
-                onClick={() => navigate({ to: '/rooms' })}
+                onClick={() => navigate({ to: '/parking-search' })}
               >
                 <RoomIcon
-                  className={location.pathname === '/rooms' ? 'text-[#666666]' : 'text-white'}
+                  className={
+                    location.pathname === '/parking-search' ? 'text-[#666666]' : 'text-white'
+                  }
                 />
               </div>
               <div
                 className={cn(
                   'font-medium text-[1.3rem]',
-                  location.pathname === '/rooms' ? 'text-gray-400' : 'text-white'
+                  location.pathname === '/parking-search' ? 'text-gray-400' : 'text-white'
                 )}
               >
-                {t('nav.rooms')}
+                {t('nav.parkingSearch')}
               </div>
             </div>
           </Drawer>
 
-          {/* Clients button */}
+          {/* Reservation button */}
           <Drawer direction="right">
             <div className="flex flex-col justify-center items-center gap-2">
               <div
                 className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/clients' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
                 }`}
-                onClick={() => navigate({ to: '/clients' })}
+                onClick={() => navigate({ to: '/reservations' })}
               >
                 <SearchIconSvg
-                  className={location.pathname === '/clients' ? 'text-[#666666]' : 'text-white'}
+                  className={
+                    location.pathname === '/reservations' ? 'text-[#666666]' : 'text-white'
+                  }
                 />
               </div>
               <div
                 className={cn(
                   'font-medium text-[1.3rem]',
-                  location.pathname === '/clients' ? 'text-gray-400' : 'text-white'
+                  location.pathname === '/reservations' ? 'text-gray-400' : 'text-white'
                 )}
               >
-                {t('nav.clients')}
+                {t('nav.reservationSearch')}
               </div>
             </div>
           </Drawer>
