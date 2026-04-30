@@ -16,6 +16,7 @@ import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
 import { DogSvg } from '@/components/svgs/DogSvg'
 import { TrashSVG } from '@/components/svgs/TrashSVG'
+import { BookingActionPopover } from '@/components/whiteboard/BookingActionPopover'
 import { cn } from '@/lib/utils'
 import type {
   WhiteboardFacility,
@@ -48,6 +49,7 @@ const MIN_TIMELINE_COLUMNS = 4
 type TimelineCell =
   | { type: 'reserve'; reserve: WhiteboardReserveItem }
   | { type: 'booking'; from: Dayjs; to: Dayjs | null }
+  | { type: 'padding'; from: Dayjs; to: Dayjs; position: 'before' | 'after'; days: number }
 
 export function WhiteboardIndicator({
   facilities,
@@ -260,10 +262,7 @@ function RoomTypeInfoRow({
         <div className="table-columns flex justify-end items-center px-8 border-black border-l first:border-l-0 w-full h-16 snap-end">
           <div className="flex items-center gap-4">
             <CustomCheckbox id={checkboxId} checked={showOccupied} onCheckedChange={onToggle} />
-            <label
-              htmlFor={checkboxId}
-              className="font-semibold text-[1.3rem] cursor-pointer"
-            >
+            <label htmlFor={checkboxId} className="font-semibold text-[1.3rem] cursor-pointer">
               Hiển thị phòng đang ở
             </label>
           </div>
@@ -307,20 +306,37 @@ function RoomTimelineRow({
       </div> */}
 
       {timelineCells.length > 0 ? (
-        timelineCells.map((cell, index) =>
-          cell.type === 'reserve' ? (
-            <ReserveTimelineCells
-              key={`reserve-${room.roomId}-${cell.reserve.reserveId}-${index}`}
-              reserve={cell.reserve}
-            />
-          ) : (
-            <BookingOpportunityCell
-              key={`booking-${room.roomId}-${cell.from.valueOf()}-${index}`}
+        timelineCells.map((cell, index) => {
+          if (cell.type === 'reserve') {
+            return (
+              <ReserveTimelineCells
+                key={`reserve-${room.roomId}-${cell.reserve.reserveId}-${index}`}
+                reserve={cell.reserve}
+              />
+            )
+          }
+          if (cell.type === 'booking') {
+            return (
+              <BookingOpportunityCell
+                key={`booking-${room.roomId}-${cell.from.valueOf()}-${index}`}
+                from={cell.from}
+                to={cell.to}
+                facilityId={room.facilityId}
+                roomId={room.roomId}
+                roomNumber={room.roomNumber}
+              />
+            )
+          }
+          return (
+            <PaddingCell
+              key={`padding-${room.roomId}-${cell.position}-${cell.from.valueOf()}-${index}`}
               from={cell.from}
               to={cell.to}
+              position={cell.position}
+              days={cell.days}
             />
           )
-        )
+        })
       ) : (
         <TimelineEmptyCell label={emptyRoomLabel} />
       )}
@@ -376,7 +392,7 @@ function ReserveTimelineCells({ reserve }: { reserve: WhiteboardReserveItem }) {
               <span>~</span>
               <span
                 className={cn('font-bold', {
-                  'bg-[#FCFF61] px-1': hasExplicitEnd && !isDraft,
+                  'bg-[#FCFF61] px-1': hasExplicitEnd && reserve.confirmFlag && !isDraft,
                   'text-red': reserve.confirmFlag && !isDraft,
                   'font-medium': !hasExplicitEnd,
                 })}
@@ -418,15 +434,27 @@ function ReserveTimelineCells({ reserve }: { reserve: WhiteboardReserveItem }) {
 function BookingOpportunityCell({
   from,
   to,
+  facilityId,
+  roomId,
+  roomNumber,
 }: {
   from: Dayjs
   to: Dayjs | null
+  facilityId: number
+  roomId: number
+  roomNumber?: string
 }) {
   const toLabel = to ? `${to.format('MM/DD')}` : '→'
 
   return (
     <div className="table-columns flex justify-center items-center p-[0.3rem] border-black border-l first:border-l-0 w-[23.5rem] min-w-[23.5rem] h-16 sm:h-[5.6rem] snap-start usage-station-item-inner">
-      <Link to="/reservations/create" className="!opacity-100 block w-full">
+      <BookingActionPopover
+        facilityId={facilityId}
+        roomId={roomId}
+        roomNumber={roomNumber}
+        from={from}
+        to={to}
+      >
         <div className="flex flex-col justify-center items-start gap-[1rem] w-full text-[#DF2727] font-bold leading-tight">
           <div className="flex justify-between items-center w-full">
             <span className="text-black">
@@ -437,7 +465,43 @@ function BookingOpportunityCell({
           </div>
           <span className="text-left">Đặt phòng：〇</span>
         </div>
-      </Link>
+      </BookingActionPopover>
+    </div>
+  )
+}
+
+function PaddingCell({
+  from,
+  to,
+  position,
+  days,
+}: {
+  from: Dayjs
+  to: Dayjs
+  position: 'before' | 'after'
+  days: number
+}) {
+  const sameDay = from.isSame(to, 'day')
+  const rangeLabel = sameDay
+    ? from.format('MM/DD')
+    : `${from.format('MM/DD')}~${to.format('MM/DD')}`
+
+  return (
+    <div
+      className="table-columns flex flex-col justify-center items-center gap-1 p-[0.3rem] border-black border-l first:border-l-0 w-[8rem] min-w-[8rem] h-16 sm:h-[5.6rem] snap-start text-[#444]"
+      style={{
+        backgroundImage:
+          'repeating-linear-gradient(45deg, #D1D5DB 0, #D1D5DB 6px, #E5E7EB 6px, #E5E7EB 12px)',
+      }}
+      title={`Khoảng đệm ${position === 'before' ? 'trước' : 'sau'}: ${days} ngày`}
+    >
+      <span className="font-semibold text-[1.1rem]">
+        {position === 'before' ? '← Đệm' : 'Đệm →'}
+      </span>
+      <span className="text-[1rem] leading-tight text-center">
+        {rangeLabel}
+        <br />({days}d)
+      </span>
     </div>
   )
 }
@@ -552,7 +616,7 @@ function buildTimelineCells(
 
   for (const reserve of sortedReservations) {
     const effective = getEffectiveReservePeriod(reserve)
-    if (!effective.start) {
+    if (!effective.start || !effective.rawStart) {
       cells.push({ type: 'reserve', reserve })
       continue
     }
@@ -565,7 +629,27 @@ function buildTimelineCells(
       })
     }
 
+    if (effective.beforeDays > 0) {
+      cells.push({
+        type: 'padding',
+        from: effective.start,
+        to: effective.rawStart.subtract(1, 'day'),
+        position: 'before',
+        days: effective.beforeDays,
+      })
+    }
+
     cells.push({ type: 'reserve', reserve })
+
+    if (effective.afterDays > 0 && effective.end && effective.rawEnd) {
+      cells.push({
+        type: 'padding',
+        from: effective.rawEnd.add(1, 'day'),
+        to: effective.end,
+        position: 'after',
+        days: effective.afterDays,
+      })
+    }
 
     if (!cursor) continue
     if (effective.end) {
@@ -590,29 +674,31 @@ function buildTimelineCells(
 function getEffectiveReservePeriod(reserve: WhiteboardReserveItem): {
   start: Dayjs | null
   end: Dayjs | null
+  rawStart: Dayjs | null
+  rawEnd: Dayjs | null
+  beforeDays: number
+  afterDays: number
 } {
-  const start = getReserveStartDate(reserve)
-  if (!start) {
-    return { start: null, end: null }
+  const rawStart = getReserveStartDate(reserve)
+  if (!rawStart) {
+    return { start: null, end: null, rawStart: null, rawEnd: null, beforeDays: 0, afterDays: 0 }
   }
 
   const shouldApplyPadding = !reserve.draftFlag && !reserve.rakutenFlag
-  const paddedStart = shouldApplyPadding
-    ? start.subtract(Math.max(reserve.noreserveCountBefore ?? 0, 0), 'day')
-    : start
+  const beforeDays = shouldApplyPadding ? Math.max(reserve.noreserveCountBefore ?? 0, 0) : 0
+  const afterDays = shouldApplyPadding ? Math.max(reserve.noreserveCountAfter ?? 0, 0) : 0
+  const paddedStart = rawStart.subtract(beforeDays, 'day')
 
   const endSource = reserve.earlyExitDatetime ?? reserve.periodTo
-  const rawEnd = endSource ? dayjs(endSource) : null
-  const isOpenEnded = !reserve.confirmFlag || !rawEnd || !rawEnd.isValid()
+  const rawEndCandidate = endSource ? dayjs(endSource) : null
+  const rawEnd = rawEndCandidate?.isValid() ? rawEndCandidate.startOf('day') : null
+  const isOpenEnded = !reserve.confirmFlag || !rawEnd
   if (isOpenEnded) {
-    return { start: paddedStart, end: null }
+    return { start: paddedStart, end: null, rawStart, rawEnd: null, beforeDays, afterDays }
   }
 
-  const paddedEnd = shouldApplyPadding
-    ? rawEnd.add(Math.max(reserve.noreserveCountAfter ?? 0, 0), 'day')
-    : rawEnd
-
-  return { start: paddedStart, end: paddedEnd }
+  const paddedEnd = rawEnd.add(afterDays, 'day')
+  return { start: paddedStart, end: paddedEnd, rawStart, rawEnd, beforeDays, afterDays }
 }
 
 function getReserveStartDate(reserve: WhiteboardReserveItem): Dayjs | null {

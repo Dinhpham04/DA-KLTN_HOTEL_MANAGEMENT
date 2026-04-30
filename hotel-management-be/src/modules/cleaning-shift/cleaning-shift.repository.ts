@@ -5,13 +5,35 @@ import { PrismaService } from '@database/prisma.service';
 const PIN_STATUS_ACTIVE = 1;
 
 const detailInclude = {
-  facility: { select: { facilityId: true, facilityName: true } },
-  room: { select: { roomId: true, roomNumber: true } },
+  facility: { select: { facilityId: true, facilityNo: true, facilityName: true } },
+  room: {
+    select: {
+      roomId: true,
+      roomNumber: true,
+      mailboxPassword: true,
+      roomTypeId: true,
+      roomType: {
+        select: {
+          roomTypeName: true,
+          roomTypeNameShort: true,
+        },
+      },
+    },
+  },
   reserve: {
     select: {
       reserveId: true,
       checkoutAt: true,
+      periodFrom: true,
       periodTo: true,
+      lastStayDate: true,
+      noreserveCountAfter: true,
+      disableReservation: true,
+      rentalKeys: true,
+      returnKeys: true,
+      keyReturnDatetime: true,
+      checkoutReceptionistId: true,
+      roomDirtyLevel: true,
       client: { select: { clientId: true, clientName: true } },
     },
   },
@@ -96,15 +118,66 @@ export class CleaningShiftRepository {
 
   // ─── Cleaning details ────────────────────────────────
 
-  findDetailsByCleanId(cleanId: number, dataType?: number) {
+  findDetailsByCleanId(
+    cleanId: number,
+    params?: {
+      dataType?: number;
+      roomTypeIds?: number[];
+      newReserveFlag?: number;
+      sort?: string;
+      direction?: 'asc' | 'desc';
+    },
+  ) {
+    const direction = params?.direction ?? 'asc';
+    const sort = params?.sort;
+    const orderBy: Prisma.CleaningDetailOrderByWithRelationInput[] = [{ orderNum: 'asc' }];
+
+    if (sort === 'roomNumber') {
+      orderBy.unshift({ room: { roomNumber: direction } });
+    } else if (sort === 'reserveCheckoutAt') {
+      orderBy.unshift({ reserve: { checkoutAt: direction } });
+    } else if (sort === 'mainStaffName') {
+      orderBy.unshift({ mainStaff: { staffName: direction } });
+    }
+
     return this.prisma.cleaningDetail.findMany({
       where: {
         cleanId,
         deletedAt: null,
-        ...(dataType !== undefined && { dataType }),
+        ...(params?.dataType !== undefined && { dataType: params.dataType }),
+        ...(params?.roomTypeIds && params.roomTypeIds.length > 0
+          ? {
+              room: {
+                roomTypeId: {
+                  in: params.roomTypeIds,
+                },
+              },
+            }
+          : {}),
       },
       include: detailInclude,
-      orderBy: [{ orderNum: 'asc' }, { cleaningDetailId: 'asc' }],
+      orderBy: [...orderBy, { cleaningDetailId: 'asc' }],
+    });
+  }
+
+  findFutureReservesByRoomIds(roomIds: number[], fromDate: Date) {
+    return this.prisma.reserve.findMany({
+      where: {
+        roomId: { in: roomIds },
+        periodFrom: { gte: fromDate },
+        dataStatus: 1,
+        deletedAt: null,
+        deleteStatus: null,
+        rakutenFlag: false,
+      },
+      select: {
+        reserveId: true,
+        roomId: true,
+        periodFrom: true,
+        rentalKeys: true,
+        returnKeys: true,
+      },
+      orderBy: [{ roomId: 'asc' }, { periodFrom: 'asc' }],
     });
   }
 

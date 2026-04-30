@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 
@@ -1221,6 +1221,15 @@ async function main(): Promise<void> {
       birthday: new Date('1995-07-25'),
       countryId: countryKR.countryId,
     },
+    {
+      email: 'walkin.guest@temp.com',
+      dataType: 3, // Walk-in / khách vãng lai - dùng để demo cell ĐỎ
+      clientName: 'Khách Vãng Lai',
+      clientNameEn: 'Walk-in Guest',
+      sex: 9,
+      tel: '0945678901',
+      countryId: countryVN.countryId,
+    },
   ];
 
   const clients = [];
@@ -1239,7 +1248,7 @@ async function main(): Promise<void> {
     console.log(`  Client: ${client.clientName} (ID: ${client.clientId})`);
   }
 
-  const [client1, client2, client3, client4, client5] = clients;
+  const [client1, client2, client3, client4, client5, walkInClient] = clients;
 
   // ─── Reservations ─────────────────────────────────
   console.log('\nSeeding reservations...');
@@ -1338,6 +1347,90 @@ async function main(): Promise<void> {
       cancelReason: 'Khách thay đổi kế hoạch công tác',
       cancelledAt: new Date('2026-03-10'),
     },
+    // ─── Whiteboard 5-state color demo (2026-05-10 → 2026-05-14) ──────
+    // Xem tài liệu: docs/WHITEBOARD_CELL_LOGIC.md
+    // Lọc whiteboard theo khoảng ngày 10-14/05/2026 ở facility 01 + 02 để
+    // thấy 5 màu cell side-by-side.
+
+    // [1] YELLOW — confirmed + có periodTo + có vùng đệm
+    {
+      clientId: client1.clientId,
+      facilityId: f('01').facilityId,
+      roomId: rooms[1].roomId, // Room 102 @ Bến Thành
+      stayTypeId: stayTypes[0].stayTypeId,
+      reserveStatus: 2,
+      reserveType: 1,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-13'),
+      confirmFlag: true,
+      bookingUnitPrice: 550000,
+      deposit: 550000,
+      noreserveCountBefore: 1,
+      noreserveCountAfter: 1,
+      note: 'Demo whiteboard: cell VÀNG (#FCFF61) - confirmed + padding',
+      chargeStaffId: manager.staffId,
+      confirmStaffId: manager.staffId,
+    },
+    // [2] GREEN — chưa confirm (có periodTo nhưng chưa xác nhận)
+    {
+      clientId: client5.clientId,
+      facilityId: f('01').facilityId,
+      roomId: rooms[3].roomId, // Room 202 @ Bến Thành
+      stayTypeId: stayTypes[0].stayTypeId,
+      reserveStatus: 1,
+      reserveType: 1,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-13'),
+      confirmFlag: false,
+      bookingUnitPrice: 600000,
+      note: 'Demo whiteboard: cell XANH LÁ (#8BD08E) - chưa xác nhận',
+    },
+    // [3] CYAN — đặt qua kênh quảng cáo (advertisingType=5)
+    {
+      clientId: client2.clientId,
+      facilityId: f('01').facilityId,
+      roomId: rooms[5].roomId, // Room 401 @ Bến Thành
+      stayTypeId: stayTypes[0].stayTypeId,
+      reserveStatus: 2,
+      reserveType: 1,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-13'),
+      confirmFlag: true,
+      bookingUnitPrice: 800000,
+      deposit: 800000,
+      advertisingType: 5,
+      note: 'Demo whiteboard: cell XANH NGỌC (#4ADEDE) - kênh OTA/quảng cáo',
+      chargeStaffId: manager.staffId,
+      confirmStaffId: manager.staffId,
+    },
+    // [4] RED — walk-in (clientDataType=3) + chưa confirm
+    {
+      clientId: walkInClient.clientId,
+      facilityId: f('02').facilityId,
+      roomId: rooms[7].roomId, // Room 101 @ Nhà Hát Lớn
+      stayTypeId: stayTypes[0].stayTypeId,
+      reserveStatus: 1,
+      reserveType: 1,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-13'),
+      confirmFlag: false,
+      bookingUnitPrice: 500000,
+      note: 'Demo whiteboard: cell ĐỎ (#F86F6F) - walk-in chưa xác nhận',
+    },
+    // [5] BLACK / DRAFT — bản nháp giữ chỗ
+    {
+      clientId: client4.clientId,
+      facilityId: f('02').facilityId,
+      roomId: rooms[8].roomId, // Room 102 @ Nhà Hát Lớn
+      stayTypeId: stayTypes[0].stayTypeId,
+      reserveStatus: 1,
+      reserveType: 1,
+      periodFrom: new Date('2026-05-10'),
+      periodTo: new Date('2026-05-13'),
+      draftFlag: true,
+      bookingUnitPrice: 700000,
+      note: 'Demo whiteboard: cell ĐEN (#000) - draft/giữ chỗ',
+    },
   ];
 
   const reserves = [];
@@ -1362,6 +1455,592 @@ async function main(): Promise<void> {
     reserves.push(reserve);
     console.log(`  Reserve: #${reserve.reserveId} (status: ${reserve.reserveStatus})`);
   }
+
+  // ─── Cleaning Shift sample data ─────────────────────
+  console.log('\nSeeding cleaning shift sample data...');
+
+  const dateOnly = (year: number, month: number, day: number) =>
+    new Date(Date.UTC(year, month - 1, day));
+  const cleaningDate = dateOnly(2026, 4, 29);
+  const cleaningFacility = f('01');
+  const cleaningLead =
+    (await prisma.staff.findUnique({ where: { mail: 'cam.tran@hotel.com' } })) ?? manager;
+  const cleaningSub =
+    (await prisma.staff.findUnique({ where: { mail: 'duc.le@hotel.com' } })) ?? manager;
+  const cleaningChecker =
+    (await prisma.staff.findUnique({ where: { mail: 'em.pham@hotel.com' } })) ?? manager;
+  const partTimeCleaner =
+    (await prisma.staff.findUnique({ where: { mail: 'phuc.hoang@hotel.com' } })) ?? manager;
+
+  const upsertSampleReserve = async (data: Prisma.ReserveUncheckedCreateInput) => {
+    const existing = await prisma.reserve.findFirst({
+      where: {
+        clientId: Number(data.clientId),
+        roomId: Number(data.roomId),
+        periodFrom: data.periodFrom as Date,
+        deletedAt: null,
+      },
+    });
+
+    if (!existing) {
+      return prisma.reserve.create({ data });
+    }
+
+    return prisma.reserve.update({
+      where: { reserveId: existing.reserveId },
+      data: {
+        facilityId: data.facilityId,
+        roomId: data.roomId,
+        stayTypeId: data.stayTypeId,
+        reserveStatus: data.reserveStatus,
+        reserveType: data.reserveType,
+        periodTo: data.periodTo,
+        confirmFlag: data.confirmFlag,
+        checkinFlag: data.checkinFlag,
+        checkedInAt: data.checkedInAt,
+        checkoutAt: data.checkoutAt,
+        bookingUnitPrice: data.bookingUnitPrice,
+        deposit: data.deposit,
+        rentalKeys: data.rentalKeys,
+        returnKeys: data.returnKeys,
+        keyReturnDatetime: data.keyReturnDatetime,
+        checkoutReceptionistId: data.checkoutReceptionistId,
+        roomDirtyLevel: data.roomDirtyLevel,
+        noreserveCountAfter: data.noreserveCountAfter,
+        disableReservation: data.disableReservation,
+        note: data.note,
+        updatedStaffId: manager.staffId,
+      },
+    });
+  };
+
+  const checkoutReserve101 = await upsertSampleReserve({
+    clientId: client1.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[0].roomId,
+    stayTypeId: stayTypes[0].stayTypeId,
+    reserveStatus: 4,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 4, 24),
+    periodTo: cleaningDate,
+    confirmFlag: true,
+    checkinFlag: true,
+    checkedInAt: new Date('2026-04-24T14:00:00'),
+    checkoutAt: new Date('2026-04-29T10:00:00'),
+    bookingUnitPrice: 650000,
+    deposit: 650000,
+    rentalKeys: 2,
+    returnKeys: 1,
+    checkoutReceptionistId: manager.staffId,
+    roomDirtyLevel: 2,
+    noreserveCountAfter: 0,
+    disableReservation: false,
+    note: 'Khách trả 1/2 chìa, cần kiểm tra thêm trong phòng.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  const checkoutReserve201 = await upsertSampleReserve({
+    clientId: client2.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[2].roomId,
+    stayTypeId: stayTypes[1].stayTypeId,
+    reserveStatus: 4,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 4, 20),
+    periodTo: cleaningDate,
+    confirmFlag: true,
+    checkinFlag: true,
+    checkedInAt: new Date('2026-04-20T15:00:00'),
+    checkoutAt: new Date('2026-04-29T11:00:00'),
+    bookingUnitPrice: 780000,
+    deposit: 780000,
+    rentalKeys: 1,
+    returnKeys: 1,
+    keyReturnDatetime: new Date('2026-04-29T11:10:00'),
+    checkoutReceptionistId: manager.staffId,
+    roomDirtyLevel: 3,
+    noreserveCountAfter: 2,
+    disableReservation: true,
+    note: 'Phòng bẩn mức cao, ưu tiên kiểm tra sau khi dọn.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  const checkoutReserve301 = await prisma.reserve.update({
+    where: { reserveId: reserves[2].reserveId },
+    data: {
+      reserveStatus: 4,
+      checkinFlag: true,
+      checkedInAt: new Date('2026-04-15T14:00:00'),
+      checkoutAt: new Date('2026-04-29T09:30:00'),
+      rentalKeys: 1,
+      returnKeys: 0,
+      checkoutReceptionistId: manager.staffId,
+      roomDirtyLevel: 1,
+      noreserveCountAfter: 0,
+      disableReservation: false,
+      updatedStaffId: manager.staffId,
+    },
+  });
+  reserves[2] = checkoutReserve301;
+
+  const checkoutReserve401 = await upsertSampleReserve({
+    clientId: client4.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[5].roomId,
+    stayTypeId: stayTypes[0].stayTypeId,
+    reserveStatus: 4,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 4, 25),
+    periodTo: cleaningDate,
+    confirmFlag: true,
+    checkinFlag: true,
+    checkedInAt: new Date('2026-04-25T14:00:00'),
+    checkoutAt: new Date('2026-04-29T10:30:00'),
+    bookingUnitPrice: 950000,
+    deposit: 950000,
+    rentalKeys: 2,
+    returnKeys: 2,
+    keyReturnDatetime: new Date('2026-04-29T10:40:00'),
+    checkoutReceptionistId: manager.staffId,
+    roomDirtyLevel: 2,
+    noreserveCountAfter: 1,
+    disableReservation: false,
+    note: 'Khách có yêu cầu giữ lại đồ thất lạc nếu tìm thấy.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  await upsertSampleReserve({
+    clientId: client5.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[0].roomId,
+    stayTypeId: stayTypes[0].stayTypeId,
+    reserveStatus: 2,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 4, 30),
+    periodTo: dateOnly(2026, 5, 3),
+    confirmFlag: true,
+    bookingUnitPrice: 700000,
+    deposit: 700000,
+    rentalKeys: 0,
+    returnKeys: 0,
+    noreserveCountBefore: 0,
+    note: 'Khách mới nhận phòng ngay hôm sau.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  await upsertSampleReserve({
+    clientId: client3.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[2].roomId,
+    stayTypeId: stayTypes[1].stayTypeId,
+    reserveStatus: 2,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 5, 2),
+    periodTo: dateOnly(2026, 5, 12),
+    confirmFlag: true,
+    bookingUnitPrice: 780000,
+    deposit: 780000,
+    rentalKeys: null,
+    returnKeys: null,
+    noreserveCountBefore: 2,
+    note: 'Đặt tiếp sau khi phòng được xử lý deep clean.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  await upsertSampleReserve({
+    clientId: client2.clientId,
+    facilityId: cleaningFacility.facilityId,
+    roomId: rooms[4].roomId,
+    stayTypeId: stayTypes[0].stayTypeId,
+    reserveStatus: 2,
+    reserveType: 1,
+    periodFrom: dateOnly(2026, 4, 30),
+    periodTo: dateOnly(2026, 5, 5),
+    confirmFlag: true,
+    bookingUnitPrice: 1200000,
+    deposit: 1200000,
+    rentalKeys: 0,
+    returnKeys: null,
+    noreserveCountBefore: 0,
+    note: 'Có khách mới, cần hoàn tất kiểm tra chìa trước 15:00.',
+    createdStaffId: admin.staffId,
+    updatedStaffId: manager.staffId,
+  });
+
+  const cleanShift = await prisma.cleans.upsert({
+    where: {
+      facilityId_cleaningDate: {
+        facilityId: cleaningFacility.facilityId,
+        cleaningDate,
+      },
+    },
+    update: {
+      note: 'Ưu tiên phòng 101 và 301 vì có khách mới ngày 30/04. Khu vực chung kiểm tra sau 14:00.',
+      restTimeFrom: new Date('2026-04-29T12:00:00'),
+      restTimeTo: new Date('2026-04-29T13:00:00'),
+      dataStatus: 1,
+      deletedAt: null,
+      deletedStaffId: null,
+      updatedStaffId: manager.staffId,
+    },
+    create: {
+      facilityId: cleaningFacility.facilityId,
+      cleaningDate,
+      note: 'Ưu tiên phòng 101 và 301 vì có khách mới ngày 30/04. Khu vực chung kiểm tra sau 14:00.',
+      restTimeFrom: new Date('2026-04-29T12:00:00'),
+      restTimeTo: new Date('2026-04-29T13:00:00'),
+      createdStaffId: admin.staffId,
+      updatedStaffId: manager.staffId,
+    },
+  });
+
+  const upsertPinCredential = async (data: {
+    roomId: number;
+    reserveId: number;
+    pin: string;
+    validFrom: Date;
+    validTo: Date;
+    status: number;
+    providerCredentialId: string;
+    revokedAt?: Date | null;
+    expiredAt?: Date | null;
+  }) => {
+    const encryptedPin = await bcrypt.hash(data.pin, BCRYPT_ROUNDS);
+    const maskedPin = `****${data.pin.slice(-4)}`;
+    const existing = await prisma.roomPinCredential.findFirst({
+      where: {
+        roomId: data.roomId,
+        reserveId: data.reserveId,
+        providerCredentialId: data.providerCredentialId,
+        deletedAt: null,
+      },
+    });
+
+    if (!existing) {
+      return prisma.roomPinCredential.create({
+        data: {
+          roomId: data.roomId,
+          reserveId: data.reserveId,
+          encryptedPin,
+          maskedPin,
+          validFrom: data.validFrom,
+          validTo: data.validTo,
+          status: data.status,
+          issuedAt: data.validFrom,
+          revokedAt: data.revokedAt ?? null,
+          expiredAt: data.expiredAt ?? null,
+          providerCredentialId: data.providerCredentialId,
+          providerPayload: { source: 'seed', facilityNo: cleaningFacility.facilityNo },
+          createdStaffId: admin.staffId,
+          updatedStaffId: manager.staffId,
+        },
+      });
+    }
+
+    return prisma.roomPinCredential.update({
+      where: { roomPinCredentialId: existing.roomPinCredentialId },
+      data: {
+        encryptedPin,
+        maskedPin,
+        validFrom: data.validFrom,
+        validTo: data.validTo,
+        status: data.status,
+        issuedAt: data.validFrom,
+        revokedAt: data.revokedAt ?? null,
+        expiredAt: data.expiredAt ?? null,
+        providerPayload: { source: 'seed', facilityNo: cleaningFacility.facilityNo },
+        dataStatus: 1,
+        deletedAt: null,
+        deletedStaffId: null,
+        updatedStaffId: manager.staffId,
+      },
+    });
+  };
+
+  const room101Pin = await upsertPinCredential({
+    roomId: rooms[0].roomId,
+    reserveId: checkoutReserve101.reserveId,
+    pin: '101429',
+    validFrom: new Date('2026-04-24T13:00:00'),
+    validTo: new Date('2026-04-30T15:00:00'),
+    status: 1,
+    providerCredentialId: 'seed-bt-101-20260429',
+  });
+
+  const room201Pin = await upsertPinCredential({
+    roomId: rooms[2].roomId,
+    reserveId: checkoutReserve201.reserveId,
+    pin: '201429',
+    validFrom: new Date('2026-04-20T13:00:00'),
+    validTo: new Date('2026-04-29T11:00:00'),
+    status: 2,
+    providerCredentialId: 'seed-bt-201-20260429',
+    revokedAt: new Date('2026-04-29T11:15:00'),
+  });
+
+  const upsertCleaningDetail = async (
+    match: Prisma.CleaningDetailWhereInput,
+    data: Prisma.CleaningDetailUncheckedCreateInput,
+  ) => {
+    const existing = await prisma.cleaningDetail.findFirst({ where: match });
+
+    if (!existing) {
+      return prisma.cleaningDetail.create({ data });
+    }
+
+    return prisma.cleaningDetail.update({
+      where: { cleaningDetailId: existing.cleaningDetailId },
+      data: {
+        facilityId: data.facilityId,
+        roomId: data.roomId ?? null,
+        reserveId: data.reserveId ?? null,
+        dataType: data.dataType,
+        areaName: data.areaName ?? null,
+        mainStaffId: data.mainStaffId ?? null,
+        subStaffId: data.subStaffId ?? null,
+        checkStaffId: data.checkStaffId ?? null,
+        mainStaffExternalFlag: data.mainStaffExternalFlag ?? false,
+        subStaffExternalFlag: data.subStaffExternalFlag ?? false,
+        checkStaffExternalFlag: data.checkStaffExternalFlag ?? false,
+        scheduledDate: data.scheduledDate ?? null,
+        startDatetime: data.startDatetime ?? null,
+        endDatetime: data.endDatetime ?? null,
+        finishDatetime: data.finishDatetime ?? null,
+        cleanStatus: data.cleanStatus ?? 1,
+        checkSafetyFlag: data.checkSafetyFlag ?? false,
+        roomPinCredentialId: data.roomPinCredentialId ?? null,
+        pinRevokedConfirmedAt: data.pinRevokedConfirmedAt ?? null,
+        comment: data.comment ?? null,
+        orderNum: data.orderNum ?? null,
+        dataStatus: 1,
+        deletedAt: null,
+        deletedStaffId: null,
+        updatedStaffId: manager.staffId,
+      },
+    });
+  };
+
+  const cleaningDetails = [
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 1, roomId: rooms[0].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[0].roomId,
+        reserveId: checkoutReserve101.reserveId,
+        dataType: 1,
+        mainStaffId: cleaningLead.staffId,
+        subStaffId: partTimeCleaner.staffId,
+        checkStaffId: cleaningChecker.staffId,
+        scheduledDate: cleaningDate,
+        startDatetime: new Date('2026-04-29T10:30:00'),
+        cleanStatus: 2,
+        comment: 'Ưu tiên xử lý sớm do khách mới đến ngày 30/04.',
+        orderNum: 1,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 1, roomId: rooms[2].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[2].roomId,
+        reserveId: checkoutReserve201.reserveId,
+        dataType: 1,
+        mainStaffId: cleaningSub.staffId,
+        subStaffId: partTimeCleaner.staffId,
+        checkStaffId: cleaningChecker.staffId,
+        scheduledDate: cleaningDate,
+        startDatetime: new Date('2026-04-29T11:20:00'),
+        endDatetime: new Date('2026-04-29T12:10:00'),
+        cleanStatus: 4,
+        comment: 'Phòng cần deep clean, đã khóa nhận đặt ngay.',
+        orderNum: 2,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 1, roomId: rooms[4].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[4].roomId,
+        reserveId: checkoutReserve301.reserveId,
+        dataType: 1,
+        mainStaffId: cleaningLead.staffId,
+        subStaffId: cleaningSub.staffId,
+        checkStaffId: manager.staffId,
+        scheduledDate: cleaningDate,
+        cleanStatus: 1,
+        comment: 'Có khách mới ngày 30/04, kiểm tra lại chìa sau khi dọn.',
+        orderNum: 3,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 1, roomId: rooms[5].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[5].roomId,
+        reserveId: checkoutReserve401.reserveId,
+        dataType: 1,
+        mainStaffId: partTimeCleaner.staffId,
+        subStaffId: null,
+        checkStaffId: cleaningChecker.staffId,
+        scheduledDate: cleaningDate,
+        startDatetime: new Date('2026-04-29T13:10:00'),
+        endDatetime: new Date('2026-04-29T13:55:00'),
+        finishDatetime: new Date('2026-04-29T13:55:00'),
+        cleanStatus: 5,
+        comment: 'Đã hoàn tất, không có khách mới sát ngày.',
+        orderNum: 4,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 2, areaName: 'Sảnh lễ tân tầng 1', deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        dataType: 2,
+        areaName: 'Sảnh lễ tân tầng 1',
+        mainStaffId: cleaningLead.staffId,
+        checkStaffId: manager.staffId,
+        scheduledDate: cleaningDate,
+        startDatetime: new Date('2026-04-29T08:30:00'),
+        endDatetime: new Date('2026-04-29T09:10:00'),
+        finishDatetime: new Date('2026-04-29T09:10:00'),
+        cleanStatus: 5,
+        comment: 'Đã lau kính và bổ sung nước rửa tay.',
+        orderNum: 10,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 2, areaName: 'Hành lang tầng 2', deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        dataType: 2,
+        areaName: 'Hành lang tầng 2',
+        mainStaffId: cleaningSub.staffId,
+        subStaffId: partTimeCleaner.staffId,
+        scheduledDate: cleaningDate,
+        cleanStatus: 2,
+        comment: 'Đang hút bụi thảm và kiểm tra đèn hành lang.',
+        orderNum: 11,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      {
+        cleanId: cleanShift.cleanId,
+        dataType: 2,
+        areaName: 'Khu rác và thang máy',
+        deletedAt: null,
+      },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        dataType: 2,
+        areaName: 'Khu rác và thang máy',
+        mainStaffId: null,
+        mainStaffExternalFlag: true,
+        checkStaffId: cleaningChecker.staffId,
+        scheduledDate: cleaningDate,
+        cleanStatus: 1,
+        comment: 'Nhà thầu vệ sinh xử lý sau 15:00.',
+        orderNum: 12,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 3, roomId: rooms[0].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[0].roomId,
+        reserveId: checkoutReserve101.reserveId,
+        dataType: 3,
+        mainStaffId: manager.staffId,
+        scheduledDate: cleaningDate,
+        cleanStatus: 2,
+        checkSafetyFlag: false,
+        roomPinCredentialId: room101Pin.roomPinCredentialId,
+        comment: 'PIN còn hiệu lực đến 30/04, cần thu hồi sau khi xác nhận trả đủ chìa.',
+        orderNum: 20,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+    await upsertCleaningDetail(
+      { cleanId: cleanShift.cleanId, dataType: 3, roomId: rooms[2].roomId, deletedAt: null },
+      {
+        cleanId: cleanShift.cleanId,
+        facilityId: cleaningFacility.facilityId,
+        roomId: rooms[2].roomId,
+        reserveId: checkoutReserve201.reserveId,
+        dataType: 3,
+        mainStaffId: manager.staffId,
+        scheduledDate: cleaningDate,
+        cleanStatus: 5,
+        checkSafetyFlag: true,
+        roomPinCredentialId: room201Pin.roomPinCredentialId,
+        pinRevokedConfirmedAt: new Date('2026-04-29T11:20:00'),
+        comment: 'Đã thu hồi PIN và xác nhận trả chìa.',
+        orderNum: 21,
+        createdStaffId: admin.staffId,
+        updatedStaffId: manager.staffId,
+      },
+    ),
+  ];
+
+  const upsertDetailNote = async (cleaningDetailId: number, noteContent: string) => {
+    const existing = await prisma.cleanDetailNote.findFirst({
+      where: { cleaningDetailId, noteContent, deletedAt: null },
+    });
+
+    if (!existing) {
+      await prisma.cleanDetailNote.create({
+        data: {
+          cleaningDetailId,
+          noteContent,
+          createdStaffId: manager.staffId,
+          updatedStaffId: manager.staffId,
+        },
+      });
+    }
+  };
+
+  await upsertDetailNote(
+    cleaningDetails[0].cleaningDetailId,
+    'Báo lễ tân giữ chìa dự phòng cho phòng 101.',
+  );
+  await upsertDetailNote(
+    cleaningDetails[1].cleaningDetailId,
+    'Cần kiểm tra lại mùi phòng sau khi deep clean.',
+  );
+  await upsertDetailNote(
+    cleaningDetails[7].cleaningDetailId,
+    'Chưa xác nhận thu hồi PIN, không đánh dấu an toàn.',
+  );
+
+  console.log(`  Cleaning shift: ${cleaningFacility.facilityName} - 2026-04-29`);
+  console.log(`  Cleaning details: ${cleaningDetails.length} rows`);
 
   // ─── Reserve Occupiers (Co-guests) ────────────────
   console.log('\nSeeding reserve occupiers...');
@@ -1417,10 +2096,10 @@ async function main(): Promise<void> {
 
   // ─── Update useCount for clients with reservations ─
   const useCountMap = [
-    { clientId: client1.clientId, useCount: 2 },
-    { clientId: client2.clientId, useCount: 1 },
-    { clientId: client3.clientId, useCount: 1 },
-    { clientId: client4.clientId, useCount: 1 },
+    { clientId: client1.clientId, useCount: 3 },
+    { clientId: client2.clientId, useCount: 3 },
+    { clientId: client3.clientId, useCount: 2 },
+    { clientId: client4.clientId, useCount: 2 },
     { clientId: client5.clientId, useCount: 1 },
   ];
 
@@ -1508,9 +2187,9 @@ async function main(): Promise<void> {
 
   // ─── Bicycle Parking Reserves ─────────────────────────
   console.log('\nSeeding bicycle parking reserves...');
-  
-  const bp_nguyenHue_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('02').facilityId, number: '001', deletedAt: null }});
-  const bp_phuMyHung_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('04').facilityId, number: '001', deletedAt: null }});
+
+  const bp_nguyenHue_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('02').facilityId, number: '001', deletedAt: null } });
+  const bp_phuMyHung_1 = await prisma.bicycleParking.findFirst({ where: { parentFacilityId: f('04').facilityId, number: '001', deletedAt: null } });
 
   let bprCount = 0;
   if (bp_nguyenHue_1 && bp_phuMyHung_1) {
@@ -1580,7 +2259,10 @@ async function main(): Promise<void> {
   console.log('  ParkingRents:      84 (12 parkings × 7 stay types)');
   console.log('  BicycleParkings:    8 (across 4 facilities with bicycleParkingFlag)');
   console.log('  Clients:            5 (3 VN, 1 US, 1 KR)');
-  console.log('  Reservations:       6 (1 Pending, 2 Confirmed, 1 Checked-in, 1 Checked-out, 1 Cancelled)');
+  console.log('  Reservations:      12 (including cleaning-shift checkout and next-reserve samples)');
+  console.log('  CleaningShift:      1 (facility 01, cleaning date 2026-04-29)');
+  console.log('  CleaningDetails:    9 (4 rooms, 3 common areas, 2 key-safety rows)');
+  console.log('  SmartLockPins:      2 (linked to cleaning key-safety rows)');
   console.log('  Occupiers:          3 (co-guests)');
 }
 

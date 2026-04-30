@@ -40,10 +40,7 @@ const NButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : 'button'
     return (
       <Comp
-        className={cn(
-          buttonVariants({ variant, size, className }),
-          'border-[1px] bg-gray-100 border-black'
-        )}
+        className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />

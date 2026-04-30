@@ -116,6 +116,11 @@ model Staff {
   usageStatusesUpdated      UsageStatus[]      @relation("UsageStatusUpdatedBy")
   usageStatusesDeleted      UsageStatus[]      @relation("UsageStatusDeletedBy")
 
+  // Phase 9: Memo
+  memosCreated              Memo[]             @relation("MemoCreatedBy")
+  memosUpdated              Memo[]             @relation("MemoUpdatedBy")
+  memosDeleted              Memo[]             @relation("MemoDeletedBy")
+
   // Phase 10: ParkingReserve
   parkingReservesCreated         ParkingReserve[]         @relation("ParkingReserveCreatedBy")
   parkingReservesUpdated         ParkingReserve[]         @relation("ParkingReserveUpdatedBy")
@@ -224,6 +229,7 @@ model Facility {
   parkingRents        ParkingRent[]
   bicycleParkings     BicycleParking[]
   usageStatuses       UsageStatus[]
+  memos               Memo[]
   cleans              Cleans[]
   cleaningDetails     CleaningDetail[]
 
@@ -339,6 +345,7 @@ model Room {
 
   reserves            Reserve[]
   usageStatuses       UsageStatus[]
+  memos               Memo[]
   pinCredentials      RoomPinCredential[]
   cleaningDetails     CleaningDetail[]
 

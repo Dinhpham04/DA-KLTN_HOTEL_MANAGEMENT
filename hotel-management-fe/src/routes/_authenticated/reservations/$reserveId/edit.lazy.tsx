@@ -571,11 +571,40 @@ function ReservationEditPage() {
     )
   }
 
+  const handleConvertDraftToFull = async () => {
+    if (!reserve) return
+    try {
+      await updateReservation({ reserveId: reserve.reserveId, draftFlag: false })
+    } catch {
+      // toast already shown by mutation onError
+    }
+  }
+
   return (
     <>
       {isSubmitting && <Loading />}
       <div className="common-container">
         <div className="pt-16 pb-52">
+          {reserve.draftFlag && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#FFF8E1] border border-[#E0B900] rounded-[0.8rem] px-6 py-4 mb-8">
+              <div className="flex items-start gap-3">
+                <div>
+                  <p className="font-bold text-[1.6rem] text-black">Đây là đặt tạm</p>
+                  <p className="text-[1.3rem]">
+                    Đặt phòng đang ở trạng thái giữ chỗ tạm thời. Chuyển thành đặt phòng chính thức để xác nhận.
+                  </p>
+                </div>
+              </div>
+              <NButton
+                type="button"
+                variant="default"
+                className="!px-4 whitespace-nowrap"
+                onClick={handleConvertDraftToFull}
+              >
+                Chuyển thành đặt phòng chính thức
+              </NButton>
+            </div>
+          )}
           <section>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)}>

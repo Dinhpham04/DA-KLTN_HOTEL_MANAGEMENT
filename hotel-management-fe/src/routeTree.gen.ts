@@ -17,7 +17,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedStaffMasterRouteImport } from './routes/_authenticated/staff-master'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCleaningRouteImport } from './routes/_authenticated/cleaning'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
 
 const AuthenticatedUsageSituationLazyRouteImport = createFileRoute(
@@ -40,6 +39,12 @@ const AuthenticatedParkingSearchLazyRouteImport = createFileRoute(
 )()
 const AuthenticatedParkingMasterLazyRouteImport = createFileRoute(
   '/_authenticated/parking-master',
+)()
+const AuthenticatedCleaningShiftLazyRouteImport = createFileRoute(
+  '/_authenticated/cleaning-shift',
+)()
+const AuthenticatedCleaningLazyRouteImport = createFileRoute(
+  '/_authenticated/cleaning',
 )()
 const AuthenticatedBicycleParkingMasterLazyRouteImport = createFileRoute(
   '/_authenticated/bicycle-parking-master',
@@ -141,6 +146,22 @@ const AuthenticatedParkingMasterLazyRoute =
   } as any).lazy(() =>
     import('./routes/_authenticated/parking-master.lazy').then((d) => d.Route),
   )
+const AuthenticatedCleaningShiftLazyRoute =
+  AuthenticatedCleaningShiftLazyRouteImport.update({
+    id: '/cleaning-shift',
+    path: '/cleaning-shift',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/cleaning-shift.lazy').then((d) => d.Route),
+  )
+const AuthenticatedCleaningLazyRoute =
+  AuthenticatedCleaningLazyRouteImport.update({
+    id: '/cleaning',
+    path: '/cleaning',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/cleaning.lazy').then((d) => d.Route),
+  )
 const AuthenticatedBicycleParkingMasterLazyRoute =
   AuthenticatedBicycleParkingMasterLazyRouteImport.update({
     id: '/bicycle-parking-master',
@@ -165,11 +186,6 @@ const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedCleaningRoute = AuthenticatedCleaningRouteImport.update({
-  id: '/cleaning',
-  path: '/cleaning',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedBillingRoute = AuthenticatedBillingRouteImport.update({
@@ -258,11 +274,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/billing': typeof AuthenticatedBillingRoute
-  '/cleaning': typeof AuthenticatedCleaningRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
   '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/cleaning': typeof AuthenticatedCleaningLazyRoute
+  '/cleaning-shift': typeof AuthenticatedCleaningShiftLazyRoute
   '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
@@ -283,11 +300,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/billing': typeof AuthenticatedBillingRoute
-  '/cleaning': typeof AuthenticatedCleaningRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/staff-master': typeof AuthenticatedStaffMasterRoute
   '/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/cleaning': typeof AuthenticatedCleaningLazyRoute
+  '/cleaning-shift': typeof AuthenticatedCleaningShiftLazyRoute
   '/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/rents-master': typeof AuthenticatedRentsMasterLazyRoute
@@ -310,11 +328,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/billing': typeof AuthenticatedBillingRoute
-  '/_authenticated/cleaning': typeof AuthenticatedCleaningRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/staff-master': typeof AuthenticatedStaffMasterRoute
   '/_authenticated/bicycle-parking-master': typeof AuthenticatedBicycleParkingMasterLazyRoute
+  '/_authenticated/cleaning': typeof AuthenticatedCleaningLazyRoute
+  '/_authenticated/cleaning-shift': typeof AuthenticatedCleaningShiftLazyRoute
   '/_authenticated/parking-master': typeof AuthenticatedParkingMasterLazyRoute
   '/_authenticated/parking-search': typeof AuthenticatedParkingSearchLazyRoute
   '/_authenticated/rents-master': typeof AuthenticatedRentsMasterLazyRoute
@@ -337,11 +356,12 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/billing'
-    | '/cleaning'
     | '/dashboard'
     | '/rooms'
     | '/staff-master'
     | '/bicycle-parking-master'
+    | '/cleaning'
+    | '/cleaning-shift'
     | '/parking-master'
     | '/parking-search'
     | '/rents-master'
@@ -362,11 +382,12 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/billing'
-    | '/cleaning'
     | '/dashboard'
     | '/rooms'
     | '/staff-master'
     | '/bicycle-parking-master'
+    | '/cleaning'
+    | '/cleaning-shift'
     | '/parking-master'
     | '/parking-search'
     | '/rents-master'
@@ -388,11 +409,12 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/billing'
-    | '/_authenticated/cleaning'
     | '/_authenticated/dashboard'
     | '/_authenticated/rooms'
     | '/_authenticated/staff-master'
     | '/_authenticated/bicycle-parking-master'
+    | '/_authenticated/cleaning'
+    | '/_authenticated/cleaning-shift'
     | '/_authenticated/parking-master'
     | '/_authenticated/parking-search'
     | '/_authenticated/rents-master'
@@ -488,6 +510,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedParkingMasterLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/cleaning-shift': {
+      id: '/_authenticated/cleaning-shift'
+      path: '/cleaning-shift'
+      fullPath: '/cleaning-shift'
+      preLoaderRoute: typeof AuthenticatedCleaningShiftLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/cleaning': {
+      id: '/_authenticated/cleaning'
+      path: '/cleaning'
+      fullPath: '/cleaning'
+      preLoaderRoute: typeof AuthenticatedCleaningLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/bicycle-parking-master': {
       id: '/_authenticated/bicycle-parking-master'
       path: '/bicycle-parking-master'
@@ -514,13 +550,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/cleaning': {
-      id: '/_authenticated/cleaning'
-      path: '/cleaning'
-      fullPath: '/cleaning'
-      preLoaderRoute: typeof AuthenticatedCleaningRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/billing': {
@@ -591,11 +620,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedBillingRoute: typeof AuthenticatedBillingRoute
-  AuthenticatedCleaningRoute: typeof AuthenticatedCleaningRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedStaffMasterRoute: typeof AuthenticatedStaffMasterRoute
   AuthenticatedBicycleParkingMasterLazyRoute: typeof AuthenticatedBicycleParkingMasterLazyRoute
+  AuthenticatedCleaningLazyRoute: typeof AuthenticatedCleaningLazyRoute
+  AuthenticatedCleaningShiftLazyRoute: typeof AuthenticatedCleaningShiftLazyRoute
   AuthenticatedParkingMasterLazyRoute: typeof AuthenticatedParkingMasterLazyRoute
   AuthenticatedParkingSearchLazyRoute: typeof AuthenticatedParkingSearchLazyRoute
   AuthenticatedRentsMasterLazyRoute: typeof AuthenticatedRentsMasterLazyRoute
@@ -615,12 +645,13 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBillingRoute: AuthenticatedBillingRoute,
-  AuthenticatedCleaningRoute: AuthenticatedCleaningRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedStaffMasterRoute: AuthenticatedStaffMasterRoute,
   AuthenticatedBicycleParkingMasterLazyRoute:
     AuthenticatedBicycleParkingMasterLazyRoute,
+  AuthenticatedCleaningLazyRoute: AuthenticatedCleaningLazyRoute,
+  AuthenticatedCleaningShiftLazyRoute: AuthenticatedCleaningShiftLazyRoute,
   AuthenticatedParkingMasterLazyRoute: AuthenticatedParkingMasterLazyRoute,
   AuthenticatedParkingSearchLazyRoute: AuthenticatedParkingSearchLazyRoute,
   AuthenticatedRentsMasterLazyRoute: AuthenticatedRentsMasterLazyRoute,

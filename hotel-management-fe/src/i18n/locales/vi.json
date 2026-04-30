@@ -77,7 +77,8 @@
     "rentsMaster": "Quản lý giá thuê",
     "parkingSearch": "Bãi đỗ xe",
     "reservationSearch": "Tìm đặt phòng",
-    "usageSituation": "Tình trạng sử dụng"
+    "usageSituation": "Tình trạng sử dụng",
+    "whiteboard": "Tình trạng sử dụng"
   },
   "whiteboard": {
     "title": "Tình trạng sử dụng",
@@ -100,6 +101,28 @@
       "reserved": "Đã đặt",
       "draft": "Bản nháp",
       "rakuten": "Rakuten"
+    },
+    "bookingActions": {
+      "create": "Đặt phòng",
+      "createDraft": "Đặt tạm"
+    },
+    "draftReservation": {
+      "title": "Đặt phòng tạm",
+      "facility": "Cơ sở/Phòng",
+      "client": "Khách hàng",
+      "selectClient": "-- Chọn khách hàng --",
+      "noClients": "Chưa có khách hàng — hãy bấm \"Thêm\"",
+      "clientRequired": "Vui lòng chọn khách hàng",
+      "addClient": "Thêm",
+      "expiry": "Thời hạn",
+      "expiredRequired": "Vui lòng chọn thời hạn",
+      "period": "Khoảng thời gian",
+      "periodToAfterFrom": "Ngày kết thúc phải sau ngày bắt đầu",
+      "note": "Ghi chú",
+      "notePlaceholder": "Ghi chú nội bộ (không bắt buộc)",
+      "submit": "Giữ chỗ",
+      "successCreate": "Đã tạo đặt tạm thành công",
+      "errorCreate": "Tạo đặt tạm thất bại"
     }
   },
   "dashboard": {

@@ -53,10 +53,16 @@ export function Header() {
   const menuList: MenuItem[] = [
     { id: 1, item: t('nav.dashboard'), url: '/dashboard' },
     { id: 2, item: t('nav.reservations'), url: '/reservations' },
-    { id: 3, item: t('nav.rooms'), url: '/rooms' },
     { id: 4, item: t('nav.clients'), url: '/clients' },
     { id: 5, item: t('nav.billing'), url: '/billing' },
-    { id: 6, item: t('nav.cleaning'), url: '/cleaning' },
+    {
+      id: 6,
+      item: t('nav.cleaning'),
+      children: [
+        { id: 61, url: '/cleaning', menu_children: 'Quản lý ca vệ sinh' },
+        { id: 62, url: '/cleaning-shift', menu_children: 'Nhật báo vệ sinh' },
+      ],
+    },
     { id: 8, item: t('nav.parkingSearch'), url: '/parking-search' },
     { id: 9, item: t('nav.usageSituation'), url: '/usage-situation' },
     {
@@ -162,23 +168,23 @@ export function Header() {
             <div className="flex flex-col justify-center items-center gap-2">
               <div
                 className={`h-[4.5rem] w-[4.5rem] cursor-pointer border rounded-[0.4rem] flex items-center justify-center ${
-                  location.pathname === '/reservations' ? 'bg-[#666666]' : 'bg-[#204172]'
+                  location.pathname === '/usage-situation' ? 'bg-[#666666]' : 'bg-[#204172]'
                 }`}
-                onClick={() => navigate({ to: '/reservations' })}
+                onClick={() => navigate({ to: '/usage-situation' })}
               >
                 <ReservationIcon
                   className={
-                    location.pathname === '/reservations' ? 'text-[#666666]' : 'text-white'
+                    location.pathname === '/usage-situation' ? 'text-[#666666]' : 'text-white'
                   }
                 />
               </div>
               <div
                 className={cn(
                   'font-medium text-[1.3rem]',
-                  location.pathname === '/reservations' ? 'text-gray-400' : 'text-white'
+                  location.pathname === '/usage-situation' ? 'text-gray-400' : 'text-white'
                 )}
               >
-                {t('nav.reservations')}
+                {t('nav.whiteboard')}
               </div>
             </div>
           </Drawer>

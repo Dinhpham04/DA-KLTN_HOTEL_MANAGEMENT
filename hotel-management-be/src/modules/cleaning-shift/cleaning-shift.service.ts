@@ -60,9 +60,18 @@ export class CleaningShiftService {
       };
     }
 
-    const details = await this.repository.findDetailsByCleanId(cleans.cleanId, filter.dataType);
+    const details = await this.repository.findDetailsByCleanId(cleans.cleanId, {
+      dataType: filter.dataType,
+      roomTypeIds: filter.roomTypeIds,
+      sort: filter.sort,
+      direction: filter.direction,
+    });
 
-    const enriched = await Promise.all(details.map((d) => this.enrichDetail(d)));
+    let enriched = await this.enrichDetails(details);
+    if (filter.newReserveFlag === 1) {
+      enriched = enriched.filter((detail) => detail.newReserveDate !== null);
+    }
+    enriched = this.sortEnrichedDetails(enriched, filter.sort, filter.direction);
 
     return {
       cleanId: cleans.cleanId,
@@ -467,7 +476,119 @@ export class CleaningShiftService {
     return this.repository.findActivePinCredential(detail.roomId, detail.reserveId);
   }
 
-  private async enrichDetail(detail: DetailWithIncludes): Promise<CleaningDetailResponseDto> {
+  private async enrichDetails(details: DetailWithIncludes[]): Promise<CleaningDetailResponseDto[]> {
+    const nextReserveDateMap = await this.buildNextReserveDateMap(details);
+    return Promise.all(
+      details.map((detail) =>
+        this.enrichDetail(detail, nextReserveDateMap.get(detail.cleaningDetailId) ?? null),
+      ),
+    );
+  }
+
+  private async buildNextReserveDateMap(details: DetailWithIncludes[]) {
+    const detailsWithRoom = details.filter((detail) => detail.roomId !== null);
+    if (detailsWithRoom.length === 0) return new Map<number, Date>();
+
+    const roomIds = [...new Set(detailsWithRoom.map((detail) => detail.roomId as number))];
+    const thresholds = detailsWithRoom
+      .map((detail) => this.nextReserveThreshold(detail))
+      .filter((date): date is Date => date !== null)
+      .map((date) => this.parseDateOnly(date));
+
+    if (thresholds.length === 0) return new Map<number, Date>();
+
+    const minThreshold = new Date(Math.min(...thresholds.map((date) => date.getTime())));
+    const candidates = await this.repository.findFutureReservesByRoomIds(roomIds, minThreshold);
+    type FutureReserve = (typeof candidates)[number];
+
+    const candidatesByRoom = new Map<number, FutureReserve[]>();
+    for (const candidate of candidates) {
+      if (!candidate.roomId || !candidate.periodFrom) continue;
+      const roomCandidates = candidatesByRoom.get(candidate.roomId) ?? [];
+      roomCandidates.push(candidate);
+      candidatesByRoom.set(candidate.roomId, roomCandidates);
+    }
+
+    const nextReserveDateMap = new Map<number, Date>();
+    for (const detail of detailsWithRoom) {
+      const threshold = this.nextReserveThreshold(detail);
+      if (!threshold || !detail.roomId) continue;
+      const normalizedThreshold = this.parseDateOnly(threshold);
+
+      const candidate = (candidatesByRoom.get(detail.roomId) ?? []).find((reserve) => {
+        if (!reserve.periodFrom) return false;
+        if (reserve.reserveId === detail.reserveId) return false;
+        if (reserve.periodFrom < normalizedThreshold) return false;
+        return (
+          reserve.rentalKeys === null ||
+          reserve.rentalKeys === 0 ||
+          reserve.returnKeys === null ||
+          reserve.returnKeys < reserve.rentalKeys
+        );
+      });
+
+      if (candidate?.periodFrom) {
+        nextReserveDateMap.set(detail.cleaningDetailId, candidate.periodFrom);
+      }
+    }
+
+    return nextReserveDateMap;
+  }
+
+  private nextReserveThreshold(detail: DetailWithIncludes): Date | null {
+    return (
+      detail.reserve?.lastStayDate ??
+      detail.reserve?.periodTo ??
+      detail.reserve?.checkoutAt ??
+      detail.scheduledDate ??
+      null
+    );
+  }
+
+  private sortEnrichedDetails(
+    details: CleaningDetailResponseDto[],
+    sort?: string,
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    if (!sort) return details;
+
+    const normalizedSort = sort.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+    const sorted = [...details];
+    const multiplier = direction === 'desc' ? -1 : 1;
+
+    const compareString = (a: string | null, b: string | null) =>
+      ((a ?? '').localeCompare(b ?? '', 'vi') || 0) * multiplier;
+    const compareDate = (a: string | Date | null, b: string | Date | null) => {
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+      return (new Date(a).getTime() - new Date(b).getTime()) * multiplier;
+    };
+
+    sorted.sort((a, b) => {
+      if (normalizedSort === 'newReservesDate' || normalizedSort === 'newReserveDate') {
+        return compareDate(a.newReserveDate, b.newReserveDate);
+      }
+      if (normalizedSort === 'periodTo' || normalizedSort === 'reserveCheckoutAt') {
+        return compareDate(a.reservePeriodTo ?? a.reserveCheckoutAt, b.reservePeriodTo ?? b.reserveCheckoutAt);
+      }
+      if (normalizedSort === 'mainStaffName') {
+        return compareString(a.mainStaffName, b.mainStaffName);
+      }
+      if (normalizedSort === 'facilityNo' || normalizedSort === 'roomNumber') {
+        const facilityCompare = compareString(a.facilityNo, b.facilityNo);
+        return facilityCompare !== 0 ? facilityCompare : compareString(a.roomNumber, b.roomNumber);
+      }
+      return 0;
+    });
+
+    return sorted;
+  }
+
+  private async enrichDetail(
+    detail: DetailWithIncludes,
+    newReserveDate: Date | null = null,
+  ): Promise<CleaningDetailResponseDto> {
     let pin = detail.roomPinCredential;
     if (!pin && detail.dataType === CleaningDataType.KEY_SAFETY && detail.roomId) {
       pin = await this.repository.findActivePinCredential(detail.roomId, detail.reserveId);
@@ -491,11 +612,25 @@ export class CleaningShiftService {
       cleanId: detail.cleanId,
       facilityId: detail.facilityId,
       facilityName: detail.facility?.facilityName ?? null,
+      facilityNo: detail.facility?.facilityNo ?? null,
       roomId: detail.roomId,
       roomNumber: detail.room?.roomNumber ?? null,
+      roomMailboxPassword: detail.room?.mailboxPassword ?? null,
+      roomTypeId: detail.room?.roomTypeId ?? null,
+      roomTypeName: detail.room?.roomType?.roomTypeName ?? null,
       reserveId: detail.reserveId,
       reserveClientName: detail.reserve?.client?.clientName ?? null,
       reserveCheckoutAt: detail.reserve?.checkoutAt ?? detail.reserve?.periodTo ?? null,
+      reservePeriodFrom: detail.reserve?.periodFrom ?? null,
+      reservePeriodTo: detail.reserve?.periodTo ?? null,
+      reserveNoreserveCountAfter: detail.reserve?.noreserveCountAfter ?? null,
+      reserveDisableReservation: detail.reserve?.disableReservation ?? false,
+      reserveRentalKeys: detail.reserve?.rentalKeys ?? null,
+      reserveReturnKeys: detail.reserve?.returnKeys ?? null,
+      reserveKeyReturnDatetime: detail.reserve?.keyReturnDatetime ?? null,
+      reserveCheckoutReceptionistId: detail.reserve?.checkoutReceptionistId ?? null,
+      newReserveDate,
+      roomDirtyLevel: detail.reserve?.roomDirtyLevel ?? null,
       dataType: detail.dataType,
       areaName: detail.areaName,
       mainStaffId: detail.mainStaffId,

@@ -195,13 +195,15 @@ html {
     @apply bg-accent text-accent-foreground;
   }
 
-  /* Default button — white background, matches legacy btn-default */
+  /* Default button — unified blue background */
   .btn-default {
-    @apply bg-white text-black;
-    border: 1px solid #ccc;
+    background-color: rgba(32, 65, 114, 1);
+    color: #fff;
+    border: 1px solid rgba(32, 65, 114, 1);
   }
   .btn-default:hover {
-    @apply bg-gray-100;
+    background-color: rgba(32, 65, 114, 1);
+    color: #fff;
   }
 
   .button-detail {

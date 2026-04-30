@@ -9,6 +9,6 @@ import { ReservationEventListeners } from './events/reservation.listeners';
   imports: [ClientModule],
   controllers: [ReservationController],
   providers: [ReservationService, ReservationRepository, ReservationEventListeners],
-  exports: [ReservationService],
+  exports: [ReservationService, ReservationRepository],
 })
 export class ReservationModule { }

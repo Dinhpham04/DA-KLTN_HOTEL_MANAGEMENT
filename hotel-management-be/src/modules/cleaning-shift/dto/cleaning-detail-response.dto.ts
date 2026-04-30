@@ -15,10 +15,22 @@ export class CleaningDetailResponseDto {
   facilityName!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
+  facilityNo!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
   roomId!: number | null;
 
   @ApiPropertyOptional({ nullable: true })
   roomNumber!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  roomMailboxPassword!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  roomTypeId!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  roomTypeName!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   reserveId!: number | null;
@@ -28,6 +40,36 @@ export class CleaningDetailResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   reserveCheckoutAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reservePeriodFrom!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reservePeriodTo!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reserveNoreserveCountAfter!: number | null;
+
+  @ApiProperty()
+  reserveDisableReservation!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  reserveRentalKeys!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reserveReturnKeys!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reserveKeyReturnDatetime!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reserveCheckoutReceptionistId!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  newReserveDate!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  roomDirtyLevel!: number | null;
 
   @ApiProperty({ description: '1=Room, 2=CommonArea, 3=KeySafety' })
   dataType!: number;
