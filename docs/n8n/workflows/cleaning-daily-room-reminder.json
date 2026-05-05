@@ -1,0 +1,165 @@
+{
+  "name": "Hotel Cleaning - Daily Room Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-room-config-schedule",
+      "name": "Every Day 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n  }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\n\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: 'dev-internal-token',\n    cleaningDate: formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh'),\n    cleaningReasons: [\"STAYOVER_ROOM\"],\n    source: 'n8n-daily-room-reminder',\n  },\n};"
+      },
+      "id": "daily-room-config",
+      "name": "Build Reminder Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendBaseUrl + '/internal/cleaning-shifts/remind-unstarted' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ cleaningDate: $json.cleaningDate, cleaningReasons: $json.cleaningReasons }) }}"
+      },
+      "id": "daily-room-http",
+      "name": "Get Reminder Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst tasks = response.tasks ?? [];\nif (tasks.length === 0) {\n  return [];\n}\n\nconst lines = tasks.slice(0, 20).map((task) => {\n  const target = task.roomNumber ? `Room ${task.roomNumber}` : task.areaName;\n  const reason = (task.cleaningReasonLabels ?? []).join(', ');\n  return `- ${task.facilityNo ?? ''} ${target ?? ''} / ${reason || 'Cleaning'} / ${task.mainStaffName ?? 'Unassigned'}`.trim();\n});\n\nconst title = 'Daily room cleaning not started: ' + tasks.length;\nconst text = `Date: ${response.cleaningDate}\\n${lines.join('\\n')}`;\nconst slackWebhookUrl = 'PASTE_SLACK_WEBHOOK_URL_HERE';\n\nreturn { json: { shouldNotify: true, title, text, slackWebhookUrl, slackPayload: { text: `*${title}*\\n${text}` }, response } };"
+      },
+      "id": "daily-room-message",
+      "name": "Build Reminder Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "daily-room-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every Day 09:00": {
+      "main": [
+        [
+          {
+            "node": "Build Reminder Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reminder Payload": {
+      "main": [
+        [
+          {
+            "node": "Get Reminder Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Reminder Tasks": {
+      "main": [
+        [
+          {
+            "node": "Build Reminder Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reminder Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "cleaning-daily-room-reminder-v2"
+}

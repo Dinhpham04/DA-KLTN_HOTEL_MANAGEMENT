@@ -1,25 +1,28 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 
 import { ERROR_MESSAGES } from '@common/index';
 
+import { CleaningShiftRepository, type DetailWithIncludes } from './cleaning-shift.repository';
 import {
-  CleaningShiftRepository,
-  type DetailWithIncludes,
-} from './cleaning-shift.repository';
-import { CleaningDataType, CleaningStatus, isAllowedTransition } from './enums';
+  CLEANING_REASON_LABEL,
+  CleaningDataType,
+  CleaningReason,
+  CleaningStatus,
+  extractCleaningReasons,
+  isAllowedTransition,
+} from './enums';
 import {
   CleanDetailNoteResponseDto,
+  CleaningAutomationFilterDto,
   CleaningDetailResponseDto,
   CleaningShiftFilterDto,
   CleansResponseDto,
   CopyCleaningDetailDto,
   CreateCleaningDetailDto,
   CreateCleanDetailNoteDto,
+  GenerateCleaningShiftsDto,
   PinInfoDto,
   UpdateCleaningDetailDto,
   UpdateCleaningDetailType1Dto,
@@ -33,17 +36,37 @@ import {
 } from './dto';
 
 const PIN_STATUS_ACTIVE = 1;
+const DEFAULT_COMMON_AREA_NAMES = [
+  'Sảnh lễ tân tầng 1',
+  'Hành lang tầng 2',
+  'Khu rác và thang máy',
+];
+
+const DEFAULT_CLEANING_REASONS = [
+  CleaningReason.COMMON_AREA_DAILY,
+  CleaningReason.CHECKOUT_ROOM,
+  CleaningReason.PRE_CHECKIN_ROOM,
+  CleaningReason.STAYOVER_ROOM,
+];
 
 @Injectable()
 export class CleaningShiftService {
-  constructor(private readonly repository: CleaningShiftRepository) {}
+  private readonly logger = new Logger(CleaningShiftService.name);
+
+  constructor(
+    private readonly repository: CleaningShiftRepository,
+    private readonly configService: ConfigService,
+  ) {}
 
   // ─── List ────────────────────────────────────────────
 
   async findAll(filter: CleaningShiftFilterDto): Promise<CleansResponseDto> {
     const cleaningDate = this.parseDateOnly(filter.cleaningDate);
 
-    let cleans = await this.repository.findCleansByFacilityAndDate(filter.facilityId, cleaningDate);
+    const cleans = await this.repository.findCleansByFacilityAndDate(
+      filter.facilityId,
+      cleaningDate,
+    );
 
     if (!cleans) {
       // Return an empty header (not yet persisted) so FE can render the date row.
@@ -83,6 +106,120 @@ export class CleaningShiftService {
       details: enriched,
       createdAt: cleans.createdAt,
       updatedAt: cleans.updatedAt,
+    };
+  }
+
+  // Automation endpoints for n8n/internal schedulers.
+
+  async generateCleaningJobs(dto: GenerateCleaningShiftsDto) {
+    const cleaningDate = this.parseDateOnly(dto.cleaningDate);
+    const automationStaffId = await this.resolveAutomationStaffId(dto.automationStaffId);
+
+    if (dto.mainStaffId !== undefined) {
+      const staff = await this.repository.findActiveStaffById(dto.mainStaffId);
+      if (!staff) {
+        throw new BadRequestException('Nhân viên phụ trách mặc định không tồn tại');
+      }
+    }
+
+    const result = await this.repository.generateCleaningJobs({
+      cleaningDate,
+      facilityIds: dto.facilityIds,
+      commonAreaNames:
+        dto.commonAreaNames && dto.commonAreaNames.length > 0
+          ? dto.commonAreaNames
+          : DEFAULT_COMMON_AREA_NAMES,
+      cleaningReasons:
+        dto.cleaningReasons && dto.cleaningReasons.length > 0
+          ? dto.cleaningReasons
+          : DEFAULT_CLEANING_REASONS,
+      mainStaffId: dto.mainStaffId,
+      automationStaffId,
+      force: dto.force ?? false,
+      source: dto.source?.trim() || 'n8n-cleaning-automation',
+    });
+
+    this.logger.log(
+      `Generated cleaning jobs for ${cleaningDate.toISOString().slice(0, 10)}: created=${result.created}, skipped=${result.skipped}`,
+    );
+
+    return {
+      ...result,
+      automationStaffId,
+    };
+  }
+
+  async getAutomationSummary(filter: CleaningAutomationFilterDto) {
+    const cleaningDate = this.parseDateOnly(filter.cleaningDate);
+    const details = this.filterDetailsByReasons(
+      await this.repository.findAutomationDetails(cleaningDate, filter.facilityIds),
+      filter.cleaningReasons,
+    );
+
+    const statusCounts = this.countBy(details, (detail) => String(detail.cleanStatus));
+    const dataTypeCounts = this.countBy(details, (detail) => String(detail.dataType));
+    const reasonCounts = this.countBy(details, (detail) => this.getPrimaryCleaningReason(detail));
+
+    return {
+      success: true,
+      cleaningDate,
+      total: details.length,
+      rooms: dataTypeCounts[String(CleaningDataType.ROOM)] ?? 0,
+      commonAreas: dataTypeCounts[String(CleaningDataType.COMMON_AREA)] ?? 0,
+      notStarted: statusCounts[String(CleaningStatus.NOT_STARTED)] ?? 0,
+      inProgress: statusCounts[String(CleaningStatus.IN_PROGRESS)] ?? 0,
+      paused: statusCounts[String(CleaningStatus.PAUSED)] ?? 0,
+      finished: statusCounts[String(CleaningStatus.FINISHED)] ?? 0,
+      checked: statusCounts[String(CleaningStatus.CHECKED)] ?? 0,
+      reopened: statusCounts[String(CleaningStatus.REOPENED)] ?? 0,
+      cancelled: statusCounts[String(CleaningStatus.CANCELLED)] ?? 0,
+      byReason: {
+        commonAreaDaily: reasonCounts[CleaningReason.COMMON_AREA_DAILY] ?? 0,
+        checkoutRoom: reasonCounts[CleaningReason.CHECKOUT_ROOM] ?? 0,
+        preCheckinRoom: reasonCounts[CleaningReason.PRE_CHECKIN_ROOM] ?? 0,
+        stayoverRoom: reasonCounts[CleaningReason.STAYOVER_ROOM] ?? 0,
+      },
+    };
+  }
+
+  async getUnstartedAutomationReminder(filter: CleaningAutomationFilterDto) {
+    const cleaningDate = this.parseDateOnly(filter.cleaningDate);
+    const details = this.filterDetailsByReasons(
+      await this.repository.findAutomationDetails(cleaningDate, filter.facilityIds),
+      filter.cleaningReasons,
+    );
+    const tasks = details
+      .filter((detail) => detail.cleanStatus === Number(CleaningStatus.NOT_STARTED))
+      .map((detail) => this.toAutomationTask(detail));
+
+    return {
+      success: true,
+      cleaningDate,
+      count: tasks.length,
+      tasks,
+    };
+  }
+
+  async getUnfinishedAutomationReminder(filter: CleaningAutomationFilterDto) {
+    const cleaningDate = this.parseDateOnly(filter.cleaningDate);
+    const details = this.filterDetailsByReasons(
+      await this.repository.findAutomationDetails(cleaningDate, filter.facilityIds),
+      filter.cleaningReasons,
+    );
+    const tasks = details
+      .filter(
+        (detail) =>
+          ![CleaningStatus.FINISHED, CleaningStatus.CHECKED, CleaningStatus.CANCELLED].includes(
+            detail.cleanStatus as CleaningStatus,
+          ),
+      )
+      .map((detail) => this.toAutomationTask(detail));
+
+    return {
+      success: true,
+      cleaningDate,
+      count: tasks.length,
+      tasks,
     };
   }
 
@@ -224,7 +361,7 @@ export class CleaningShiftService {
   ): Promise<CleaningDetailResponseDto> {
     const existing = await this.repository.findDetailById(id);
     if (!existing) throw new NotFoundException(ERROR_MESSAGES.NOT_FOUND);
-    if (existing.dataType !== CleaningDataType.KEY_SAFETY) {
+    if (existing.dataType !== Number(CleaningDataType.KEY_SAFETY)) {
       throw new BadRequestException('Task này không phải loại Khóa & An toàn');
     }
 
@@ -317,9 +454,7 @@ export class CleaningShiftService {
 
     const data: Prisma.CleaningDetailUpdateInput = {
       mainStaff:
-        dto.mainStaffId === null
-          ? { disconnect: true }
-          : { connect: { staffId: dto.mainStaffId } },
+        dto.mainStaffId === null ? { disconnect: true } : { connect: { staffId: dto.mainStaffId } },
       updatedBy: { connect: { staffId } },
     };
     if (dto.mainStaffExternalFlag !== undefined) {
@@ -570,7 +705,10 @@ export class CleaningShiftService {
         return compareDate(a.newReserveDate, b.newReserveDate);
       }
       if (normalizedSort === 'periodTo' || normalizedSort === 'reserveCheckoutAt') {
-        return compareDate(a.reservePeriodTo ?? a.reserveCheckoutAt, b.reservePeriodTo ?? b.reserveCheckoutAt);
+        return compareDate(
+          a.reservePeriodTo ?? a.reserveCheckoutAt,
+          b.reservePeriodTo ?? b.reserveCheckoutAt,
+        );
       }
       if (normalizedSort === 'mainStaffName') {
         return compareString(a.mainStaffName, b.mainStaffName);
@@ -590,7 +728,7 @@ export class CleaningShiftService {
     newReserveDate: Date | null = null,
   ): Promise<CleaningDetailResponseDto> {
     let pin = detail.roomPinCredential;
-    if (!pin && detail.dataType === CleaningDataType.KEY_SAFETY && detail.roomId) {
+    if (!pin && detail.dataType === Number(CleaningDataType.KEY_SAFETY) && detail.roomId) {
       pin = await this.repository.findActivePinCredential(detail.roomId, detail.reserveId);
     }
 
@@ -679,6 +817,86 @@ export class CleaningShiftService {
       createdStaffName: note.createdBy?.staffName ?? null,
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,
+    };
+  }
+
+  private async resolveAutomationStaffId(requestedStaffId?: number): Promise<number> {
+    if (requestedStaffId !== undefined) {
+      const staff = await this.repository.findActiveStaffById(requestedStaffId);
+      if (!staff) {
+        throw new BadRequestException('Nhân viên automation không tồn tại');
+      }
+      return requestedStaffId;
+    }
+
+    const configuredStaffId = Number(
+      this.configService.get<string | number>('CLEANING_AUTOMATION_STAFF_ID'),
+    );
+    if (Number.isInteger(configuredStaffId) && configuredStaffId > 0) {
+      const staff = await this.repository.findActiveStaffById(configuredStaffId);
+      if (!staff) {
+        throw new BadRequestException('CLEANING_AUTOMATION_STAFF_ID không tồn tại');
+      }
+      return configuredStaffId;
+    }
+
+    const fallbackStaff = await this.repository.findFirstActiveStaff();
+    if (!fallbackStaff) {
+      throw new BadRequestException('Không tìm thấy nhân viên để ghi audit');
+    }
+    return fallbackStaff.staffId;
+  }
+
+  private countBy<T>(items: T[], keyFn: (item: T) => string) {
+    return items.reduce<Record<string, number>>((acc, item) => {
+      const key = keyFn(item);
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  private filterDetailsByReasons(
+    details: DetailWithIncludes[],
+    cleaningReasons?: CleaningReason[],
+  ) {
+    if (!cleaningReasons || cleaningReasons.length === 0) return details;
+    const allowedReasons = new Set(cleaningReasons);
+    return details.filter((detail) =>
+      this.getCleaningReasons(detail).some((reason) => allowedReasons.has(reason)),
+    );
+  }
+
+  private getCleaningReasons(detail: DetailWithIncludes): CleaningReason[] {
+    return extractCleaningReasons(detail.comment, detail.dataType);
+  }
+
+  private getPrimaryCleaningReason(detail: DetailWithIncludes): CleaningReason {
+    return this.getCleaningReasons(detail)[0] ?? CleaningReason.CHECKOUT_ROOM;
+  }
+
+  private toAutomationTask(detail: DetailWithIncludes) {
+    const cleaningReasons = this.getCleaningReasons(detail);
+    return {
+      cleaningDetailId: detail.cleaningDetailId,
+      cleanId: detail.cleanId,
+      facilityId: detail.facilityId,
+      facilityNo: detail.facility?.facilityNo ?? null,
+      facilityName: detail.facility?.facilityName ?? null,
+      dataType: detail.dataType,
+      cleaningReasons,
+      cleaningReasonLabels: cleaningReasons.map((reason) => CLEANING_REASON_LABEL[reason]),
+      cleanStatus: detail.cleanStatus,
+      roomId: detail.roomId,
+      roomNumber: detail.room?.roomNumber ?? null,
+      reserveId: detail.reserveId,
+      clientName: detail.reserve?.client?.clientName ?? null,
+      areaName: detail.areaName,
+      mainStaffId: detail.mainStaffId,
+      mainStaffName: detail.mainStaff?.staffName ?? null,
+      scheduledDate: detail.scheduledDate,
+      startDatetime: detail.startDatetime,
+      endDatetime: detail.endDatetime,
+      finishDatetime: detail.finishDatetime,
     };
   }
 

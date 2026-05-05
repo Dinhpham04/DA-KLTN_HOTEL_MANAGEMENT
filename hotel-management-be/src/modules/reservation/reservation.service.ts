@@ -255,6 +255,12 @@ export class ReservationService {
       ...(dto.diContactStaffId !== undefined && {
         diContactStaff: { connect: { staffId: dto.diContactStaffId } },
       }),
+      ...(dto.checkoutReceptionistId !== undefined && {
+        checkoutReceptionist:
+          dto.checkoutReceptionistId === null
+            ? { disconnect: true }
+            : { connect: { staffId: dto.checkoutReceptionistId } },
+      }),
       updatedBy: { connect: { staffId: currentStaffId } },
     };
 

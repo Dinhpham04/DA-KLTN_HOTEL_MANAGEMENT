@@ -175,12 +175,12 @@ export class UpdateReservationDto {
   @ApiPropertyOptional({ description: 'Return keys count' })
   @IsOptional()
   @IsInt()
-  readonly returnKeys?: number;
+  readonly returnKeys?: number | null;
 
   @ApiPropertyOptional({ description: 'Key return contact type: 1=Bring, 2=TEL, 3=EarlyExit' })
   @IsOptional()
   @IsInt()
-  readonly keyReturnContactType?: number;
+  readonly keyReturnContactType?: number | null;
 
   @ApiPropertyOptional({ description: 'Key return flag' })
   @IsOptional()
@@ -271,6 +271,11 @@ export class UpdateReservationDto {
   @IsOptional()
   @IsInt()
   readonly diContactStaffId?: number;
+
+  @ApiPropertyOptional({ description: 'Checkout receptionist staff ID' })
+  @IsOptional()
+  @IsInt()
+  readonly checkoutReceptionistId?: number | null;
 
   @ApiPropertyOptional({ description: 'Early exit datetime (ISO 8601)' })
   @IsOptional()

@@ -115,6 +115,7 @@ export class ReservationResponseDto {
   @ApiPropertyOptional() readonly confirmStaffName?: string;
   @ApiPropertyOptional() readonly createdStaffName?: string;
   @ApiPropertyOptional() readonly updatedStaffName?: string;
+  @ApiPropertyOptional() readonly checkoutReceptionistName?: string;
 
   static fromEntity(reserve: ReserveWithRelations): ReservationResponseDto {
     return Object.assign(new ReservationResponseDto(), {
@@ -207,6 +208,7 @@ export class ReservationResponseDto {
       confirmStaffName: reserve.confirmStaff?.staffName,
       createdStaffName: reserve.createdBy?.staffName,
       updatedStaffName: reserve.updatedBy?.staffName,
+      checkoutReceptionistName: reserve.checkoutReceptionist?.staffName,
     } satisfies Record<keyof ReservationResponseDto, unknown>);
   }
 }

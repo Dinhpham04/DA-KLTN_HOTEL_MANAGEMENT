@@ -591,7 +591,8 @@ function ReservationEditPage() {
                 <div>
                   <p className="font-bold text-[1.6rem] text-black">Đây là đặt tạm</p>
                   <p className="text-[1.3rem]">
-                    Đặt phòng đang ở trạng thái giữ chỗ tạm thời. Chuyển thành đặt phòng chính thức để xác nhận.
+                    Đặt phòng đang ở trạng thái giữ chỗ tạm thời. Chuyển thành đặt phòng chính thức
+                    để xác nhận.
                   </p>
                 </div>
               </div>

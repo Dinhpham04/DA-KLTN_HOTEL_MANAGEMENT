@@ -15,3 +15,5 @@ export * from './pin-info.dto';
 export * from './cleaning-detail-response.dto';
 export * from './cleans-response.dto';
 export * from './clean-detail-note-response.dto';
+export * from './generate-cleaning-shifts.dto';
+export * from './cleaning-automation-filter.dto';

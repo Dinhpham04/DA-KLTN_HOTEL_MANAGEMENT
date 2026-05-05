@@ -19,6 +19,7 @@ export interface TypeDatePicker {
   hiddenNextMoth?: boolean
   classNameButton?: string
   portalContainer?: HTMLElement | null
+  classNameWrapper?: string
 }
 
 const now = new Date()
@@ -34,6 +35,7 @@ const CustomDatePickerNextDay: React.FC<TypeDatePicker> = ({
   disable = false,
   classNameButton,
   portalContainer = null,
+  classNameWrapper,
 }) => {
   const [dateTime, setDateTime] = useState<Date | null>(value)
   const [calendarView, setCalendarView] = useState<'century' | 'decade' | 'year' | 'month'>('month')
@@ -114,7 +116,13 @@ const CustomDatePickerNextDay: React.FC<TypeDatePicker> = ({
       >
         <ChevronLeft className="w-[1.6rem] h-[1.6rem]" />
       </Button>
-      <div className={cn('flex-1 h-16 border border-black bg-white', disable && 'bg-[#D9D9D9]')}>
+      <div
+        className={cn(
+          'flex-1 h-16 border border-black bg-white',
+          disable && 'bg-[#D9D9D9]',
+          classNameWrapper
+        )}
+      >
         <DateTimePicker
           onBlur={onBlur}
           disabled={disable}

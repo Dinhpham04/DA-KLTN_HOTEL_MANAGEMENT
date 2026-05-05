@@ -198,7 +198,7 @@ html {
   /* Default button — unified blue background */
   .btn-default {
     background-color: rgba(32, 65, 114, 1);
-    color: #fff;
+    color: #000;
     border: 1px solid rgba(32, 65, 114, 1);
   }
   .btn-default:hover {

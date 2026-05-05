@@ -1,0 +1,165 @@
+{
+  "name": "Hotel Cleaning - Daily Generate",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "5 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-generate-schedule",
+      "name": "Every Day 00:05",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n  }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\n\nconst cleaningDate = formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh');\n\nreturn {\n  json: {\n    ...{\n  backendBaseUrl: \"http://host.docker.internal:3000/api/v1\",\n  internalToken: \"dev-internal-token\",\n  source: \"n8n-daily-generate\",\n  force: false,\n  cleaningReasons: [\n    \"COMMON_AREA_DAILY\",\n    \"CHECKOUT_ROOM\",\n    \"PRE_CHECKIN_ROOM\",\n    \"STAYOVER_ROOM\"\n  ]\n},\n    cleaningDate,\n  },\n};"
+      },
+      "id": "daily-generate-config",
+      "name": "Build Generate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendBaseUrl + '/internal/cleaning-shifts/generate' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ cleaningDate: $json.cleaningDate, source: $json.source, force: $json.force, cleaningReasons: $json.cleaningReasons }) }}"
+      },
+      "id": "daily-generate-http",
+      "name": "Generate Cleaning Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst title = response.success === true ? 'Cleaning jobs generated' : 'Cleaning job generation failed';\nconst text = `Date: ${response.cleaningDate}\\nCreated: ${response.created ?? 0}\\nSkipped: ${response.skipped ?? 0}\\nCommon area: ${response.commonAreaCreated ?? 0}\\nCheckout rooms: ${response.checkoutRoomCreated ?? 0}\\nPre-checkin rooms: ${response.preCheckinRoomCreated ?? 0}\\nDaily room cleaning: ${response.stayoverRoomCreated ?? 0}\\nFacilities: ${response.facilities ?? 0}`;\nconst slackWebhookUrl = 'PASTE_SLACK_WEBHOOK_URL_HERE';\n\nreturn { json: { title, text, slackWebhookUrl, slackPayload: { text: `*${title}*\\n${text}` }, response } };"
+      },
+      "id": "daily-generate-message",
+      "name": "Build Notification Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every Day 00:05": {
+      "main": [
+        [
+          {
+            "node": "Build Generate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Generate Payload": {
+      "main": [
+        [
+          {
+            "node": "Generate Cleaning Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Cleaning Jobs": {
+      "main": [
+        [
+          {
+            "node": "Build Notification Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "cleaning-daily-generate-v2"
+}

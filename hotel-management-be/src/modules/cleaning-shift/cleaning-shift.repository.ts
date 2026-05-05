@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma.service';
+import {
+  buildCleaningReasonComment,
+  CleaningDataType,
+  CleaningReason,
+  CleaningStatus,
+  extractCleaningReasons,
+} from './enums';
 
 const PIN_STATUS_ACTIVE = 1;
 
@@ -56,9 +63,345 @@ const detailInclude = {
 
 export type DetailWithIncludes = Prisma.CleaningDetailGetPayload<{ include: typeof detailInclude }>;
 
+export interface GenerateCleaningJobsParams {
+  cleaningDate: Date;
+  facilityIds?: number[];
+  commonAreaNames: string[];
+  cleaningReasons: CleaningReason[];
+  mainStaffId?: number;
+  automationStaffId: number;
+  force: boolean;
+  source: string;
+}
+
+export interface CleaningJobGenerationFacilityResult {
+  facilityId: number;
+  facilityNo: string;
+  facilityName: string;
+  cleanId: number;
+  created: number;
+  skipped: number;
+  roomCreated: number;
+  commonAreaCreated: number;
+  checkoutRoomCreated: number;
+  preCheckinRoomCreated: number;
+  stayoverRoomCreated: number;
+  forceDeleted: number;
+}
+
+export interface CleaningJobGenerationResult {
+  success: true;
+  cleaningDate: Date;
+  source: string;
+  facilities: number;
+  created: number;
+  skipped: number;
+  roomCreated: number;
+  commonAreaCreated: number;
+  checkoutRoomCreated: number;
+  preCheckinRoomCreated: number;
+  stayoverRoomCreated: number;
+  forceDeleted: number;
+  facilityResults: CleaningJobGenerationFacilityResult[];
+}
+
+interface RoomCleaningCandidate {
+  reason: CleaningReason;
+  reserveId: number;
+  roomId: number;
+}
+
 @Injectable()
 export class CleaningShiftRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  findActiveStaffById(staffId: number) {
+    return this.prisma.staff.findFirst({
+      where: { staffId, dataStatus: 1, deletedAt: null },
+      select: { staffId: true },
+    });
+  }
+
+  findFirstActiveStaff() {
+    return this.prisma.staff.findFirst({
+      where: { dataStatus: 1, deletedAt: null },
+      orderBy: [{ staffType: 'asc' }, { staffId: 'asc' }],
+      select: { staffId: true },
+    });
+  }
+
+  findActiveFacilities(facilityIds?: number[]) {
+    return this.prisma.facility.findMany({
+      where: {
+        dataStatus: 1,
+        deletedAt: null,
+        ...(facilityIds && facilityIds.length > 0 ? { facilityId: { in: facilityIds } } : {}),
+      },
+      select: {
+        facilityId: true,
+        facilityNo: true,
+        facilityName: true,
+      },
+      orderBy: [{ orderNum: 'asc' }, { facilityId: 'asc' }],
+    });
+  }
+
+  async generateCleaningJobs(
+    params: GenerateCleaningJobsParams,
+  ): Promise<CleaningJobGenerationResult> {
+    const facilities = await this.findActiveFacilities(params.facilityIds);
+    const facilityResults: CleaningJobGenerationFacilityResult[] = [];
+
+    for (const facility of facilities) {
+      const facilityResult = await this.prisma.$transaction(async (tx) => {
+        const clean = await tx.cleans.upsert({
+          where: {
+            facilityId_cleaningDate: {
+              facilityId: facility.facilityId,
+              cleaningDate: params.cleaningDate,
+            },
+          },
+          create: {
+            facilityId: facility.facilityId,
+            cleaningDate: params.cleaningDate,
+            createdStaffId: params.automationStaffId,
+            updatedStaffId: params.automationStaffId,
+          },
+          update: {
+            updatedStaffId: params.automationStaffId,
+          },
+        });
+
+        const checkoutCandidates = params.cleaningReasons.includes(CleaningReason.CHECKOUT_ROOM)
+          ? (
+              await this.findCheckoutReserveCandidates(tx, facility.facilityId, params.cleaningDate)
+            ).map((candidate) => ({
+              ...candidate,
+              reason: CleaningReason.CHECKOUT_ROOM,
+            }))
+          : [];
+        const checkoutRoomIds = new Set(checkoutCandidates.map((candidate) => candidate.roomId));
+
+        const preCheckinCandidates = params.cleaningReasons.includes(
+          CleaningReason.PRE_CHECKIN_ROOM,
+        )
+          ? (
+              await this.findPreCheckinReserveCandidates(
+                tx,
+                facility.facilityId,
+                params.cleaningDate,
+              )
+            )
+              .filter((candidate) => !checkoutRoomIds.has(candidate.roomId))
+              .map((candidate) => ({
+                ...candidate,
+                reason: CleaningReason.PRE_CHECKIN_ROOM,
+              }))
+          : [];
+        const preCheckinRoomIds = new Set(
+          preCheckinCandidates.map((candidate) => candidate.roomId),
+        );
+
+        const stayoverCandidates = params.cleaningReasons.includes(CleaningReason.STAYOVER_ROOM)
+          ? (await this.findStayoverReserveCandidates(tx, facility.facilityId, params.cleaningDate))
+              .filter(
+                (candidate) =>
+                  !checkoutRoomIds.has(candidate.roomId) &&
+                  !preCheckinRoomIds.has(candidate.roomId),
+              )
+              .map((candidate) => ({
+                ...candidate,
+                reason: CleaningReason.STAYOVER_ROOM,
+              }))
+          : [];
+
+        const roomCandidates: RoomCleaningCandidate[] = [
+          ...checkoutCandidates,
+          ...preCheckinCandidates,
+          ...stayoverCandidates,
+        ];
+        const commonAreaNames = params.cleaningReasons.includes(CleaningReason.COMMON_AREA_DAILY)
+          ? this.normalizeCommonAreaNames(params.commonAreaNames)
+          : [];
+        const expectedSignatures = new Set<string>([
+          ...roomCandidates.map((candidate) =>
+            this.roomCleaningSignature(candidate.reason, candidate.reserveId, candidate.roomId),
+          ),
+          ...commonAreaNames.map((areaName) => this.commonAreaSignature(areaName)),
+        ]);
+
+        const existingDetails = await tx.cleaningDetail.findMany({
+          where: {
+            cleanId: clean.cleanId,
+            deletedAt: null,
+            dataType: { in: [CleaningDataType.ROOM, CleaningDataType.COMMON_AREA] },
+          },
+          select: {
+            cleaningDetailId: true,
+            roomId: true,
+            reserveId: true,
+            dataType: true,
+            areaName: true,
+            cleanStatus: true,
+            comment: true,
+          },
+        });
+
+        const forceDeleteIds = params.force
+          ? existingDetails
+              .filter(
+                (detail) =>
+                  detail.cleanStatus === Number(CleaningStatus.NOT_STARTED) &&
+                  expectedSignatures.has(this.cleaningDetailSignature(detail)),
+              )
+              .map((detail) => detail.cleaningDetailId)
+          : [];
+
+        if (forceDeleteIds.length > 0) {
+          await tx.cleaningDetail.updateMany({
+            where: { cleaningDetailId: { in: forceDeleteIds } },
+            data: {
+              deletedAt: new Date(),
+              deletedStaffId: params.automationStaffId,
+              updatedStaffId: params.automationStaffId,
+            },
+          });
+        }
+
+        const forceDeleteSet = new Set(forceDeleteIds);
+        const existingSignatures = new Set(
+          existingDetails
+            .filter((detail) => !forceDeleteSet.has(detail.cleaningDetailId))
+            .map((detail) => this.cleaningDetailSignature(detail)),
+        );
+
+        const roomCreateData: Prisma.CleaningDetailCreateManyInput[] = [];
+        for (const [index, candidate] of roomCandidates.entries()) {
+          const signature = this.roomCleaningSignature(
+            candidate.reason,
+            candidate.reserveId,
+            candidate.roomId,
+          );
+          if (existingSignatures.has(signature)) continue;
+
+          roomCreateData.push({
+            cleanId: clean.cleanId,
+            facilityId: facility.facilityId,
+            roomId: candidate.roomId,
+            reserveId: candidate.reserveId,
+            dataType: CleaningDataType.ROOM,
+            mainStaffId: params.mainStaffId,
+            scheduledDate: params.cleaningDate,
+            cleanStatus: CleaningStatus.NOT_STARTED,
+            orderNum: index + 1,
+            comment: buildCleaningReasonComment(candidate.reason, params.source),
+            createdStaffId: params.automationStaffId,
+            updatedStaffId: params.automationStaffId,
+          });
+        }
+
+        const commonAreaCreateData: Prisma.CleaningDetailCreateManyInput[] = [];
+        const commonAreaOrderStart = roomCandidates.length + 1;
+        for (const [index, areaName] of commonAreaNames.entries()) {
+          const signature = this.commonAreaSignature(areaName);
+          if (existingSignatures.has(signature)) continue;
+
+          commonAreaCreateData.push({
+            cleanId: clean.cleanId,
+            facilityId: facility.facilityId,
+            dataType: CleaningDataType.COMMON_AREA,
+            areaName,
+            mainStaffId: params.mainStaffId,
+            scheduledDate: params.cleaningDate,
+            cleanStatus: CleaningStatus.NOT_STARTED,
+            orderNum: commonAreaOrderStart + index,
+            comment: buildCleaningReasonComment(CleaningReason.COMMON_AREA_DAILY, params.source),
+            createdStaffId: params.automationStaffId,
+            updatedStaffId: params.automationStaffId,
+          });
+        }
+
+        if (roomCreateData.length > 0) {
+          await tx.cleaningDetail.createMany({ data: roomCreateData });
+        }
+        if (commonAreaCreateData.length > 0) {
+          await tx.cleaningDetail.createMany({ data: commonAreaCreateData });
+        }
+
+        const created = roomCreateData.length + commonAreaCreateData.length;
+        const skipped = expectedSignatures.size - forceDeleteIds.length - created;
+
+        return {
+          facilityId: facility.facilityId,
+          facilityNo: facility.facilityNo,
+          facilityName: facility.facilityName,
+          cleanId: clean.cleanId,
+          created,
+          skipped: Math.max(skipped, 0),
+          roomCreated: roomCreateData.length,
+          commonAreaCreated: commonAreaCreateData.length,
+          checkoutRoomCreated: roomCreateData.filter((item) =>
+            item.comment?.includes(CleaningReason.CHECKOUT_ROOM),
+          ).length,
+          preCheckinRoomCreated: roomCreateData.filter((item) =>
+            item.comment?.includes(CleaningReason.PRE_CHECKIN_ROOM),
+          ).length,
+          stayoverRoomCreated: roomCreateData.filter((item) =>
+            item.comment?.includes(CleaningReason.STAYOVER_ROOM),
+          ).length,
+          forceDeleted: forceDeleteIds.length,
+        };
+      });
+
+      facilityResults.push(facilityResult);
+    }
+
+    return {
+      success: true,
+      cleaningDate: params.cleaningDate,
+      source: params.source,
+      facilities: facilityResults.length,
+      created: facilityResults.reduce((total, item) => total + item.created, 0),
+      skipped: facilityResults.reduce((total, item) => total + item.skipped, 0),
+      roomCreated: facilityResults.reduce((total, item) => total + item.roomCreated, 0),
+      commonAreaCreated: facilityResults.reduce((total, item) => total + item.commonAreaCreated, 0),
+      checkoutRoomCreated: facilityResults.reduce(
+        (total, item) => total + item.checkoutRoomCreated,
+        0,
+      ),
+      preCheckinRoomCreated: facilityResults.reduce(
+        (total, item) => total + item.preCheckinRoomCreated,
+        0,
+      ),
+      stayoverRoomCreated: facilityResults.reduce(
+        (total, item) => total + item.stayoverRoomCreated,
+        0,
+      ),
+      forceDeleted: facilityResults.reduce((total, item) => total + item.forceDeleted, 0),
+      facilityResults,
+    };
+  }
+
+  findAutomationDetails(cleaningDate: Date, facilityIds?: number[]) {
+    return this.prisma.cleaningDetail.findMany({
+      where: {
+        deletedAt: null,
+        dataType: { in: [CleaningDataType.ROOM, CleaningDataType.COMMON_AREA] },
+        cleans: {
+          cleaningDate,
+          deletedAt: null,
+          ...(facilityIds && facilityIds.length > 0 ? { facilityId: { in: facilityIds } } : {}),
+        },
+      },
+      include: detailInclude,
+      orderBy: [
+        { facility: { orderNum: 'asc' } },
+        { dataType: 'asc' },
+        { orderNum: 'asc' },
+        { cleaningDetailId: 'asc' },
+      ],
+    });
+  }
 
   // ─── Cleans (header) ─────────────────────────────────
 
@@ -291,6 +634,147 @@ export class CleaningShiftRepository {
         deletedStaffId: staffId,
       },
     });
+  }
+
+  private async findCheckoutReserveCandidates(
+    tx: Prisma.TransactionClient,
+    facilityId: number,
+    cleaningDate: Date,
+  ): Promise<Array<{ reserveId: number; roomId: number }>> {
+    const nextDate = new Date(cleaningDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+    const reserves = await tx.reserve.findMany({
+      where: {
+        facilityId,
+        roomId: { not: null },
+        dataStatus: 1,
+        deletedAt: null,
+        deleteStatus: null,
+        draftFlag: false,
+        OR: [
+          { checkoutAt: { gte: cleaningDate, lt: nextDate } },
+          { periodTo: { gte: cleaningDate, lt: nextDate } },
+          { lastStayDate: { gte: cleaningDate, lt: nextDate } },
+        ],
+      },
+      select: {
+        reserveId: true,
+        roomId: true,
+      },
+      orderBy: [{ room: { orderNum: 'asc' } }, { reserveId: 'asc' }],
+    });
+
+    return this.uniqueRoomReserveCandidates(
+      reserves.filter(
+        (reserve): reserve is { reserveId: number; roomId: number } => reserve.roomId !== null,
+      ),
+    );
+  }
+
+  private async findPreCheckinReserveCandidates(
+    tx: Prisma.TransactionClient,
+    facilityId: number,
+    cleaningDate: Date,
+  ): Promise<Array<{ reserveId: number; roomId: number }>> {
+    const nextDate = new Date(cleaningDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+    const reserves = await tx.reserve.findMany({
+      where: {
+        facilityId,
+        roomId: { not: null },
+        dataStatus: 1,
+        deletedAt: null,
+        deleteStatus: null,
+        draftFlag: false,
+        OR: [
+          { checkinDate: { gte: cleaningDate, lt: nextDate } },
+          { periodFrom: { gte: cleaningDate, lt: nextDate } },
+        ],
+      },
+      select: {
+        reserveId: true,
+        roomId: true,
+      },
+      orderBy: [{ room: { orderNum: 'asc' } }, { reserveId: 'asc' }],
+    });
+
+    return this.uniqueRoomReserveCandidates(
+      reserves.filter(
+        (reserve): reserve is { reserveId: number; roomId: number } => reserve.roomId !== null,
+      ),
+    );
+  }
+
+  private async findStayoverReserveCandidates(
+    tx: Prisma.TransactionClient,
+    facilityId: number,
+    cleaningDate: Date,
+  ): Promise<Array<{ reserveId: number; roomId: number }>> {
+    const reserves = await tx.reserve.findMany({
+      where: {
+        facilityId,
+        roomId: { not: null },
+        dataStatus: 1,
+        deletedAt: null,
+        deleteStatus: null,
+        draftFlag: false,
+        periodFrom: { lt: cleaningDate },
+        periodTo: { gt: cleaningDate },
+      },
+      select: {
+        reserveId: true,
+        roomId: true,
+      },
+      orderBy: [{ room: { orderNum: 'asc' } }, { reserveId: 'asc' }],
+    });
+
+    return this.uniqueRoomReserveCandidates(
+      reserves.filter(
+        (reserve): reserve is { reserveId: number; roomId: number } => reserve.roomId !== null,
+      ),
+    );
+  }
+
+  private normalizeCommonAreaNames(commonAreaNames: string[]) {
+    const names = commonAreaNames.map((name) => name.trim()).filter((name) => name.length > 0);
+    return [...new Set(names)];
+  }
+
+  private uniqueRoomReserveCandidates(candidates: Array<{ reserveId: number; roomId: number }>) {
+    const seenRoomIds = new Set<number>();
+    return candidates.filter((candidate) => {
+      if (seenRoomIds.has(candidate.roomId)) return false;
+      seenRoomIds.add(candidate.roomId);
+      return true;
+    });
+  }
+
+  private cleaningDetailSignature(detail: {
+    dataType: number;
+    roomId: number | null;
+    reserveId: number | null;
+    areaName: string | null;
+    comment?: string | null;
+  }) {
+    if (detail.dataType === Number(CleaningDataType.ROOM)) {
+      const [reason] = extractCleaningReasons(detail.comment, detail.dataType);
+      return this.roomCleaningSignature(reason, detail.reserveId, detail.roomId);
+    }
+    return this.commonAreaSignature(detail.areaName ?? '');
+  }
+
+  private roomCleaningSignature(
+    reason: CleaningReason | undefined,
+    reserveId: number | null,
+    roomId: number | null,
+  ) {
+    return `room:${reason ?? CleaningReason.CHECKOUT_ROOM}:${reserveId ?? 'none'}:${roomId ?? 'none'}`;
+  }
+
+  private commonAreaSignature(areaName: string) {
+    return `common:${areaName.trim().toLowerCase()}`;
   }
 
   // helper exports

@@ -103,6 +103,7 @@ export interface Reservation {
   confirmStaffName?: string
   createdStaffName?: string
   updatedStaffName?: string
+  checkoutReceptionistName?: string
 }
 
 export interface ReservationFilterParams {
@@ -201,13 +202,14 @@ export interface UpdateReservationBody extends Partial<CreateReservationBody> {
   reserveId: number
   dataStatus?: number
   rentalKeys?: number
-  returnKeys?: number
-  keyReturnContactType?: number
+  returnKeys?: number | null
+  keyReturnContactType?: number | null
   keyReturnFlag?: boolean
+  checkoutReceptionistId?: number | null
   overdueDebtNote?: string
   noticeComment?: string
   disableReservation?: boolean
-  roomDirtyLevel?: number
+  roomDirtyLevel?: number | null
   earlyExitDatetime?: string
   paymentDueDate?: string
 }

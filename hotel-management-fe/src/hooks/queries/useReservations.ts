@@ -1,5 +1,5 @@
 import { reservationApi } from '@/api/reservation.api'
-import type { ReservationFilterParams } from '@/types/reservation'
+import type { ReservationFilterParams, UpdateReservationBody } from '@/types/reservation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 
@@ -66,6 +66,30 @@ export function useUpdateReservation() {
     },
     onError: () => {
       toast.error('Cập nhật đặt phòng thất bại')
+    },
+  })
+}
+
+export function useUpdateAllReservations() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (items: UpdateReservationBody[]) => {
+      const results = await Promise.allSettled(items.map((item) => reservationApi.update(item)))
+      const errors = results.filter((result) => result.status === 'rejected')
+
+      if (errors.length > 0) {
+        throw new Error(`Failed to update ${errors.length} reservation(s)`)
+      }
+
+      return results
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: RESERVATION_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Cập nhật tất cả trả phòng thành công')
+    },
+    onError: () => {
+      toast.error('Cập nhật tất cả trả phòng thất bại')
     },
   })
 }

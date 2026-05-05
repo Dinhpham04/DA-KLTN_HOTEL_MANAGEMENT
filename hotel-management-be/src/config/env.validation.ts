@@ -60,4 +60,13 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CLOUDINARY_FOLDER?: string;
+
+  @IsString()
+  @IsOptional()
+  INTERNAL_AUTOMATION_TOKEN?: string;
+
+  @Transform(({ value }) => parseInt(value as string, 10))
+  @IsNumber()
+  @IsOptional()
+  CLEANING_AUTOMATION_STAFF_ID?: number;
 }

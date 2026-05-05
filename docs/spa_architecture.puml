@@ -1,0 +1,56 @@
+@startuml
+' Tối ưu hóa giao diện sơ đồ
+!theme toy
+skinparam shadowing false
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam linetype polyline
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Định hướng từ trên xuống dưới (Top-Down)
+top to bottom direction
+
+/'title KIẾN TRÚC NỘI TẠI FRONTEND SPA\n(Hotel Management System)'/
+
+actor "Người dùng" as User #LightBlue
+
+package "TRÌNH DUYỆT (FRONTEND SPA)" #White {
+
+    ' --- LỚP TRÌNH BÀY ---
+    package "1. Lớp Trình bày (Presentation Layer)" #FEFECE {
+        component [UI Components\n(React + shadcn/ui)] as UI
+        component [Routing System\n(TanStack Router)] as Router
+    }
+
+    ' --- LỚP ỨNG DỤNG ---
+    package "2. Lớp Ứng dụng (Application Layer)" #D5E8D4 {
+        component [Custom Hooks\n(Logic Nghiệp vụ)] as Hooks
+        component [Server State Management\n(TanStack Query)] as Query
+    }
+
+    ' --- LỚP HẠ TẦNG ---
+    package "3. Lớp Hạ tầng (Infrastructure Layer)" #DAE8FC {
+        component [API Services\n(Domain Modules)] as API
+        component [HTTP Client\n(Axios + Interceptors)] as Axios
+        database "Browser Storage\n(JWT/Local)" as LS
+    }
+}
+
+' --- HỆ THỐNG BACKEND ---
+node "Máy chủ Backend" #F5F5F5 {
+    [Backend API] as BE
+}
+
+' Luồng tương tác chảy từ trên xuống
+User -down-> UI : (1) Thao tác giao diện
+UI -right-> Router : (2) Điều hướng trang
+UI -down-> Hooks : (3) Truy vấn dữ liệu
+
+Hooks -down-> Query : (4) Kiểm tra Cache
+Query -down-> API : (5) Gọi API tương ứng
+API -down-> Axios : (6) Cấu hình Request
+Axios <-left-> LS : (7) Đính kèm Token
+
+Axios -down-> BE : (8) Giao tiếp REST API (JSON)
+@enduml

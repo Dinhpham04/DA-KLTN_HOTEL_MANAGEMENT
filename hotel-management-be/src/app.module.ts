@@ -38,6 +38,8 @@ import { ParkingStatusModule } from '@modules/parking-status/parking-status.modu
 import { ParkingReserveModule } from '@modules/parking-reserve/parking-reserve.module';
 import { WhiteboardModule } from '@modules/whiteboard/whiteboard.module';
 import { CleaningShiftModule } from '@modules/cleaning-shift/cleaning-shift.module';
+import { DashboardModule } from '@modules/dashboard/dashboard.module';
+import { DailyReserveModule } from '@modules/daily-reserve/daily-reserve.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -113,6 +115,8 @@ import { AppService } from './app.service';
     ParkingReserveModule,
     WhiteboardModule,
     CleaningShiftModule,
+    DashboardModule,
+    DailyReserveModule,
   ],
   controllers: [AppController],
   providers: [
