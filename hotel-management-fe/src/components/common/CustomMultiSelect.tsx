@@ -1,3 +1,5 @@
+import { CustomCheckbox } from '@/components/common/CustomCheckbox'
+import { CustomTooltipTruncate } from '@/components/common/CustomToolTipTruncate'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -5,7 +7,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
@@ -13,17 +14,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { type VariantProps, cva } from 'class-variance-authority'
-import { Check, XIcon } from 'lucide-react'
+import { CommandItem } from 'cmdk'
+import { XIcon } from 'lucide-react'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 
 const multiSelectVariants = cva(
-  'm-[.4rem] bg-gray px-[1rem] py-[.2rem] text-[1.4rem] text-black transition duration-300 delay-150 hover:text-white',
+  'bg-gray m-[.4rem] px-[1rem] py-[.2rem] text-[1.4rem] text-black hover:text-white transition duration-300 delay-150',
   {
     variants: {
       variant: {
-        default: 'border-foreground/10 bg-card text-foreground hover:bg-card/80',
-        secondary:
-          'border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        default: 'border-foreground/10 text-foreground bg-card hover:bg-card/80',
+        secondary: 'border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80',
         destructive:
           'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         inverted: 'inverted',
@@ -65,7 +67,7 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
       onValueChange,
       variant,
       defaultValue = [],
-      placeholder = 'Select options',
+      placeholder,
       animation = 0,
       maxCount = 3,
       modalPopover = false,
@@ -79,8 +81,10 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
     },
     ref
   ) => {
+    const { t } = useTranslation()
     const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue)
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+    const placeholderText = placeholder ?? t('common.selectOptions')
 
     React.useEffect(() => {
       setSelectedValues(defaultValue)
@@ -133,48 +137,55 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
               {...props}
               onClick={handleTogglePopover}
               className={cn(
-                'h-auto min-h-10 w-full items-stretch justify-between rounded-md border border-black bg-inherit p-0 text-[1.4rem] hover:bg-inherit',
+                'flex justify-between items-stretch bg-inherit hover:bg-inherit p-0 border border-black rounded-md w-full h-auto min-h-10 text-[1.4rem]',
                 className
               )}
             >
               {selectedValues.length > 0 ? (
-                <div className="flex w-full items-stretch justify-between">
-                  <div className="flex min-w-0 flex-1 items-center gap-0 overflow-hidden">
+                <div className="flex justify-between items-stretch w-full">
+                  <div className="flex flex-1 items-center gap-0 min-w-0 overflow-hidden">
                     {selectedValues.slice(0, maxCount).map((value) => {
                       const option = options.find((o) => o.value === value)
                       const IconComponent = option?.icon
-
                       return (
                         <Badge
                           key={value}
                           className={cn(
-                            'max-w-full flex-shrink-0 overflow-hidden font-[500]',
+                            'flex-shrink-0 w-fit max-w-full overflow-hidden font-[500]',
                             multiSelectVariants({ variant })
                           )}
                           style={{ animationDuration: `${animation}s` }}
                         >
                           {IconComponent && (
-                            <IconComponent className="mr-2 h-[1.6rem] w-[1.6rem]" />
+                            <IconComponent className="mr-2 w-[1.6rem] h-[1.6rem]" />
                           )}
-                          <span className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-black">
-                            {option?.label}
-                          </span>
+                          <div className="relative overflow-hidden text-ellipsis whitespace-nowrap">
+                            <CustomTooltipTruncate
+                              className="h-full text-black --radix-tooltip-content-available-height: 100%"
+                              text={option?.label}
+                              trigger={
+                                <span className="inline-block max-w-full overflow-hidden truncate text-ellipsis whitespace-nowrap">
+                                  {option?.label}
+                                </span>
+                              }
+                            />
+                          </div>
                         </Badge>
                       )
                     })}
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex justify-between items-center">
                     <XIcon
-                      className="h-[1.6rem] cursor-pointer text-muted-foreground"
+                      className="h-[1.6rem] text-muted-foreground cursor-pointer"
                       onClick={(event) => {
                         event.stopPropagation()
                         handleClear()
                       }}
                     />
-                    <Separator orientation="vertical" className="flex h-full min-h-6 w-[.1rem]" />
+                    <Separator orientation="vertical" className="flex w-[.1rem] h-full min-h-6" />
                     <div
                       className={cn(
-                        'flex h-full w-[3.2rem] items-center justify-center border-l border-black bg-[#eee]',
+                        'flex justify-center items-center bg-[#eee] border-black border-l w-[3.2rem] h-full',
                         classIconName
                       )}
                     >
@@ -196,14 +207,14 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
                   </div>
                 </div>
               ) : (
-                <div className="mx-auto flex h-full w-full items-stretch justify-between">
-                  <span className="m-[.4rem] flex items-center py-[.2rem] text-[1.4rem] text-black">
-                    {placeholder}
+                <div className="flex justify-between items-stretch mx-auto w-full h-full">
+                  <span className="flex items-center m-[.4rem] py-[.2rem] text-[1.4rem] text-black">
+                    {placeholderText}
                   </span>
-                  <div className="flex items-center justify-between">
+                  <div className="flex justify-between items-center">
                     <div
                       className={cn(
-                        'flex h-full w-[3.2rem] items-center justify-center border-l border-black bg-[#eee]',
+                        'flex justify-center items-center bg-[#eee] border-black border-l w-[3.2rem] h-full',
                         classIconName
                       )}
                     >
@@ -229,7 +240,7 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
           </PopoverTrigger>
         </div>
         <PopoverContent
-          className="z-[1111] w-fit max-w-[30rem] bg-white p-0"
+          className="z-[1111] bg-white p-0 w-fit max-w-[30rem]"
           align="start"
           side="bottom"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
@@ -238,29 +249,33 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
             : {})}
         >
           <Command
-            filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
+            filter={(value, search) => {
+              if (value.toLowerCase().includes(search.toLowerCase())) return 1
+              return 0
+            }}
           >
             <CommandInput
               className="text-[1.4rem]"
-              placeholder="検索オプション"
+              placeholder={t('common.searchOptions')}
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
-              <CommandEmpty className="flex py-1 text-[1.4rem]">見つかりません</CommandEmpty>
+              <CommandEmpty className="flex py-1 text-[1.4rem]">
+                {t('common.noResults')}
+              </CommandEmpty>
               <CommandGroup className="pr-4">
                 {!hiddenSelectAll && (
                   <CommandItem
                     key="all"
                     onSelect={toggleAll}
-                    className="flex cursor-pointer py-1 text-[1.4rem]"
+                    className="flex py-1 text-[1.4rem] cursor-pointer"
                   >
-                    <Check
-                      className={cn(
-                        'mr-2 h-[1.4rem] w-[1.4rem]',
-                        selectedValues.length === options.length ? 'opacity-100' : 'opacity-0'
-                      )}
+                    <CustomCheckbox
+                      checked={selectedValues.length === options.length}
+                      className="mr-1 w-[1.6rem] sm:w-[1.6rem] h-[1.6rem] sm:h-[1.6rem] transition-none"
+                      classIcon="h-[1.4rem] w-[1.4rem] sm:h-[1.4rem] sm:w-[1.4rem]"
                     />
-                    <span>(すべて選択)</span>
+                    <span>{t('common.selectAll')}</span>
                   </CommandItem>
                 )}
                 {options.map((option) => {
@@ -269,16 +284,15 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
                     <CommandItem
                       key={option.value}
                       onSelect={() => toggleOption(option.value)}
-                      className="flex cursor-pointer py-1 text-[1.4rem]"
+                      className="flex py-1 text-[1.4rem] cursor-pointer"
                     >
-                      <Check
-                        className={cn(
-                          'mr-2 h-[1.4rem] w-[1.4rem]',
-                          isSelected ? 'opacity-100' : 'opacity-0'
-                        )}
+                      <CustomCheckbox
+                        checked={isSelected}
+                        className="mr-1 w-[1.6rem] sm:w-[1.6rem] h-[1.6rem] sm:h-[1.6rem] transition-none"
+                        classIcon="h-[1.4rem] w-[1.4rem] sm:h-[1.4rem] sm:w-[1.4rem]"
                       />
                       {option.icon && (
-                        <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <option.icon className="mr-2 w-4 h-4 text-muted-foreground" />
                       )}
                       <span>{option.label}</span>
                     </CommandItem>
@@ -287,23 +301,23 @@ export const CustomMultiSelect = React.forwardRef<HTMLButtonElement, CustomMulti
               </CommandGroup>
               <CommandSeparator />
               <CommandGroup className="pr-4">
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between items-center">
                   {selectedValues.length > 0 && (
                     <>
                       <CommandItem
                         onSelect={handleClear}
-                        className="flex-1 cursor-pointer justify-center text-center text-[1.4rem]"
+                        className="flex-1 justify-center text-[1.4rem] text-center cursor-pointer"
                       >
-                        クリア
+                        {t('common.clear')}
                       </CommandItem>
                       <Separator orientation="vertical" className="flex h-full min-h-6" />
                     </>
                   )}
                   <CommandItem
                     onSelect={() => setIsPopoverOpen(false)}
-                    className="flex-1 cursor-pointer justify-center text-center text-[1.4rem]"
+                    className="flex-1 justify-center max-w-full text-[1.4rem] text-center cursor-pointer"
                   >
-                    閉じる
+                    {t('common.close')}
                   </CommandItem>
                 </div>
               </CommandGroup>

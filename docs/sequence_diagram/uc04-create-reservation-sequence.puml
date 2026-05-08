@@ -1,40 +1,40 @@
 @startuml uc04_create_reservation_sequence
-title UC04 - Tạo đặt phòng
 autonumber
 
-actor "Nhân viên vận hành" as Staff
+actor "Nhân viên/Lễ tân" as Staff
 participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
-participant "AI Engine" as AI
+participant "Reservation API" as API
+participant "Reservation Service" as Svc
+database "Database" as DB
+participant "Event Publisher" as Event
 participant "n8n" as N8N
-participant "Email/SMS" as Notif
+
+Staff -> FE: Mở màn hình tạo đặt phòng
+FE -> API: GET dữ liệu nền/khách/phòng
+API -> Svc: Tải dữ liệu cần nhập form
+Svc -> DB: Truy vấn dữ liệu nền
+DB --> Svc: Dữ liệu nền
+Svc --> API: Dữ liệu form
+API --> FE: Response
 
 Staff -> FE: Nhập thông tin đặt phòng
+FE -> API: POST /reservations
+API -> Svc: Validate dữ liệu
+Svc -> DB: Kiểm tra khách hàng, phòng, lịch trống
+DB --> Svc: Kết quả kiểm tra
 
-opt Cần gợi ý phòng
-  FE -> BE: Yêu cầu gợi ý phòng
-  BE -> AI: Gửi điều kiện (thời gian, loại phòng, cơ sở)
-  AI --> BE: Danh sách phòng gợi ý
-  BE --> FE: Trả dữ liệu gợi ý
-  FE --> Staff: Hiển thị gợi ý để chọn
-end
-
-FE -> BE: POST /reservations
-BE -> BE: Validate dữ liệu nghiệp vụ
-BE -> DB: Kiểm tra phòng trống + xung đột lịch
-DB --> BE: Kết quả kiểm tra
-
-alt Có xung đột lịch
-  BE --> FE: 409 + thông báo chọn lại
-  FE --> Staff: Hiển thị lỗi xung đột
+alt Dữ liệu không hợp lệ hoặc phòng xung đột
+  Svc --> API: Trả lỗi nghiệp vụ
+  API --> FE: Response lỗi
+  FE --> Staff: Hiển thị lỗi và yêu cầu chỉnh lại
 else Hợp lệ
-  BE -> DB: Lưu đặt phòng
-  DB --> BE: Trả reserveId
-  BE -->> N8N: Phát sự kiện ReservationCreated
-  N8N -> Notif: Tạo lịch nhắc trước check-in
-  BE --> FE: Trả chi tiết đặt phòng
-  FE --> Staff: Thông báo tạo thành công
+  Svc -> DB: Lưu đặt phòng
+  DB --> Svc: reserveId
+  Svc -> Event: Phát reservation.created
+  Event ->> N8N: Gửi sự kiện tự động hóa
+  Svc --> API: Chi tiết đặt phòng
+  API --> FE: Tạo thành công
+  FE --> Staff: Hiển thị chi tiết đặt phòng
 end
 
 @enduml

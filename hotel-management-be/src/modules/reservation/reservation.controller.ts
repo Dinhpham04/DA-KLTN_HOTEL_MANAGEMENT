@@ -27,6 +27,7 @@ import {
   UpdateReservationDto,
   ReservationFilterDto,
   CancelReservationDto,
+  CreateReservationWithParkingsDto,
 } from './dto';
 
 @ApiTags('Reservation')
@@ -57,6 +58,16 @@ export class ReservationController {
     @CurrentUser() user: CurrentStaff,
   ) {
     return this.reservationService.create(dto, user.staffId);
+  }
+
+  @Post('with-parking')
+  @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
+  @ApiOperation({ summary: 'Create reservation with parking reserves (atomic transaction)' })
+  createWithParkings(
+    @Body() dto: CreateReservationWithParkingsDto,
+    @CurrentUser() user: CurrentStaff,
+  ) {
+    return this.reservationService.createReservationWithParkings(dto, user.staffId);
   }
 
   @Patch(':id')

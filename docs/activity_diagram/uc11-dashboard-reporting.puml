@@ -1,13 +1,39 @@
 @startuml uc11_dashboard_reporting
-title UC11 - Dashboard và báo cáo
 start
-:Mở Dashboard;
-:Tổng hợp KPI vận hành và doanh thu;
-:Chọn báo cáo và bộ lọc;
-:Hiển thị kết quả;
-if (Cần xuất file?) then (Có)
-  :Xuất Excel hoặc PDF;
+
+:Người dùng mở Dashboard;
+:Hệ thống kiểm tra quyền xem báo cáo;
+
+if (Có quyền?) then (Có)
+  :Tải dữ liệu vận hành theo ngày/kỳ;
+  :Hiển thị thông báo và chỉ số tổng quan;
+  note right
+    Phòng trống, nhận phòng,
+    trả phòng, vệ sinh,
+    bãi đỗ xe, công nợ
+  end note
+
+  :Người dùng chọn tab báo cáo;
+  if (Tab Nhận phòng?) then (Có)
+    :Hiển thị danh sách lịch nhận phòng;
+  elseif (Tab Trả phòng?) then (Có)
+    :Hiển thị danh sách lịch trả phòng;
+  elseif (Tab Vệ sinh?) then (Có)
+    :Hiển thị danh sách phòng cần dọn/đang dọn;
+  else (Bãi đỗ xe/Công nợ/Doanh thu)
+    :Hiển thị danh sách báo cáo tương ứng;
+  endif
+
+  :Người dùng lọc hoặc mở bản ghi chi tiết;
+
+  if (Cần xuất báo cáo?) then (Có)
+    :Chọn bộ lọc và định dạng;
+    :Xuất Excel/PDF;
+    :Ghi lịch sử xuất nếu cần;
+  endif
+else (Không)
+  :Từ chối truy cập hoặc ẩn dữ liệu nhạy cảm;
 endif
-:n8n gửi báo cáo định kỳ cho quản lý;
+
 stop
 @enduml

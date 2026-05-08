@@ -64,7 +64,6 @@ export const DAILY_RESERVE_INCLUDE = {
     take: 1,
     select: {
       occupierName: true,
-      occupierNameEn: true,
     },
   },
   usageStatuses: {

@@ -139,10 +139,45 @@ const reservationRequestNormalRowSchema = z.object({
   charge_staff_id: z.string().optional(),
 })
 
+export const reservationOccupierRowSchema = z.object({
+  reserve_occupier_id: z.number().optional(),
+  occupier_name: z.string().default(''),
+  sex: z.string().default(''),
+  birthday: z.string().optional().nullable(),
+  tel: z.string().optional(),
+  address1: z.string().optional(),
+  order_num: z.number().default(0),
+})
+
+const parkingReserveRowSchema = z.object({
+  parking_id: z.number().optional(),
+  facility_name: z.string().optional(),
+  facility_no: z.string().optional(),
+  period_from: z.string().optional().nullable(),
+  period_to: z.string().optional().nullable(),
+  stay_type_id: z.number().optional(),
+  note: z.string().optional(),
+  license_plate: z.string().default(''),
+  car_type: z.string().default(''),
+})
+
+const bicycleParkingReserveRowSchema = z.object({
+  bicycle_parking_id: z.number().optional(),
+  facility_name: z.string().optional(),
+  facility_no: z.string().optional(),
+  period_from: z.string().optional().nullable(),
+  period_to: z.string().optional().nullable(),
+  bicycle_type_note: z.string().optional(),
+  note: z.string().optional(),
+})
+
 export const reservationCreateReserveSchema = reservationCommonReserveSchema.extend({
   auto_extend_flag: z.boolean().default(true),
   checkin_time: z.string().optional(),
   request_normal: z.array(reservationRequestNormalRowSchema).default([]),
+  occupiers: z.array(reservationOccupierRowSchema).default([]),
+  parking_reserve: z.array(parkingReserveRowSchema).default([]),
+  bicycle_parking_reserve: z.array(bicycleParkingReserveRowSchema).default([]),
 })
 
 export type ReservationCreateReserveFormValues = z.infer<typeof reservationCreateReserveSchema>
@@ -153,6 +188,9 @@ export function getReservationCreateReserveDefaultValues(): ReservationCreateRes
     auto_extend_flag: true,
     checkin_time: '',
     request_normal: [],
+    occupiers: [],
+    parking_reserve: [],
+    bicycle_parking_reserve: [],
   }
 }
 
@@ -178,6 +216,7 @@ export const reservationEditReserveSchema = reservationCommonReserveSchema.exten
   charge_staff_id2: z.string().optional(),
   request_announcement: z.string().max(1024).optional(),
   sale_announcement: z.string().max(1024).optional(),
+  occupiers: z.array(reservationOccupierRowSchema).default([]),
 })
 
 export type ReservationEditReserveFormValues = z.infer<typeof reservationEditReserveSchema>
@@ -206,5 +245,6 @@ export function getReservationEditReserveDefaultValues(): ReservationEditReserve
     charge_staff_id2: '',
     request_announcement: '',
     sale_announcement: '',
+    occupiers: [],
   }
 }

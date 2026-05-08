@@ -40,6 +40,7 @@ import { WhiteboardModule } from '@modules/whiteboard/whiteboard.module';
 import { CleaningShiftModule } from '@modules/cleaning-shift/cleaning-shift.module';
 import { DashboardModule } from '@modules/dashboard/dashboard.module';
 import { DailyReserveModule } from '@modules/daily-reserve/daily-reserve.module';
+import { ReserveOccupierModule } from '@modules/reserve-occupier/reserve-occupier.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -117,6 +118,7 @@ import { AppService } from './app.service';
     CleaningShiftModule,
     DashboardModule,
     DailyReserveModule,
+    ReserveOccupierModule,
   ],
   controllers: [AppController],
   providers: [

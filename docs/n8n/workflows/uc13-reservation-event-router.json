@@ -1,0 +1,443 @@
+{
+  "name": "UC13 - Workflow 1 - Reservation Created Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hotel/reservation-created-automation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "reservation-created-webhook",
+      "name": "Reservation Created Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        340
+      ],
+      "webhookId": "uc13-reservation-created-automation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = $json.headers ?? {};\nconst body = $json.body ?? $json;\nconst expectedToken = 'dev-internal-token';\nconst hmacSecret = 'dev-hmac-secret';\n\nfunction getHeader(name) {\n  const lowerName = name.toLowerCase();\n  const found = Object.entries(headers).find(([key]) => key.toLowerCase() === lowerName);\n  return found?.[1];\n}\n\nasync function hmacSha256Hex(secret, message) {\n  const encoder = new TextEncoder();\n  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);\n  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));\n  return Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, '0')).join('');\n}\n\nconst authorization = String(getHeader('authorization') ?? '');\nconst bearerToken = authorization.replace(/^Bearer\\s+/i, '').trim();\nconst automationToken = String(getHeader('x-automation-token') ?? '');\nconst signature = String(getHeader('x-hub-signature-256') ?? getHeader('x-signature') ?? '');\nlet verified = false;\n\nif (signature && body.rawBody) {\n  const expectedSignature = `sha256=${await hmacSha256Hex(hmacSecret, body.rawBody)}`;\n  verified = signature === expectedSignature;\n}\n\nif (!verified) {\n  verified = bearerToken === expectedToken || automationToken === expectedToken;\n}\n\nif (!verified) {\n  throw new Error('Invalid automation signature or token');\n}\n\nconst event = { ...body };\nif (!event.eventId || !event.eventType || !event.reservationId) {\n  throw new Error('Missing required reservation automation event fields');\n}\nif (!['reservation.created', 'reservation.updated'].includes(event.eventType)) {\n  throw new Error(`Unsupported reservation event type: ${event.eventType}`);\n}\n\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: expectedToken,\n    source: 'n8n-uc13-reservation-created-automation',\n    smtpFrom: 'hotel-management@example.com',\n    event,\n  },\n};"
+      },
+      "id": "validate-reservation-event",
+      "name": "Validate HMAC or Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendBaseUrl + '/internal/automation/reservations/' + $json.event.reservationId + '/context' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "get-reservation-context",
+      "name": "Get Reservation Automation Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $json.data ?? $json;\nconst reservation = context.reservation ?? context;\nconst customer = context.customer ?? reservation.customer ?? {};\nconst room = context.room ?? reservation.room ?? {};\nconst currency = context.currency ?? 'VND';\nconst totalAmount = reservation.totalAmount ?? reservation.totalPrice ?? reservation.amount ?? 0;\nconst reservationCode = reservation.code ?? reservation.reservationCode ?? reservation.id;\nconst checkInAt = reservation.checkInAt ?? reservation.checkinAt ?? reservation.startDate;\nconst checkOutAt = reservation.checkOutAt ?? reservation.checkoutAt ?? reservation.endDate;\nconst html = `\n  <h2>Xac nhan dat phong ${reservationCode}</h2>\n  <p>Xin chao ${customer.fullName ?? customer.name ?? 'Quy khach'},</p>\n  <p>Dat phong cua quy khach da duoc ghi nhan thanh cong.</p>\n  <table border=\"1\" cellpadding=\"8\" cellspacing=\"0\">\n    <tr><td>Ma dat phong</td><td>${reservationCode}</td></tr>\n    <tr><td>Loai/phong</td><td>${room.roomTypeName ?? room.typeName ?? room.name ?? 'Dang cap nhat'}</td></tr>\n    <tr><td>Thoi gian nhan phong</td><td>${checkInAt ?? 'Dang cap nhat'}</td></tr>\n    <tr><td>Thoi gian tra phong</td><td>${checkOutAt ?? 'Dang cap nhat'}</td></tr>\n    <tr><td>Tong gia tri</td><td>${Number(totalAmount).toLocaleString('vi-VN')} ${currency}</td></tr>\n  </table>\n`;\nreturn {\n  json: {\n    ...context,\n    email: {\n      from: $('Validate HMAC or Token').item.json.smtpFrom,\n      to: customer.email,\n      subject: `Xac nhan dat phong ${reservationCode}`,\n      html,\n    },\n  },\n};"
+      },
+      "id": "build-confirmation-email",
+      "name": "Build Confirmation Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.email.from }}",
+        "toEmail": "={{ $json.email.to }}",
+        "subject": "={{ $json.email.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email.html }}",
+        "options": {}
+      },
+      "id": "send-confirmation-email",
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1240,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Validate HMAC or Token').item.json.backendBaseUrl + '/internal/housekeeping/tasks' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Validate HMAC or Token').item.json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n-uc13-reservation-created-automation', reservationId: $('Validate HMAC or Token').item.json.event.reservationId, roomId: $('Get Reservation Automation Context').item.json.room?.id ?? $('Get Reservation Automation Context').item.json.reservation?.roomId, facilityId: $('Get Reservation Automation Context').item.json.facility?.id ?? $('Get Reservation Automation Context').item.json.reservation?.facilityId, taskType: 'PRE_CHECKIN_ROOM', assignedTeamCode: 'HOUSEKEEPING', dueBeforeHours: 2, dueAt: $('Get Reservation Automation Context').item.json.preCheckInCleaningDueAt, note: 'Tu dong tao task don dep 2 gio truoc check-in' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "create-housekeeping-task",
+      "name": "Create Housekeeping Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "direct-checkin-enabled",
+              "leftValue": "={{ Boolean($('Get Reservation Automation Context').item.json.directCheckIn?.enabled ?? $('Get Reservation Automation Context').item.json.reservation?.directCheckInEnabled ?? false) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-direct-checkin",
+      "name": "Direct Check-in Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Get Reservation Automation Context').item.json.data ?? $('Get Reservation Automation Context').item.json;\nconst reservation = context.reservation ?? context;\nconst customer = context.customer ?? reservation.customer ?? {};\nconst directCheckIn = context.directCheckIn ?? {};\nconst guideUrl = directCheckIn.guideUrl ?? context.directCheckInGuideUrl ?? `${$('Validate HMAC or Token').item.json.backendBaseUrl.replace('/api/v1', '')}/direct-check-in/${reservation.id}`;\nconst requiredDocuments = directCheckIn.requiredDocuments ?? ['CCCD/Ho chieu', 'Ma dat phong', 'Thong tin lien he'];\nconst html = `\n  <h2>Huong dan Direct Check-in</h2>\n  <p>Xin chao ${customer.fullName ?? customer.name ?? 'Quy khach'},</p>\n  <p>Quy khach co the tu check-in qua duong dan sau:</p>\n  <p><a href=\"${guideUrl}\">${guideUrl}</a></p>\n  <p>Giay to can chuan bi:</p>\n  <ul>${requiredDocuments.map((item) => `<li>${item}</li>`).join('')}</ul>\n`;\nreturn {\n  json: {\n    email: {\n      from: $('Validate HMAC or Token').item.json.smtpFrom,\n      to: customer.email,\n      subject: `Huong dan Direct Check-in - ${reservation.code ?? reservation.id}`,\n      html,\n    },\n  },\n};"
+      },
+      "id": "build-direct-checkin-email",
+      "name": "Build Direct Check-in Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.email.from }}",
+        "toEmail": "={{ $json.email.to }}",
+        "subject": "={{ $json.email.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email.html }}",
+        "options": {}
+      },
+      "id": "send-direct-checkin-email",
+      "name": "Send Direct Check-in Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2280,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Get Reservation Automation Context').item.json.data ?? $('Get Reservation Automation Context').item.json;\nconst reservation = context.reservation ?? context;\nreturn {\n  json: {\n    source: 'n8n-uc13-reservation-created-automation',\n    reservationId: reservation.id ?? $('Validate HMAC or Token').item.json.event.reservationId,\n    reminderJobs: [\n      {\n        recipientType: 'CUSTOMER',\n        channel: 'EMAIL_SMS',\n        templateCode: 'CHECK_IN_REMINDER_24H',\n        sendBeforeHours: 24,\n      },\n      {\n        recipientType: 'RECEPTION',\n        channel: 'INTERNAL_NOTIFICATION',\n        templateCode: 'RECEPTION_CHECK_IN_READY_1H',\n        sendBeforeHours: 1,\n      }\n    ],\n  },\n};"
+      },
+      "id": "build-reminder-jobs",
+      "name": "Build Reminder Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2540,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Validate HMAC or Token').item.json.backendBaseUrl + '/internal/automation/reservations/' + $json.reservationId + '/reminder-jobs' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Validate HMAC or Token').item.json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.source, reminderJobs: $json.reminderJobs }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "schedule-reminders",
+      "name": "Schedule Customer and Reception Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2800,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const reminderResult = $json.data ?? $json;\nconst context = $('Get Reservation Automation Context').item.json.data ?? $('Get Reservation Automation Context').item.json;\nconst housekeepingResult = $('Create Housekeeping Task').item.json.data ?? $('Create Housekeeping Task').item.json;\nreturn {\n  json: {\n    ok: true,\n    workflow: 'uc13-reservation-created-automation',\n    reservationId: context.reservation?.id ?? context.id,\n    confirmationEmailSent: true,\n    housekeepingTask: housekeepingResult,\n    reminderJobs: reminderResult,\n  },\n};"
+      },
+      "id": "build-webhook-response",
+      "name": "Build Webhook Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3060,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3320,
+        340
+      ]
+    }
+  ],
+  "connections": {
+    "Reservation Created Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate HMAC or Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate HMAC or Token": {
+      "main": [
+        [
+          {
+            "node": "Get Reservation Automation Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Reservation Automation Context": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Create Housekeeping Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Housekeeping Task": {
+      "main": [
+        [
+          {
+            "node": "Direct Check-in Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Direct Check-in Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Build Direct Check-in Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Reminder Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Direct Check-in Email": {
+      "main": [
+        [
+          {
+            "node": "Send Direct Check-in Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Direct Check-in Email": {
+      "main": [
+        [
+          {
+            "node": "Build Reminder Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reminder Jobs": {
+      "main": [
+        [
+          {
+            "node": "Schedule Customer and Reception Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Customer and Reception Reminders": {
+      "main": [
+        [
+          {
+            "node": "Build Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Webhook Response": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "uc13-reservation-created-automation-v2"
+}

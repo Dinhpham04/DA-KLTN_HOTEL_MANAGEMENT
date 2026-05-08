@@ -1,0 +1,33 @@
+@startuml uc13_n8n_automation
+start
+
+:Hệ thống phát sự kiện nghiệp vụ hoặc đến lịch chạy;
+:n8n nhận webhook/sự kiện/lịch;
+:n8n xác thực token/chữ ký và dữ liệu bắt buộc;
+
+if (Sự kiện hợp lệ?) then (Có)
+  if (Sự kiện đặt phòng?) then (Có)
+    :Lên lịch nhắc check-in/direct check-in;
+    :Gửi xác nhận hoặc thông báo cần thiết;
+  elseif (Sự kiện check-out?) then (Có)
+    :Tạo nhiệm vụ dọn dẹp;
+    :Thông báo quản lý vệ sinh/nhóm dọn dẹp;
+    if (Còn công nợ?) then (Có)
+      :Lên lịch nhắc công nợ;
+    endif
+  elseif (Sự kiện hóa đơn/công nợ?) then (Có)
+    :Gửi nhắc công nợ hoặc chứng từ;
+  else (Lịch báo cáo)
+    :Lấy dữ liệu báo cáo;
+    :Gửi báo cáo định kỳ cho người nhận;
+  endif
+
+  :Ghi log trạng thái workflow;
+  :Cập nhật trạng thái về hệ thống nếu có API;
+else (Không)
+  :Từ chối xử lý;
+  :Ghi log lỗi;
+endif
+
+stop
+@enduml

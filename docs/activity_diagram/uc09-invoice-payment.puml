@@ -1,23 +1,35 @@
-@startuml uc09_invoice_payment
-title UC09 - Lập hóa đơn và ghi nhận thanh toán
+@startuml uc09_invoice_debt_management
 start
-:Tạo hóa đơn từ đặt phòng;
-:Cập nhật hạng mục thu phí;
-:Lưu hóa đơn;
-:Chọn phương thức thanh toán;
-if (Thanh toán qua cổng?) then (Có)
-  :Gọi cổng thanh toán;
-  if (Giao dịch thành công?) then (Có)
-    :Cập nhật đã thanh toán;
-  else (Không)
-    :Cập nhật chờ xử lý hoặc cho thử lại;
+
+:Nhân viên mở đặt phòng;
+:Chọn chức năng tạo/cập nhật hóa đơn;
+:Hệ thống tải dữ liệu đặt phòng và khoản phát sinh;
+:Tạo danh sách hạng mục hóa đơn dự kiến;
+:Nhân viên kiểm tra, bổ sung hoặc điều chỉnh hạng mục;
+:Hệ thống tính tổng phải thu, số đã ghi nhận, số còn nợ;
+
+if (Dữ liệu hóa đơn hợp lệ?) then (Có)
+  :Lưu hóa đơn nháp hoặc chốt hóa đơn;
+  if (Có số tiền đã thu cần cập nhật?) then (Có)
+    :Nhập số tiền, ngày ghi nhận, ghi chú/chứng từ;
+    if (Số tiền hợp lệ?) then (Có)
+      :Cập nhật số đã ghi nhận và công nợ còn lại;
+    else (Không)
+      :Cảnh báo số tiền không hợp lệ;
+    endif
   endif
+
+  if (Còn công nợ?) then (Có)
+    :Giữ hóa đơn trong danh sách công nợ;
+    :Phát sự kiện nhắc công nợ nếu cần;
+  else (Không)
+    :Đóng trạng thái công nợ;
+  endif
+
+  :Xuất hóa đơn hoặc phiếu xác nhận công nợ;
 else (Không)
-  :Ghi nhận thanh toán tại quầy;
+  :Thông báo thiếu/sai dữ liệu hóa đơn;
 endif
-if (Còn công nợ?) then (Có)
-  :n8n gửi nhắc thanh toán định kỳ;
-endif
-:Xuất PDF hóa đơn hoặc biên nhận;
+
 stop
 @enduml

@@ -1,15 +1,41 @@
 @startuml uc04_create_reservation
-title UC04 - Tạo đặt phòng
 start
-:Chọn khách hàng và thông tin lưu trú;
-:Chọn thông tin đặt phòng;
-:Kiểm tra phòng trống và xung đột lịch;
-if (Đặt phòng hợp lệ?) then (Có)
-  :Lưu đặt phòng;
-  :Phát sự kiện tạo phòng;
-  :n8n tạo nhắc việc trước check-in;
+
+:Nhân viên mở màn hình tạo đặt phòng;
+:Tìm hoặc tạo nhanh hồ sơ khách hàng;
+:Nhập nhu cầu lưu trú;
+note right
+  Cơ sở, loại phòng,
+  ngày đến/ngày đi,
+  số khách, ghi chú,
+  đặt cọc/công nợ nếu có
+end note
+
+:Hệ thống kiểm tra dữ liệu đầu vào;
+
+if (Dữ liệu hợp lệ?) then (Có)
+  :Truy vấn danh sách phòng trống;
+  if (Có phòng phù hợp?) then (Có)
+    :Nhân viên chọn phòng;
+    :Hệ thống kiểm tra lại xung đột lịch;
+    if (Không xung đột?) then (Có)
+      :Tính/gợi ý khoản tiền dự kiến;
+      :Nhân viên xác nhận tạo đặt phòng;
+      :Lưu đặt phòng và sinh mã đặt phòng;
+      :Cập nhật lịch phòng;
+      :Phát sự kiện reservation.created;
+      :Hiển thị chi tiết đặt phòng;
+    else (Không)
+      :Thông báo phòng vừa phát sinh xung đột;
+      :Yêu cầu chọn phòng hoặc thời gian khác;
+    endif
+  else (Không)
+    :Thông báo không có phòng trống;
+    :Gợi ý đổi ngày, loại phòng hoặc cơ sở;
+  endif
 else (Không)
-  :Thông báo lỗi và yêu cầu chọn lại;
+  :Hiển thị lỗi tại trường tương ứng;
 endif
+
 stop
 @enduml

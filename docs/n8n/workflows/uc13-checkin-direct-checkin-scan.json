@@ -1,0 +1,165 @@
+{
+  "name": "UC13 - Check-in Direct Check-in Scan",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "checkin-scan-schedule",
+      "name": "Every Day 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: 'dev-internal-token',\n    source: 'n8n-uc13-checkin-direct-checkin-scan',\n    targetDate: formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh'),\n    windowHours: 30,\n    modes: ['CHECK_IN_REMINDER', 'DIRECT_CHECK_IN_INSTRUCTION'],\n  },\n};"
+      },
+      "id": "checkin-scan-config",
+      "name": "Build Check-in Scan Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendBaseUrl + '/internal/automation/check-in/run' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.source, targetDate: $json.targetDate, windowHours: $json.windowHours, modes: $json.modes }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "checkin-scan-http",
+      "name": "Run Check-in Automation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst title = response.success === false ? 'Check-in automation failed' : 'Check-in automation completed';\nconst text = `Date: ${response.targetDate ?? response.date ?? 'n/a'}\\nEligible reservations: ${response.eligibleReservations ?? 0}\\nCheck-in reminders sent: ${response.checkInRemindersSent ?? 0}\\nDirect check-in instructions sent: ${response.directCheckInInstructionsSent ?? 0}\\nSkipped: ${response.skipped ?? 0}\\nFailed: ${response.failed ?? 0}`;\nconst slackWebhookUrl = 'PASTE_SLACK_WEBHOOK_URL_HERE';\nreturn { json: { slackWebhookUrl, slackPayload: { text: `*${title}*\\n${text}` }, response } };"
+      },
+      "id": "checkin-scan-message",
+      "name": "Build Slack Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "checkin-scan-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every Day 08:00": {
+      "main": [
+        [
+          {
+            "node": "Build Check-in Scan Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Check-in Scan Payload": {
+      "main": [
+        [
+          {
+            "node": "Run Check-in Automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Check-in Automation": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "uc13-checkin-direct-checkin-scan-v1"
+}

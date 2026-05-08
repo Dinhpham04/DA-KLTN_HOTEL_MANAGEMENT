@@ -1,29 +1,45 @@
 @startuml uc08_checkout_cleaning_automation_sequence
-title UC08 - Check-out (kèm tự động hóa dọn dẹp)
 autonumber
 
-actor "Nhân viên vận hành" as Staff
+actor "Nhân viên/Lễ tân" as Staff
 participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
+participant "Reservation API" as API
+participant "Checkout Service" as Svc
+database "Database" as DB
+participant "Smart Lock API" as Lock
 participant "n8n" as N8N
-participant "Email/SMS" as Notif
+participant "Cleaning Module" as Cleaning
 
-Staff -> FE: Chọn check-out
-FE -> BE: POST /reservations/{id}/check-out
-BE -> DB: Kiểm tra công nợ và điều kiện check-out
-DB --> BE: Kết quả
+Staff -> FE: Mở chi tiết đặt phòng
+FE -> API: GET thông tin check-out
+API -> Svc: Lấy thông tin lưu trú/công nợ
+Svc -> DB: Truy vấn đặt phòng, hóa đơn, phòng
+DB --> Svc: Dữ liệu check-out
+Svc --> API: Response
+API --> FE: Thông tin cần kiểm tra
 
-alt Còn công nợ bắt buộc
-  BE --> FE: 400 + yêu cầu xử lý thanh toán
-  FE --> Staff: Hiển thị cảnh báo
-else Đủ điều kiện check-out
-  BE -> DB: Cập nhật check-out + trạng thái phòng chờ dọn
-  DB --> BE: OK
-  BE -->> N8N: Phát sự kiện ReservationCheckedOut
-  N8N -> DB: Tạo task dọn dẹp
-  N8N -> Notif: Gửi thông báo cho quản lý vệ sinh
-  BE --> FE: Check-out thành công
+Staff -> FE: Xác nhận check-out
+FE -> API: POST check-out
+API -> Svc: Kiểm tra điều kiện check-out
+Svc -> DB: Kiểm tra trạng thái và công nợ bắt buộc
+DB --> Svc: Kết quả
+
+alt Còn công nợ bắt buộc hoặc trạng thái không hợp lệ
+  Svc --> API: Từ chối check-out
+  API --> FE: Response lỗi
+  FE --> Staff: Hiển thị cảnh báo cần xử lý
+else Hợp lệ
+  Svc -> DB: Cập nhật đặt phòng đã check-out
+  Svc -> DB: Cập nhật phòng sang chờ dọn
+  DB --> Svc: Đã cập nhật
+  Svc ->> N8N: Phát reservation.checked_out
+  N8N -> Cleaning: Tạo task dọn dẹp
+  opt Có Smart Lock
+    Svc -> Lock: Thu hồi/cập nhật hiệu lực PIN
+    Lock --> Svc: Kết quả
+  end
+  Svc --> API: Check-out thành công
+  API --> FE: Response thành công
   FE --> Staff: Hiển thị kết quả
 end
 

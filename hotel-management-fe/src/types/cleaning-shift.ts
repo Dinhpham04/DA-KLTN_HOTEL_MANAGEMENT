@@ -162,6 +162,7 @@ export interface UpdateCleaningDetailBody {
   startDatetime?: string | null
   endDatetime?: string | null
   finishDatetime?: string | null
+  cleanStatus?: CleaningStatus
   comment?: string
   areaName?: string
   reportImg1?: string | null

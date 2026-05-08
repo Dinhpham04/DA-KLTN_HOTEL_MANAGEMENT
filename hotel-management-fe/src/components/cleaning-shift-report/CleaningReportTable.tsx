@@ -1,10 +1,11 @@
-import { NoteDrawer } from '@/components/cleaning-shift/NoteDrawer'
+import { CleaningReportDialog } from '@/components/cleaning-shift-report/CleaningReportDialog'
 import { Button } from '@/components/ui/button'
 import { useUpdateCleaningDetail } from '@/hooks/mutations/useUpdateCleaningDetail'
 import { useUpdateCleaningStatus } from '@/hooks/mutations/useUpdateCleaningStatus'
 import { cn } from '@/lib/utils'
 import { type CleaningDetail, CleaningStatus } from '@/types/cleaning-shift'
-import { StickyNote } from 'lucide-react'
+import { Pencil } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'react-toastify'
 
 type ReportKind = 'room' | 'common'
@@ -98,6 +99,8 @@ export function CleaningReportTable({
   kind,
   refetch,
 }: CleaningReportTableProps) {
+  const [reportDetailId, setReportDetailId] = useState<number | null>(null)
+
   const updateDetail = useUpdateCleaningDetail({
     onSuccess: () => {
       toast.success('Đã cập nhật thời gian')
@@ -143,12 +146,12 @@ export function CleaningReportTable({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center bg-white before:bg-primary before:w-[.4rem] h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
-        <h2 className="ml-[1.5rem] font-bold text-[2.3rem]">■ {title}</h2>
+      <div className="flex items-center bg-white h-[4.7rem] before:h-full font-bold text-[2.3rem] before:content-['']">
+        <h2 className="font-bold text-[2.3rem]">■ {title}</h2>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-separate border-spacing-0 w-full min-w-[96rem] text-[1.6rem] [&_td]:border-black [&_td]:border-r [&_td]:border-b [&_td:first-child]:border-l [&_th]:bg-[#eee] [&_th]:border-black [&_th]:border-r [&_th]:border-b [&_th:first-child]:border-l [&_th]:h-14 [&_td]:h-14">
+        <table className="border-t border-black border-separate border-spacing-0 w-full min-w-[96rem] text-[1.6rem] [&_td]:border-black [&_td]:border-r [&_td]:border-b [&_td:first-child]:border-l [&_th]:bg-[#eee] [&_th]:border-black [&_th]:border-r [&_th]:border-b [&_th:first-child]:border-l [&_th]:h-14 [&_td]:h-14">
           <thead className="top-0 z-[9] sticky">
             <tr>
               <th className="w-[5rem] text-center">No</th>
@@ -166,8 +169,7 @@ export function CleaningReportTable({
               )}
               <th className="w-[18rem] text-center">Phụ trách</th>
               <th className="w-[16rem] text-center">Bắt đầu / Kết thúc</th>
-              <th className="w-[11rem] text-center">Thao tác</th>
-              <th className="w-[10rem] text-center">Ghi chú</th>
+              <th className="w-[18rem] text-center">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -228,37 +230,28 @@ export function CleaningReportTable({
                       </div>
                     </td>
                     <td className="p-2 text-center">
-                      {nextAction ? (
+                      <div className="flex justify-center items-center gap-2">
                         <Button
                           type="button"
-                          disabled={updateStatus.isPending}
-                          onClick={() => handleStatus(detail)}
+                          onClick={() => setReportDetailId(detail.cleaningDetailId)}
                           className="bg-gray hover:bg-primary border border-black rounded-[.4rem] h-12 font-bold text-[1.3rem] text-black hover:text-white"
                         >
-                          {nextAction.label}
+                          <Pencil size={15} />
+                          Sửa
                         </Button>
-                      ) : (
-                        <span className="text-[1.3rem]">-</span>
-                      )}
-                    </td>
-                    <td className="p-2 text-center">
-                      <NoteDrawer
-                        detailId={detail.cleaningDetailId}
-                        trigger={
+                        {nextAction ? (
                           <Button
                             type="button"
-                            variant="outline"
-                            className="relative border-black h-12"
+                            disabled={updateStatus.isPending}
+                            onClick={() => handleStatus(detail)}
+                            className="bg-gray hover:bg-primary border border-black rounded-[.4rem] h-12 font-bold text-[1.3rem] text-black hover:text-white"
                           >
-                            <StickyNote size={18} />
-                            {detail.noteCount > 0 ? (
-                              <span className="-top-2 -right-2 absolute bg-primary px-2 rounded-full text-[1rem] text-white">
-                                {detail.noteCount}
-                              </span>
-                            ) : null}
+                            {nextAction.label}
                           </Button>
-                        }
-                      />
+                        ) : (
+                          <span className="text-[1.3rem]">-</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -266,7 +259,7 @@ export function CleaningReportTable({
             ) : (
               <tr>
                 <td
-                  colSpan={kind === 'room' ? 11 : 8}
+                  colSpan={kind === 'room' ? 10 : 7}
                   className="p-6 text-center text-muted-foreground"
                 >
                   Không có dữ liệu
@@ -276,6 +269,13 @@ export function CleaningReportTable({
           </tbody>
         </table>
       </div>
+      <CleaningReportDialog
+        detailId={reportDetailId}
+        open={reportDetailId !== null}
+        reportDate={reportDate}
+        onClose={() => setReportDetailId(null)}
+        onUpdated={refetch}
+      />
     </section>
   )
 }

@@ -1,0 +1,156 @@
+{
+  "name": "UC13 - Automation Manual Retry",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-retry-trigger",
+      "name": "Manual Retry Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: 'dev-internal-token',\n    source: 'n8n-uc13-automation-manual-retry',\n    fromDate: formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh'),\n    workflowTypes: ['RESERVATION_EVENT', 'CHECK_IN', 'CHECKOUT', 'PAYMENT', 'REPORT'],\n    maxItems: 50,\n    dryRun: false,\n  },\n};"
+      },
+      "id": "manual-retry-payload",
+      "name": "Build Retry Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendBaseUrl + '/internal/automation-events/replay-failed' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.source, fromDate: $json.fromDate, workflowTypes: $json.workflowTypes, maxItems: $json.maxItems, dryRun: $json.dryRun }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "manual-retry-http",
+      "name": "Replay Failed Automation Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst title = response.success === false ? 'Automation manual retry failed' : 'Automation manual retry completed';\nconst text = `From date: ${response.fromDate ?? 'n/a'}\\nFound: ${response.found ?? 0}\\nReplayed: ${response.replayed ?? 0}\\nSucceeded: ${response.succeeded ?? 0}\\nStill failed: ${response.failed ?? 0}\\nDry run: ${response.dryRun ?? false}`;\nconst slackWebhookUrl = 'PASTE_SLACK_WEBHOOK_URL_HERE';\nreturn { json: { slackWebhookUrl, slackPayload: { text: `*${title}*\\n${text}` }, response } };"
+      },
+      "id": "manual-retry-message",
+      "name": "Build Slack Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "manual-retry-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Retry Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Retry Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Retry Payload": {
+      "main": [
+        [
+          {
+            "node": "Replay Failed Automation Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replay Failed Automation Jobs": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "uc13-automation-manual-retry-v1"
+}

@@ -1,5 +1,7 @@
+import { CleaningReportTable } from '@/components/cleaning-shift-report/CleaningReportTable'
 import { CustomCheckbox } from '@/components/common/CustomCheckbox'
 import CustomDatePickerNextDay from '@/components/common/CustomDatePickerNextDay'
+import { CustomMultiSelect } from '@/components/common/CustomMultiSelect'
 import CustomSelectClean, { type Option } from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
@@ -12,6 +14,9 @@ import {
 } from '@/hooks/mutations/useUpdateDailyReserve'
 import { useUpdateParkingReserve } from '@/hooks/mutations/useUpdateParkingReserve'
 import { useDailyReserve } from '@/hooks/queries/useDailyReserve'
+import { useGetCleaningShiftReport } from '@/hooks/queries/useGetCleaningShiftReport'
+import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
+import { useGetFacilityRoomTypes } from '@/hooks/queries/useGetFacilityRoomTypes'
 import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useParkingStatus } from '@/hooks/queries/useParkingStatus'
 import {
@@ -21,13 +26,16 @@ import {
   useUpdateReservation,
 } from '@/hooks/queries/useReservations'
 import { cn } from '@/lib/utils'
+import { CleaningDataType, type CleaningDetail } from '@/types/cleaning-shift'
 import type { DailyReserve, UpdateDailyReserveBody } from '@/types/daily-reserve'
+import type { Facility } from '@/types/facility'
 import type {
   BicycleParkingReserveItem,
   ParkingReserveItem,
   ParkingStatusResponse,
 } from '@/types/parking-status'
 import type { Reservation, UpdateReservationBody } from '@/types/reservation'
+import type { Staff } from '@/types/staff'
 import { Link } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { Bed, Bike, Car, Package, PawPrint, RefreshCw } from 'lucide-react'
@@ -35,7 +43,7 @@ import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 
-type ManagementTab = 'daily-reserve' | 'exit-management'
+type ManagementTab = 'daily-reserve' | 'exit-management' | 'cleaning-shift'
 type VehicleReserve = ParkingReserveItem | BicycleParkingReserveItem
 
 interface DashboardManagementTabsProps {
@@ -101,6 +109,11 @@ function isSameDay(value: string | null | undefined, date: Date) {
 function getReservationItems(data: unknown): Reservation[] {
   const response = data as { data?: Reservation[]; items?: Reservation[] } | undefined
   return response?.data ?? response?.items ?? []
+}
+
+function normalizeManagementTab(tab: string): ManagementTab {
+  if (tab === 'exit-management' || tab === 'cleaning-shift') return tab
+  return 'daily-reserve'
 }
 
 function formatDate(value: string | null | undefined, fallback = '-') {
@@ -189,8 +202,8 @@ export default function DashboardManagementTabs({
   selectedTab,
   onTabChange,
 }: DashboardManagementTabsProps) {
-  const [activeTab, setActiveTab] = useState<ManagementTab>(
-    selectedTab === 'exit-management' ? 'exit-management' : 'daily-reserve'
+  const [activeTab, setActiveTab] = useState<ManagementTab>(() =>
+    normalizeManagementTab(selectedTab)
   )
 
   const exitDate = dayjs(date).subtract(1, 'day').toDate()
@@ -206,7 +219,10 @@ export default function DashboardManagementTabs({
     order: 'asc',
   })
   const parkingStatusQuery = useParkingStatus()
+  const facilitiesQuery = useGetFacilities()
   const staffsQuery = useGetStaffs({})
+
+  const facilities = facilitiesQuery.data?.data ?? []
 
   const staffOptions = useMemo<Option[]>(
     () => [
@@ -256,6 +272,7 @@ export default function DashboardManagementTabs({
     dailyReserveQuery.isLoading ||
     exitReservationsQuery.isLoading ||
     parkingStatusQuery.isLoading ||
+    facilitiesQuery.isLoading ||
     staffsQuery.isLoading ||
     updateDailyReserveMutation.isPending ||
     updateAllDailyReserveMutation.isPending ||
@@ -272,6 +289,10 @@ export default function DashboardManagementTabs({
     exitReservationsQuery.refetch()
     parkingStatusQuery.refetch()
   }
+
+  useEffect(() => {
+    setActiveTab(normalizeManagementTab(selectedTab))
+  }, [selectedTab])
 
   return (
     <div className="bg-transparent pb-[5rem]">
@@ -316,6 +337,13 @@ export default function DashboardManagementTabs({
             >
               Trả phòng
             </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('cleaning-shift')}
+              className={activeTab === 'cleaning-shift' ? activeTabClass : inactiveTabClass}
+            >
+              Vệ sinh
+            </button>
           </div>
 
           <div className="relative mt-[-.2rem] w-full border-2 border-primary bg-white p-[2.2rem]">
@@ -325,7 +353,7 @@ export default function DashboardManagementTabs({
               </div>
             )}
 
-            {activeTab === 'daily-reserve' ? (
+            {activeTab === 'daily-reserve' && (
               <DailyReserveTab
                 date={date}
                 reserves={dailyReserves}
@@ -342,7 +370,9 @@ export default function DashboardManagementTabs({
                   updateParkingMutation.mutate({ id: row.id, data: { checkinFlag: checked } })
                 }}
               />
-            ) : (
+            )}
+
+            {activeTab === 'exit-management' && (
               <ExitManagementTab
                 exitDate={exitDate}
                 reservations={exitReservations}
@@ -363,6 +393,14 @@ export default function DashboardManagementTabs({
                   }
                   updateParkingMutation.mutate({ id: row.id, data: { checkoutFlag: checked } })
                 }}
+              />
+            )}
+
+            {activeTab === 'cleaning-shift' && (
+              <DashboardCleaningShiftTab
+                date={date}
+                staffs={staffsQuery.data ?? []}
+                facilities={facilities}
               />
             )}
           </div>
@@ -386,6 +424,178 @@ interface VehicleRow {
   checkinFlag: boolean
   checkoutFlag: boolean
   isBicycle: boolean
+}
+
+interface DashboardCleaningShiftTabProps {
+  date: Date
+  staffs: Staff[]
+  facilities: Facility[]
+}
+
+function matchesCleaningStaff(detail: CleaningDetail, staffId: string) {
+  if (staffId === '-1') return true
+  return (
+    String(detail.mainStaffId ?? '') === staffId ||
+    String(detail.subStaffId ?? '') === staffId ||
+    String(detail.checkStaffId ?? '') === staffId
+  )
+}
+
+function formatCleaningDate(date: Date) {
+  return dayjs(date).format('YYYY-MM-DD')
+}
+
+function DashboardCleaningShiftTab({ date, staffs, facilities }: DashboardCleaningShiftTabProps) {
+  const [facilitySearch, setFacilitySearch] = useState<string[]>([])
+  const [roomTypeSearch, setRoomTypeSearch] = useState<string[]>([])
+  const [staffSearch, setStaffSearch] = useState('-1')
+
+
+  const selectedFacilityIds = useMemo(() => {
+    if (facilitySearch.length > 0) return facilitySearch.map(Number)
+    return facilities.map((facility) => facility.facilityId)
+  }, [facilitySearch, facilities])
+
+  const { data: roomTypeMatrix } = useGetFacilityRoomTypes()
+
+  const facilityOptions = useMemo<Option[]>(
+    () =>
+      facilities.map((facility) => ({
+        value: String(facility.facilityId),
+        label: facility.facilityName,
+      })),
+    [facilities]
+  )
+
+  const roomTypeOptions = useMemo<Option[]>(() => {
+    const rows = roomTypeMatrix?.facilities ?? []
+    const targetFacilityIds = new Set(selectedFacilityIds)
+    const roomTypes = new Map<number, string>()
+
+    for (const row of rows) {
+      if (targetFacilityIds.size > 0 && !targetFacilityIds.has(row.facilityId)) continue
+      for (const roomType of row.roomTypes) {
+        roomTypes.set(roomType.roomTypeId, roomType.roomTypeName ?? roomType.roomTypeNameShort)
+      }
+    }
+
+    return [...roomTypes.entries()].map(([value, label]) => ({
+      value: String(value),
+      label,
+    }))
+  }, [roomTypeMatrix, selectedFacilityIds])
+
+  const { shifts, isLoading, isFetching, refetch } = useGetCleaningShiftReport({
+    cleaningDate: formatCleaningDate(date),
+    facilityIds: selectedFacilityIds,
+    roomTypeIds: roomTypeSearch.length > 0 ? roomTypeSearch.map(Number) : undefined,
+    enabled: selectedFacilityIds.length > 0,
+  })
+
+  const allDetails = useMemo(() => shifts.flatMap((shift) => shift.details), [shifts])
+  const filteredDetails = useMemo(
+    () => allDetails.filter((detail) => matchesCleaningStaff(detail, staffSearch)),
+    [allDetails, staffSearch]
+  )
+  const roomDetails = useMemo(
+    () => filteredDetails.filter((detail) => detail.dataType === CleaningDataType.ROOM),
+    [filteredDetails]
+  )
+  const commonAreaDetails = useMemo(
+    () => filteredDetails.filter((detail) => detail.dataType === CleaningDataType.COMMON_AREA),
+    [filteredDetails]
+  )
+
+
+  const isReportLoading = isLoading || isFetching
+  const refetchReport = () => {
+    void refetch()
+  }
+
+  if (facilities.length === 0) {
+    return (
+      <div className="max-h-[70vh] overflow-y-auto">
+        <div className="font-bold text-[1.4rem] text-red-600">
+          Không có cơ sở để hiển thị nhật báo vệ sinh.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative max-h-[70vh] overflow-y-auto">
+      {isReportLoading ? (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70">
+          <Loading />
+        </div>
+      ) : null}
+
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-[1.2rem] bg-white pb-[.5rem]">
+        <SummaryBox label="Dọn phòng" value={`${roomDetails.length} phòng`} />
+        <SummaryBox label="Khu vực chung" value={`${commonAreaDetails.length} mục`} />
+        <div className="font-bold text-[#555] text-[1.4rem]">
+          Ngày vệ sinh: {dayjs(date).format('YYYY/MM/DD')}
+        </div>
+      </div>
+
+      <div className="mt-[2.4rem] flex flex-wrap items-center gap-6">
+        <div className="font-bold text-[1.6rem] text-black">Người phụ trách:</div>
+        <select
+          value={staffSearch}
+          onChange={(event) => setStaffSearch(event.currentTarget.value)}
+          className="h-14 min-w-[15rem] border border-black bg-white px-3 font-semibold text-[1.4rem]"
+        >
+          <option value="-1">Tất cả</option>
+          {staffs.map((staff) => (
+            <option key={staff.staffId} value={String(staff.staffId)}>
+              {staff.staffNameShort || staff.staffName}
+            </option>
+          ))}
+        </select>
+
+        <div className="font-bold text-[1.6rem] text-black">Cơ sở:</div>
+        <CustomMultiSelect
+          options={facilityOptions}
+          onValueChange={setFacilitySearch}
+          defaultValue={facilitySearch}
+          placeholder="---"
+          variant="inverted"
+          animation={2}
+          maxCount={1}
+          className="w-[21rem] bg-white hover:bg-white"
+        />
+
+        <div className="font-bold text-[1.6rem] text-black">Loại phòng:</div>
+        <CustomMultiSelect
+          options={roomTypeOptions}
+          onValueChange={setRoomTypeSearch}
+          defaultValue={roomTypeSearch}
+          placeholder="---"
+          variant="inverted"
+          animation={2}
+          maxCount={1}
+          className="w-[21rem] bg-white hover:bg-white"
+        />
+      </div>
+
+      <div className="mt-[3.2rem] flex flex-col gap-[4rem]">
+        <CleaningReportTable
+          title="Dọn phòng"
+          details={roomDetails}
+          reportDate={date}
+          kind="room"
+          refetch={refetchReport}
+        />
+        <CleaningReportTable
+          title="Vệ sinh khu vực chung"
+          details={commonAreaDetails}
+          reportDate={date}
+          kind="common"
+          refetch={refetchReport}
+        />
+      </div>
+    </div>
+  )
 }
 
 interface DailyReserveTabProps {

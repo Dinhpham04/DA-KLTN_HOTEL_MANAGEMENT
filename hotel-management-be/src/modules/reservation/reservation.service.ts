@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { IPaginated, ERROR_MESSAGES, RESERVATION_EVENTS } from '@common/index';
 import { ReserveStatus, DeleteStatus } from '@common/enums/index';
+import { PrismaService } from '@database/prisma.service';
 import { ReservationRepository } from './reservation.repository';
 import { ClientRepository } from '@modules/client/client.repository';
 import {
@@ -16,6 +17,7 @@ import {
   ReservationFilterDto,
   ReservationResponseDto,
   CancelReservationDto,
+  CreateReservationWithParkingsDto,
 } from './dto';
 import {
   ReservationCreatedEvent,
@@ -31,6 +33,7 @@ export class ReservationService {
     private readonly reservationRepository: ReservationRepository,
     private readonly clientRepository: ClientRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly prisma: PrismaService,
   ) { }
 
   // ─── State Machine Transitions ──────────────────────
@@ -158,6 +161,99 @@ export class ReservationService {
     );
 
     return ReservationResponseDto.fromEntity(reserve);
+  }
+
+  async createReservationWithParkings(
+    dto: CreateReservationWithParkingsDto,
+    currentStaffId: number,
+  ): Promise<ReservationResponseDto> {
+    // Validate client exists
+    const client = await this.clientRepository.findById(dto.reservation.clientId);
+    if (!client) throw new NotFoundException('Client not found');
+
+    // Validate period
+    const periodFrom = new Date(dto.reservation.periodFrom);
+    const periodTo = new Date(dto.reservation.periodTo);
+    if (periodTo <= periodFrom) {
+      throw new BadRequestException('Period to must be after period from');
+    }
+
+    // Check room overlap if room assigned
+    if (dto.reservation.roomId) {
+      await this.ensureNoOverlap(dto.reservation.roomId, periodFrom, periodTo);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Build reservation data
+      const reserveData = this.buildReserveCreateInput(dto.reservation, currentStaffId);
+
+      // Create reservation within transaction
+      const reserve = await tx.reserve.create({
+        data: reserveData,
+        include: this.reservationRepository.getIncludeRelations(),
+      });
+
+      // Batch create parking reserves if provided
+      if (dto.parkingReserves && dto.parkingReserves.length > 0) {
+        const parkingData = dto.parkingReserves.map((pr) => ({
+          parkingId: pr.parkingId,
+          reserveId: reserve.reserveId,
+          clientId: reserve.clientId,
+          periodFrom: new Date(pr.periodFrom),
+          periodTo: pr.periodTo ? new Date(pr.periodTo) : null,
+          stayTypeId: pr.stayTypeId || reserve.stayTypeId,
+          confirmFlag: pr.confirmFlag ?? false,
+          carType: pr.carType,
+          licensePlate: pr.licensePlate,
+          note: pr.note,
+          saleDate: pr.saleDate ? new Date(pr.saleDate) : null,
+          createdStaffId: currentStaffId,
+        }));
+
+        await tx.parkingReserve.createMany({ data: parkingData });
+      }
+
+      // Batch create bicycle parking reserves if provided
+      if (dto.bicycleParkingReserves && dto.bicycleParkingReserves.length > 0) {
+        const bicycleData = dto.bicycleParkingReserves.map((br) => ({
+          bicycleParkingId: br.bicycleParkingId,
+          reserveId: reserve.reserveId,
+          clientId: reserve.clientId,
+          periodFrom: new Date(br.periodFrom),
+          periodTo: br.periodTo ? new Date(br.periodTo) : null,
+          stayTypeId: br.stayTypeId || reserve.stayTypeId,
+          confirmFlag: br.confirmFlag ?? false,
+          bicycleTypeNote: br.bicycleTypeNote,
+          note: br.note,
+          saleDate: br.saleDate ? new Date(br.saleDate) : null,
+          createdStaffId: currentStaffId,
+        }));
+
+        await tx.bicycleParkingReserve.createMany({ data: bicycleData });
+      }
+
+      // Increment client use count within transaction
+      await tx.client.update({
+        where: { clientId: reserve.clientId! },
+        data: { useCount: { increment: 1 } },
+      });
+
+      return reserve;
+    }).then((reserve) => {
+      // Emit event after transaction succeeds (outside TX)
+      this.eventEmitter.emit(
+        RESERVATION_EVENTS.CREATED,
+        new ReservationCreatedEvent(
+          reserve.reserveId,
+          reserve.clientId,
+          reserve.roomId,
+          reserve.periodFrom,
+          reserve.periodTo,
+        ),
+      );
+
+      return ReservationResponseDto.fromEntity(reserve);
+    });
   }
 
   async update(id: number, dto: UpdateReservationDto, currentStaffId: number): Promise<ReservationResponseDto> {
@@ -410,5 +506,68 @@ export class ReservationService {
     if (hasOverlap) {
       throw new ConflictException(ERROR_MESSAGES.ROOM_OVERLAP);
     }
+  }
+
+  private buildReserveCreateInput(
+    dto: CreateReservationDto,
+    staffId: number,
+  ): Prisma.ReserveCreateInput {
+    const initialStatus = dto.confirmFlag ? ReserveStatus.CONFIRMED : ReserveStatus.PENDING;
+
+    return {
+      reserveStatus: initialStatus,
+      periodFrom: new Date(dto.periodFrom),
+      periodTo: new Date(dto.periodTo),
+      reserveType: dto.reserveType,
+      bookingUnitPrice: dto.bookingUnitPrice,
+      adjustmentUnitPrice: dto.adjustmentUnitPrice,
+      deposit: dto.deposit,
+      note: dto.note,
+      memo: dto.memo,
+      amendment: dto.amendment,
+      advertisingType: dto.advertisingType,
+      petFlag: dto.petFlag ?? false,
+      dogCount: dto.dogCount,
+      catCount: dto.catCount,
+      otherCount: dto.otherCount,
+      petNote: dto.petNote,
+      draftFlag: dto.draftFlag ?? false,
+      memoFlag: dto.memoFlag ?? false,
+      confirmFlag: dto.confirmFlag ?? false,
+      directcheckinFlag: dto.directcheckinFlag ?? false,
+      directcheckinType: dto.directcheckinType,
+      directcheckinNote: dto.directcheckinNote,
+      contactedFlag: dto.contactedFlag,
+      checkinDate: dto.checkinDate ? new Date(dto.checkinDate) : null,
+      futonFlag: dto.futonFlag ?? false,
+      deliveryboxFlag: dto.deliveryboxFlag ?? false,
+      deliveryboxCardNumber: dto.deliveryboxCardNumber,
+      campaignPriceFlag: dto.campaignPriceFlag ?? false,
+      autoExtendFlag: dto.autoExtendFlag ?? false,
+      announcement: dto.announcement,
+      requestAnnouncement: dto.requestAnnouncement,
+      saleAnnouncement: dto.saleAnnouncement,
+      client: { connect: { clientId: dto.clientId } },
+      ...(dto.facilityId !== undefined && {
+        facility: { connect: { facilityId: dto.facilityId } },
+      }),
+      ...(dto.roomId !== undefined && {
+        room: { connect: { roomId: dto.roomId } },
+      }),
+      ...(dto.stayTypeId !== undefined && {
+        stayType: { connect: { stayTypeId: dto.stayTypeId } },
+      }),
+      ...(dto.chargeStaffId !== undefined && {
+        chargeStaff: { connect: { staffId: dto.chargeStaffId } },
+      }),
+      ...(dto.chargeStaffId2 !== undefined && {
+        chargeStaff2: { connect: { staffId: dto.chargeStaffId2 } },
+      }),
+      ...(dto.diContactStaffId !== undefined && {
+        diContactStaff: { connect: { staffId: dto.diContactStaffId } },
+      }),
+      createdBy: { connect: { staffId } },
+      updatedBy: { connect: { staffId } },
+    };
   }
 }

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import dayjs from 'dayjs'
@@ -29,6 +30,7 @@ import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import ReservationInfoCommonSection from '@/components/reservation/ReservationInfoCommonSection'
+import { ReservationOccupierTable } from '@/components/reservation/ReservationOccupierTable'
 import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
 import { DogSvg } from '@/components/svgs/DogSvg'
@@ -40,7 +42,6 @@ import {
   BILLING_NORMAL_HEADERS,
   DATA_TYPE_OPTIONS,
   DELETE_STATUS_OPTIONS,
-  OCCUPIER_HEADERS,
   SEX_OPTIONS,
   TIME_EXTENSION_OPTIONS,
   USED_MESSY_LEVEL_OPTIONS,
@@ -48,7 +49,11 @@ import {
 
 import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
 import { useUpdateSmartLockPin } from '@/hooks/mutations/useUpdateSmartLockPin'
+import { useCreateReserveOccupier } from '@/hooks/mutations/useCreateReserveOccupier'
+import { useDeleteReserveOccupier } from '@/hooks/mutations/useDeleteReserveOccupier'
+import type { ReserveOccupier } from '@/types/occupier'
 import { useGetClientById } from '@/hooks/queries/useGetClientById'
+import { useGetReserveOccupiers } from '@/hooks/queries/useGetReserveOccupiers'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
@@ -164,6 +169,8 @@ function ReservationEditPage() {
   const refSales = useRef<HTMLDivElement>(null)
   const refOccupier = useRef<HTMLDivElement>(null)
   const formPopulateKeyRef = useRef('')
+  const submittingRef = useRef(false)
+  const queryClient = useQueryClient()
 
   // Form
   const form = useForm<FormValues>({
@@ -218,9 +225,15 @@ function ReservationEditPage() {
   })
   const latestSmartLockCredential = smartLockPinsData?.data?.[0]
 
+  const { data: occupiersData } = useGetReserveOccupiers({
+    reserveId: reserveIdNum && Number.isFinite(reserveIdNum) ? reserveIdNum : undefined,
+  })
+
   const { mutateAsync: updateReservation } = useUpdateReservation()
   const { mutateAsync: createSmartLockPin } = useCreateSmartLockPin()
   const { mutateAsync: updateSmartLockPin } = useUpdateSmartLockPin()
+  const { mutateAsync: createReserveOccupier } = useCreateReserveOccupier()
+  const { mutateAsync: deleteReserveOccupier } = useDeleteReserveOccupier()
 
   // ─── Options ─────────────────────────────────────────────────────
   const facilityOptions: Option[] = useMemo(
@@ -320,6 +333,8 @@ function ReservationEditPage() {
   // ─── Populate form from reservation data ─────────────────────────
   useEffect(() => {
     if (!reserve) return
+    if (!occupiersData) return
+    if (submittingRef.current) return
 
     const client = clientDetail ?? reserve.client
     const populateKey = [
@@ -423,9 +438,18 @@ function ReservationEditPage() {
         charge_staff_id2: reserve.chargeStaffId2 ? String(reserve.chargeStaffId2) : '',
         request_announcement: reserve.requestAnnouncement ?? '',
         sale_announcement: reserve.saleAnnouncement ?? '',
+        occupiers: (occupiersData?.data ?? []).map((occ) => ({
+          reserve_occupier_id: occ.reserveOccupierId,
+          occupier_name: occ.occupierName,
+          sex: String(occ.sex ?? ''),
+          tel: occ.tel ?? '',
+          birthday: occ.birthday ?? null,
+          address1: occ.address1 ?? '',
+          order_num: occ.orderNum ?? 0,
+        })),
       },
     })
-  }, [reserve, clientDetail, form, latestSmartLockCredential])
+  }, [reserve, clientDetail, form, latestSmartLockCredential, occupiersData])
 
   // ─── Submit handler ───────────────────────────────────────────────
   const handleSubmit = async (values: FormValues) => {
@@ -457,6 +481,7 @@ function ReservationEditPage() {
     }
 
     setIsSubmitting(true)
+    submittingRef.current = true
     try {
       const body: UpdateReservationBody = {
         reserveId: reserveIdNum,
@@ -514,6 +539,63 @@ function ReservationEditPage() {
 
       await updateReservation(body)
 
+      // Handle occupier changes
+      const originalOccupiers = occupiersData?.data ?? []
+      const newOccupiers = values.reserve.occupiers || []
+
+      // Create new occupiers (those without reserve_occupier_id)
+      const toCreate = newOccupiers.filter((occ) => !occ.reserve_occupier_id)
+      for (const occ of toCreate) {
+        try {
+          await createReserveOccupier({
+            data: {
+              occupierName: occ.occupier_name,
+              sex: Number(occ.sex) || 9,
+              tel: occ.tel || undefined,
+              birthday: occ.birthday || undefined,
+              address1: occ.address1 || undefined,
+              orderNum: occ.order_num,
+            },
+            reserveId: reserveIdNum,
+          })
+        } catch {
+          toast.warning('Cập nhật đặt phòng thành công nhưng lưu người ở thất bại.')
+        }
+      }
+
+      // Delete removed occupiers
+      const toDelete = originalOccupiers.filter(
+        (orig) => !newOccupiers.find((n) => n.reserve_occupier_id === orig.reserveOccupierId)
+      )
+      for (const occ of toDelete) {
+        try {
+          await deleteReserveOccupier(occ.reserveOccupierId)
+        } catch {
+          toast.warning('Cập nhật đặt phòng thành công nhưng xóa người ở thất bại.')
+        }
+      }
+
+      // Fetch fresh occupiers and update form directly before releasing the submit guard
+      await queryClient.refetchQueries({ queryKey: ['reserve-occupiers', reserveIdNum] })
+      const freshOccupiers = queryClient.getQueryData<{ data: ReserveOccupier[] }>([
+        'reserve-occupiers',
+        reserveIdNum,
+      ])
+      form.setValue(
+        'reserve.occupiers',
+        (freshOccupiers?.data ?? []).map((occ) => ({
+          reserve_occupier_id: occ.reserveOccupierId,
+          occupier_name: occ.occupierName,
+          sex: String(occ.sex ?? ''),
+          tel: occ.tel ?? '',
+          birthday: occ.birthday ?? null,
+          address1: occ.address1 ?? '',
+          order_num: occ.orderNum ?? 0,
+        })),
+        { shouldDirty: false }
+      )
+      submittingRef.current = false
+
       if (isSelfCheckin && values.reserve.room_id) {
         try {
           const smartLockValidFromIso = dayjs(smartLockValidFrom).toISOString()
@@ -552,6 +634,7 @@ function ReservationEditPage() {
     } catch {
       // error handled by mutation
     } finally {
+      submittingRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -1412,42 +1495,21 @@ function ReservationEditPage() {
                           Thêm dòng
                         </NButton>
 
-                        {/* ── Section: Occupier Table (Mock) ─────────── */}
+                        {/* ── Section: Occupier Table ─────────────── */}
                         <div ref={refOccupier} className="scroll-mt-[10rem]">
-                          <h5 className="mt-12 font-bold text-[2.3rem]">■ Người ở</h5>
-                          <div className="mt-8">
-                            <table className="border-black border-l w-full font-bold text-[1.6rem] border-separate border-spacing-0">
-                              <thead>
-                                <tr>
-                                  {OCCUPIER_HEADERS.map((h) => (
-                                    <th
-                                      key={h}
-                                      className="bg-[#EEEEEE] border border-black border-l-0 px-4 h-16 text-center"
-                                    >
-                                      {h}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td
-                                    colSpan={OCCUPIER_HEADERS.length}
-                                    className="text-center py-8 text-gray-400 border border-black border-l-0"
-                                  >
-                                    Chưa có dữ liệu
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                          <NButton
-                            type="button"
-                            className="bg-[#D9D9D9] w-[18.2rem] h-[3.6rem] mt-2"
-                            disabled
-                          >
-                            Thêm người ở
-                          </NButton>
+                          <ReservationOccupierTable
+                            control={form.control as unknown as Control<FieldValues>}
+                            fieldName="reserve.occupiers"
+                            client={{
+                              client_name: form.getValues('client.client_name'),
+                              tel_phone: form.getValues('client.tel_phone'),
+                              address1: form.getValues('client.address1'),
+                              address2: form.getValues('client.address2'),
+                              birthday: form.getValues('client.birthday'),
+                              sex: form.getValues('client.sex'),
+                            }}
+                            disabled={false}
+                          />
                         </div>
 
                         {/* ── Collapsible: Time Extension / Delete ──── */}

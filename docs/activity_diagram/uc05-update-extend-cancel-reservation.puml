@@ -1,25 +1,41 @@
 @startuml uc05_update_extend_cancel_reservation
-title UC05 - Cập nhật / Gia hạn / Hủy đặt phòng
 start
-:Tìm và mở đặt phòng;
-:Chọn thao tác (Cập nhật, Gia hạn hoặc Hủy);
-if (Là thao tác hủy?) then (Có)
-  :Nhập lý do hủy;
-  :Kiểm tra điều kiện hủy;
-  if (Được phép hủy?) then (Có)
-    :Cập nhật trạng thái đã hủy;
-  else (Không)
-    :Thông báo không thể hủy;
+
+:Người dùng mở chi tiết đặt phòng;
+:Chọn thao tác cần thực hiện;
+
+if (Điều chỉnh thông tin?) then (Có)
+  :Cập nhật thời gian, phòng, khách ở cùng hoặc ghi chú;
+  :Hệ thống kiểm tra quyền và trạng thái đặt phòng;
+  if (Thay đổi ảnh hưởng lịch phòng?) then (Có)
+    :Kiểm tra xung đột lịch;
   endif
-else (Không)
-  :Cập nhật thời gian hoặc phòng;
-  :Kiểm tra xung đột lịch;
   if (Hợp lệ?) then (Có)
-    :Lưu thay đổi hoặc gia hạn;
+    :Lưu thay đổi;
+    :Ghi lịch sử thao tác;
   else (Không)
-    :Thông báo xung đột và yêu cầu chọn lại;
+    :Hiển thị lỗi và yêu cầu chọn phương án khác;
+  endif
+elseif (Gia hạn?) then (Có)
+  :Nhập ngày/giờ trả phòng mới;
+  :Kiểm tra phòng còn trống trong khoảng gia hạn;
+  :Tính khoản phát sinh nếu có;
+  if (Có thể gia hạn?) then (Có)
+    :Cập nhật thời gian lưu trú và lịch phòng;
+  else (Không)
+    :Thông báo phòng không còn trống;
+  endif
+else (Hủy)
+  :Hiển thị trạng thái đặt phòng, đặt cọc/công nợ;
+  :Nhập lý do hủy;
+  if (Cho phép hủy?) then (Có)
+    :Cập nhật trạng thái đã hủy;
+    :Giải phóng lịch phòng;
+    :Ghi lịch sử hủy;
+  else (Không)
+    :Từ chối hủy và hiển thị lý do;
   endif
 endif
-:Ghi Lịch sử thay đổi;
+
 stop
 @enduml

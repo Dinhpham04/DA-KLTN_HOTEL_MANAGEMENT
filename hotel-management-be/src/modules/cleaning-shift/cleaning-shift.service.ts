@@ -325,6 +325,7 @@ export class CleaningShiftService {
     if (!existing) throw new NotFoundException(ERROR_MESSAGES.NOT_FOUND);
 
     const data: Prisma.CleaningDetailUpdateInput = this.buildStaffAndDateUpdate(dto);
+    if (dto.cleanStatus !== undefined) data.cleanStatus = dto.cleanStatus;
     if (dto.areaName !== undefined) data.areaName = dto.areaName;
     if (dto.comment !== undefined) data.comment = dto.comment;
     if (dto.reportImg1 !== undefined) data.reportImg1 = dto.reportImg1;

@@ -1,48 +1,50 @@
 @startuml uc10_cleaning_shift_sequence
-title UC10 - Dọn dẹp: lập ca, phân công, cập nhật trạng thái
 autonumber
 
-actor "Quản lý vệ sinh" as HkManager
+actor "Quản lý vệ sinh" as Manager
 actor "Nhân viên vệ sinh" as Cleaner
 participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
-participant "Email/SMS" as Notif
+participant "Cleaning API" as API
+participant "Cleaning Service" as Svc
+database "Database" as DB
+participant "Notification" as Notify
 
-HkManager -> FE: Tạo ca dọn dẹp theo ngày
-FE -> BE: POST /cleaning-shifts
-BE -> DB: Lưu thông tin ca dọn
-DB --> BE: shiftId
+Manager -> FE: Tạo ca dọn dẹp
+FE -> API: POST ca dọn dẹp
+API -> Svc: Validate ca và nhân viên
+Svc -> DB: Lưu ca dọn dẹp
+DB --> Svc: Ca đã tạo
+Svc --> API: Response
+API --> FE: Hiển thị ca
 
-BE -> DB: Lấy danh sách phòng cần dọn
-DB --> BE: Phòng check-out/phòng cần dọn
-BE --> FE: Trả danh sách gợi ý
-FE --> HkManager: Hiển thị phòng cần phân công
+Manager -> FE: Phân công phòng
+FE -> API: POST nhiệm vụ dọn dẹp
+API -> Svc: Tạo nhiệm vụ
+Svc -> DB: Lưu task, phòng, người phụ trách
+DB --> Svc: Task đã tạo
+Svc -> Notify: Thông báo nhân viên vệ sinh
+Svc --> API: Response
+API --> FE: Danh sách task cập nhật
 
-HkManager -> FE: Phân công phòng cho nhân viên
-FE -> BE: POST /cleaning-tasks/assign
-BE -> DB: Lưu nhiệm vụ dọn dẹp
-DB --> BE: OK
-BE -> Notif: Gửi thông báo phân công
-BE --> FE: Trả danh sách nhiệm vụ
+Cleaner -> FE: Mở công việc được giao
+FE -> API: GET task của nhân viên
+API -> Svc: Lấy danh sách task
+Svc -> DB: Truy vấn task
+DB --> Svc: Danh sách task
+Svc --> API: Response
+API --> FE: Hiển thị task
 
-loop Mỗi phòng được xử lý
-  Cleaner -> FE: Cập nhật trạng thái (chưa dọn/đang dọn/đã dọn)
-  FE -> BE: PATCH /cleaning-tasks/{id}/status
-  BE -> DB: Cập nhật trạng thái nhiệm vụ
-  DB --> BE: OK
-
-  alt Phát sinh sự cố phòng
-    BE -> DB: Đánh dấu sự cố + chuyển trạng thái phòng phù hợp
-    DB --> BE: OK
-    BE -> Notif: Thông báo vận hành xử lý sự cố
-  else Hoàn tất dọn dẹp
-    BE -> DB: Cập nhật phòng sang trạng thái sẵn sàng
-    DB --> BE: OK
-  end
+Cleaner -> FE: Cập nhật trạng thái dọn dẹp
+FE -> API: PATCH task
+API -> Svc: Validate trạng thái
+alt Hoàn tất đạt yêu cầu
+  Svc -> DB: Cập nhật task hoàn tất và phòng sẵn sàng
+else Có sự cố hoặc không đạt
+  Svc -> DB: Cập nhật task có sự cố/cần kiểm tra
+  Svc -> Notify: Thông báo quản lý/vận hành
 end
-
-BE --> FE: Trả trạng thái phòng mới nhất
-FE --> HkManager: Theo dõi tiến độ ca dọn
+DB --> Svc: Kết quả
+Svc --> API: Response
+API --> FE: Hiển thị trạng thái mới
 
 @enduml

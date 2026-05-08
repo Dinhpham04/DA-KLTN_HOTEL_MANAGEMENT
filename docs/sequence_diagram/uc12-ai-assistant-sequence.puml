@@ -1,34 +1,40 @@
 @startuml uc12_ai_assistant_sequence
-title UC12 - Trợ lý AI tra cứu và tóm tắt
 autonumber
 
-actor "Người dùng nội bộ" as User
-participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
+actor "Người dùng" as User
+participant "AI Assistant UI" as FE
+participant "Backend API" as API
+participant "Permission/Data Service" as DataSvc
+database "Database" as DB
 participant "AI Engine" as AI
 
-User -> FE: Nhập câu hỏi nghiệp vụ
-FE -> BE: POST /ai-assistant/query
-BE -> BE: Xác thực phiên + kiểm tra quyền truy cập
+User -> FE: Nhập câu hỏi hoặc chọn mẫu
+FE -> API: POST yêu cầu AI + ngữ cảnh màn hình
+API -> DataSvc: Kiểm tra quyền và xác định dữ liệu cần lấy
+DataSvc -> DB: Truy vấn dữ liệu liên quan
+DB --> DataSvc: Dữ liệu theo quyền
 
-alt Câu hỏi vượt phạm vi dữ liệu cho phép
-  BE --> FE: 403/200 + phản hồi giới hạn dữ liệu
-  FE --> User: Hiển thị thông báo và hướng dẫn màn hình phù hợp
-else Được phép truy vấn
-  BE -> DB: Thu thập ngữ cảnh dữ liệu theo quyền
-  DB --> BE: Ngữ cảnh đã lọc
-  BE -> AI: Gửi prompt + ngữ cảnh nghiệp vụ
-
-  alt AI lỗi hoặc timeout
-    AI --> BE: Lỗi/timeout
-    BE --> FE: 502/504 + cho phép thử lại
-    FE --> User: Thông báo lỗi AI
-  else AI phản hồi thành công
-    AI --> BE: Câu trả lời tóm tắt + liên kết liên quan
-    BE --> FE: Trả kết quả cho frontend
-    FE --> User: Hiển thị tóm tắt và liên kết chi tiết
+alt Không đủ quyền hoặc không có dữ liệu
+  DataSvc --> API: Lỗi quyền/không có dữ liệu
+  API --> FE: Response thông báo
+  FE --> User: Hiển thị lý do
+else Có dữ liệu
+  DataSvc --> API: Ngữ cảnh đã lọc
+  API -> AI: Gửi câu hỏi + ngữ cảnh ngắn gọn
+  alt AI phản hồi thành công
+    AI --> API: Câu trả lời/tóm tắt
+    API --> FE: Response kết quả
+    FE --> User: Hiển thị tóm tắt và link bản ghi nguồn
+  else AI lỗi hoặc timeout
+    AI --> API: Lỗi
+    API --> FE: Response lỗi
+    FE --> User: Cho phép thử lại
   end
+end
+
+opt Người dùng cần thao tác nghiệp vụ
+  User -> FE: Mở bản ghi nguồn
+  FE --> User: Điều hướng sang màn hình chức năng
 end
 
 @enduml

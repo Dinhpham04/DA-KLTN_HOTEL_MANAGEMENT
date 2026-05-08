@@ -1,18 +1,47 @@
-@startuml uc06_whiteboard_dispatch
-title UC06 - Whiteboard điều phối phòng
+@startuml uc06_whiteboard_usage_situation
 start
-:Mở Whiteboard;
-:Tải trạng thái phòng theo timeline;
-:Áp dụng bộ lọc;
-if (Cần điều phối?) then (Có)
-  :Chọn đổi phòng hoặc đổi lịch;
-  :Kiểm tra quyền và xung đột;
-  if (Đủ điều kiện?) then (Có)
-    :Lưu điều phối;
-    :Làm mới Whiteboard;
+
+:Người dùng mở màn hình Tình trạng sử dụng;
+:Hệ thống hiển thị bộ lọc;
+note right
+  Ngày sử dụng, cơ sở,
+  hạng phòng, dịch vụ,
+  trạng thái, số phòng
+end note
+
+:Người dùng nhập điều kiện và bấm Tìm kiếm;
+:Hệ thống gọi API /whiteboard;
+
+if (Có dữ liệu?) then (Có)
+  :Hiển thị dữ liệu theo từng cơ sở;
+  :Nhóm phòng theo loại/hạng phòng;
+  :Hiển thị timeline từng phòng;
+  :Hiển thị chú giải màu trạng thái;
+
+  if (Người dùng bấm block đặt phòng?) then (Có)
+    :Mở màn hình chi tiết/chỉnh sửa đặt phòng;
   else (Không)
-    :Thông báo không thể điều phối;
+    if (Người dùng bấm khoảng trống?) then (Có)
+      :Hiển thị lựa chọn Đặt phòng hoặc Đặt tạm;
+      if (Chọn Đặt phòng?) then (Có)
+        :Điều hướng sang màn hình tạo đặt phòng;
+      else (Đặt tạm)
+        :Mở hộp thoại Đặt phòng tạm;
+        :Nhập khách hàng, thời hạn, khoảng ngày, ghi chú;
+        if (Dữ liệu đặt tạm hợp lệ?) then (Có)
+          :Tạo đặt phòng tạm;
+          :Tải lại Whiteboard;
+        else (Không)
+          :Hiển thị lỗi trong hộp thoại;
+        endif
+      endif
+    else (Không)
+      :Người dùng tiếp tục xem/lọc/cuộn danh sách;
+    endif
   endif
+else (Không)
+  :Hiển thị thông báo không có dữ liệu;
 endif
+
 stop
 @enduml

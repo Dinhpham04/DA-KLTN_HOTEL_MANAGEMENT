@@ -1,0 +1,33 @@
+@startuml
+title Kiến trúc Backend API (tổng quan)
+
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultTextAlignment center
+
+actor "Frontend SPA" as FE
+actor "n8n (Tự động hoá)" as N8N
+
+rectangle "Backend API (NestJS)" as BE {
+  [Request pipeline\n(CORS/Guard/Validation)] as Pipeline
+  [Controller + Service\n(Xử lý nghiệp vụ)] as Module
+  [Prisma ORM] as Prisma
+}
+
+database "PostgreSQL" as PG
+cloud "Cloudinary\n(upload - tuỳ chọn)" as Cloudinary
+
+FE --> Pipeline : HTTP/JSON
+N8N --> Pipeline : HTTP/JSON
+Pipeline --> Module
+Module --> Prisma
+Prisma --> PG
+Module --> Cloudinary
+
+note bottom of Pipeline
+Phản hồi được chuẩn hoá qua interceptor
+(định dạng thống nhất cho toàn API).
+end note
+
+@enduml

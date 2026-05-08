@@ -1,5 +1,4 @@
 @startuml uc01_login_logout
-title UC01 - Đăng nhập / Đăng xuất
 start
 :Mở trang đăng nhập;
 :Nhập tài khoản và mật khẩu;

@@ -1,46 +1,62 @@
 @startuml uc07_checkin_directcheckin_smartlock_sequence
-title UC07 - Check-in (kèm Direct Check-in và Smart Lock)
 autonumber
 
-actor "Nhân viên vận hành" as Staff
+actor "Nhân viên/Lễ tân" as Staff
+actor "Khách hàng" as Guest
 participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
-participant "Smart Lock API" as SmartLock
+participant "Reservation API" as API
+participant "Check-in Service" as Svc
+database "Database" as DB
+participant "Smart Lock API" as Lock
 participant "n8n" as N8N
-participant "Email/SMS" as Notif
+participant "Email/SMS" as Notify
 
-Staff -> FE: Chọn check-in
-FE -> BE: POST /reservations/{id}/check-in
-BE -> DB: Kiểm tra trạng thái đặt phòng và phòng
-DB --> BE: Kết quả
+Staff -> FE: Mở chi tiết đặt phòng
+FE -> API: GET chi tiết đặt phòng
+API -> Svc: Lấy thông tin check-in
+Svc -> DB: Truy vấn đặt phòng/phòng/công nợ
+DB --> Svc: Dữ liệu đối soát
+Svc --> API: Thông tin đặt phòng
+API --> FE: Response
+FE --> Staff: Hiển thị thông tin cần kiểm tra
 
-alt Không đủ điều kiện check-in
-  BE --> FE: 400 + lý do
-  FE --> Staff: Hiển thị cảnh báo
-else Check-in hợp lệ
-  BE -> DB: Cập nhật check-in + trạng thái phòng
-  DB --> BE: OK
+opt Bật direct check-in
+  Staff -> FE: Bật direct check-in
+  FE -> API: Cập nhật cấu hình direct check-in
+  API -> Svc: Kiểm tra điều kiện gửi hướng dẫn
+  Svc -> DB: Lưu cấu hình
+  Svc ->> N8N: Phát sự kiện gửi hướng dẫn
+  N8N -> Notify: Gửi hướng dẫn cho khách
+  Notify --> Guest: Email/SMS hướng dẫn
+end
 
-  opt Bật Direct Check-in
-    BE -->> N8N: Phát sự kiện gửi hướng dẫn
-    N8N -> Notif: Gửi hướng dẫn check-in
+opt Cấp PIN Smart Lock
+  Svc -> Lock: Tạo PIN theo thời gian lưu trú
+  alt Tạo PIN thành công
+    Lock --> Svc: PIN/token
+    Svc -> DB: Lưu thông tin PIN đã ẩn/mã hóa
+  else Lỗi Smart Lock
+    Lock --> Svc: Lỗi
+    Svc -> DB: Ghi nhận lỗi cấp PIN
   end
+end
 
-  opt Cần cấp PIN khóa cửa
-    BE -> SmartLock: Tạo PIN theo thời gian hiệu lực
-    SmartLock --> BE: Kết quả tạo PIN
-    alt Tạo PIN thành công
-      BE -> DB: Lưu PIN vào đặt phòng
-      DB --> BE: OK
-    else Lỗi Smart Lock
-      BE -> DB: Ghi nhận lỗi cấp PIN
-      DB --> BE: OK
-    end
-  end
+Staff -> FE: Xác nhận check-in
+FE -> API: POST check-in
+API -> Svc: Kiểm tra điều kiện nhận phòng
+Svc -> DB: Kiểm tra trạng thái đặt phòng/phòng
+DB --> Svc: Kết quả
 
-  BE --> FE: Check-in thành công
+alt Đủ điều kiện
+  Svc -> DB: Cập nhật checkinFlag, trạng thái phòng
+  DB --> Svc: Đã cập nhật
+  Svc --> API: Check-in thành công
+  API --> FE: Response thành công
   FE --> Staff: Hiển thị kết quả
+else Không đủ điều kiện
+  Svc --> API: Lỗi nghiệp vụ
+  API --> FE: Response lỗi
+  FE --> Staff: Hiển thị lý do từ chối
 end
 
 @enduml

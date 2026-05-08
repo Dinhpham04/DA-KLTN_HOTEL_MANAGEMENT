@@ -1,0 +1,78 @@
+@startuml
+title Kiến trúc Backend API (hotel-management-be)
+
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultTextAlignment center
+
+actor "Frontend SPA" as FE
+actor "n8n (Tự động hoá)" as N8N
+
+cloud "HTTP(S) / JSON\nPrefix: /api/v1" as HTTP
+
+node "Backend Server" as Server {
+  package "NestJS Application" as Nest {
+
+    package "Pipeline xử lý request" as Pipeline {
+      [Middleware\n(helmet, cors)] as Middleware
+      [Guards\n(JWT, Roles, Throttle)] as Guards
+      [ValidationPipe\n(whitelist + transform)] as Pipe
+      [Controllers\n(REST endpoints)] as Controllers
+      [Services\n(Business logic)] as Services
+      [Repositories\n(Prisma queries - optional)] as Repos
+      [PrismaService] as Prisma
+    }
+
+    package "Hạ tầng & cấu hình" as Infra {
+      [ConfigModule\n(env + validation)] as Config
+      [Logger\n(Pino)] as Logger
+      [ScheduleModule\n+ EventEmitter] as Scheduler
+      [TransformInterceptor\n(envelope response)] as Transform
+      [AllExceptionsFilter] as Exceptions
+      [Swagger (dev)] as Swagger
+    }
+  }
+}
+
+database "PostgreSQL" as PG
+cloud "Cloudinary" as Cloudinary
+
+FE --> HTTP : Gọi API
+N8N --> HTTP : Gọi API automation
+
+HTTP --> Middleware
+Middleware --> Guards
+Guards --> Pipe
+Pipe --> Controllers
+Controllers --> Services
+Services --> Repos
+Repos --> Prisma
+Prisma --> PG : SQL
+
+Services --> Cloudinary : Upload (tuỳ nghiệp vụ)
+
+Controllers --> Transform : Thành công
+Controllers --> Exceptions : Lỗi / Exception
+Transform --> HTTP : {statusCode, message, data, meta?, timestamp}
+Exceptions --> HTTP : Phản hồi lỗi chuẩn hoá
+
+Config ..> Services
+Logger ..> Controllers
+Scheduler ..> Services
+Swagger ..> Controllers
+
+note right of Pipeline
+Mẫu xử lý tiêu chuẩn của 1 module:
+Controller -> Service -> (Repository) -> Prisma -> PostgreSQL
+end note
+
+note right of Transform
+Chuẩn hoá phản hồi thành:
+{ statusCode, message, data, meta?, timestamp }
+- Với phân trang: { items, meta } -> { data: items, meta }
+end note
+
+@enduml

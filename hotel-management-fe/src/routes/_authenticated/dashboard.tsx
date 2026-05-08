@@ -28,7 +28,7 @@ function readTabFromUrl() {
   if (typeof window === 'undefined') return 'daily-reserve'
   const params = new URLSearchParams(window.location.search)
   const raw = params.get('tab')
-  return raw === 'exit-management' ? raw : 'daily-reserve'
+  return raw === 'exit-management' || raw === 'cleaning-shift' ? raw : 'daily-reserve'
 }
 
 function syncTextUrlParam(key: string, value: string) {

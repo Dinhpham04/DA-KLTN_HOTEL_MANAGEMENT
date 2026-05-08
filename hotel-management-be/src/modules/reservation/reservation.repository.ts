@@ -81,7 +81,6 @@ export class ReservationRepository {
             deletedAt: null,
             OR: [
               { occupierName: { contains: filter.occupierName, mode: 'insensitive' } },
-              { occupierNameEn: { contains: filter.occupierName, mode: 'insensitive' } },
             ],
           },
         },
@@ -385,5 +384,9 @@ export class ReservationRepository {
         deletedStaffId: staffId,
       },
     });
+  }
+
+  getIncludeRelations() {
+    return this.includeRelations;
   }
 }

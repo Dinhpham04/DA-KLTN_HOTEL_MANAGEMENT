@@ -1,33 +1,53 @@
-@startuml uc06_whiteboard_dispatch_sequence
-title UC06 - Whiteboard điều phối phòng
+@startuml uc06_whiteboard_usage_situation_sequence
 autonumber
 
-actor "Quản lý" as Manager
-participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
+actor "Quản lý/Lễ tân" as User
+participant "Usage Situation Page" as FE
+participant "Whiteboard API" as API
+participant "Whiteboard Service" as Svc
+database "Database" as DB
+participant "Reservation Draft API" as DraftAPI
 
-Manager -> FE: Mở Whiteboard
-FE -> BE: GET dữ liệu trạng thái phòng
-BE -> DB: Truy vấn phòng + đặt phòng theo timeline
-DB --> BE: Dữ liệu Whiteboard
-BE --> FE: Trả dữ liệu hiển thị
-FE --> Manager: Hiển thị bảng trạng thái
+User -> FE: Mở màn hình Tình trạng sử dụng
+FE -> API: GET /whiteboard?perPage=1
+API -> Svc: findAll(filter)
+Svc -> DB: Truy vấn cơ sở, phòng, đặt phòng chồng lấp
+DB --> Svc: usageStatuses + pagination
+Svc --> API: WhiteboardResponse
+API --> FE: Dữ liệu Whiteboard
+FE --> User: Hiển thị cơ sở, phòng, timeline, chú giải
 
-opt Điều phối phòng/lịch ở
-  Manager -> FE: Chọn đổi phòng/đổi lịch
-  FE -> BE: PATCH điều phối
-  BE -> BE: Kiểm tra quyền thao tác
-  BE -> DB: Kiểm tra xung đột lịch
-  DB --> BE: Kết quả
-  alt Có xung đột
-    BE --> FE: 409 + gợi ý phương án khác
-    FE --> Manager: Hiển thị cảnh báo
-  else Không xung đột
-    BE -> DB: Lưu điều phối
-    DB --> BE: OK
-    BE --> FE: Trả dữ liệu mới
-    FE --> Manager: Làm mới Whiteboard
+User -> FE: Nhập bộ lọc và bấm Tìm kiếm
+FE -> API: GET /whiteboard với filter
+API -> Svc: findAll(filter)
+Svc -> DB: Truy vấn theo ngày/cơ sở/hạng/dịch vụ/trạng thái/phòng
+DB --> Svc: Kết quả lọc
+Svc --> API: WhiteboardResponse
+API --> FE: Dữ liệu đã lọc
+
+alt Có dữ liệu
+  FE --> User: Hiển thị timeline theo từng cơ sở
+else Không có dữ liệu
+  FE --> User: Hiển thị thông báo không có dữ liệu
+end
+
+opt Người dùng bấm block đặt phòng
+  FE --> User: Điều hướng sang màn hình đặt phòng
+end
+
+opt Người dùng bấm khoảng trống
+  FE --> User: Hiển thị lựa chọn Đặt phòng/Đặt tạm
+  alt Chọn Đặt phòng
+    FE --> User: Điều hướng sang màn hình tạo đặt phòng
+  else Chọn Đặt tạm
+    User -> FE: Nhập khách hàng, thời hạn, khoảng ngày, ghi chú
+    FE -> DraftAPI: POST đặt phòng tạm
+    DraftAPI -> DB: Lưu đặt phòng tạm
+    DB --> DraftAPI: Kết quả
+    DraftAPI --> FE: Tạo thành công
+    FE -> API: GET /whiteboard để tải lại
+    API --> FE: Dữ liệu mới
+    FE --> User: Cập nhật timeline
   end
 end
 

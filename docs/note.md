@@ -4,3 +4,4 @@
 4. automation với smart lock
 5. auto file khi đặt phòng từ whiteboard
 6. refresh dữ liệu lỗi thời khi dùng mutaion
+7. chọn ngày đến, ngày đi trước khi chọn phòng để tự fetch phòng trống

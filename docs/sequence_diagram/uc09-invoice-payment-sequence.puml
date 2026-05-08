@@ -1,68 +1,52 @@
-@startuml uc09_invoice_payment_sequence
-title UC09 - Lập hóa đơn và ghi nhận thanh toán
+@startuml uc09_invoice_debt_management_sequence
 autonumber
 
-actor "Nhân viên vận hành" as Staff
+actor "Nhân viên/Lễ tân" as Staff
 participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
-participant "Cổng thanh toán" as PG
+participant "Invoice API" as API
+participant "Invoice Service" as Svc
+database "Database" as DB
 participant "n8n" as N8N
-participant "Email/SMS" as Notif
 
-Staff -> FE: Mở đặt phòng và chọn tạo hóa đơn
-FE -> BE: POST /invoices/from-reservation
-BE -> DB: Lấy dữ liệu đặt phòng + hạng mục phát sinh
-DB --> BE: Dữ liệu tính phí
-BE -> DB: Tạo hóa đơn nháp
-DB --> BE: invoiceId + tổng tiền
-BE --> FE: Trả chi tiết hóa đơn
-FE --> Staff: Hiển thị hóa đơn để kiểm tra
+Staff -> FE: Mở đặt phòng và chọn hóa đơn/công nợ
+FE -> API: GET dữ liệu hóa đơn theo đặt phòng
+API -> Svc: Lấy dữ liệu lập hóa đơn
+Svc -> DB: Truy vấn đặt phòng, hạng mục, công nợ
+DB --> Svc: Dữ liệu hóa đơn/công nợ
+Svc --> API: Dữ liệu tổng hợp
+API --> FE: Response
+FE --> Staff: Hiển thị hạng mục và số công nợ
 
-Staff -> FE: Điều chỉnh hạng mục (nếu cần)
-FE -> BE: PATCH /invoices/{id}
-BE -> BE: Kiểm tra quyền sửa hóa đơn
+Staff -> FE: Chỉnh hạng mục hoặc ghi nhận số đã thu
+FE -> API: POST/PUT hóa đơn
+API -> Svc: Validate dữ liệu hóa đơn
+Svc -> DB: Kiểm tra hóa đơn, quyền sửa, số còn nợ
+DB --> Svc: Kết quả kiểm tra
 
-alt Không đủ quyền sửa hóa đơn đã chốt
-  BE --> FE: 403 + từ chối chỉnh sửa
-  FE --> Staff: Hiển thị lý do
-else Được phép chỉnh sửa
-  BE -> DB: Cập nhật hạng mục và tổng tiền
-  DB --> BE: OK
-  BE --> FE: Trả hóa đơn đã cập nhật
-  FE --> Staff: Hiển thị số tiền cần thanh toán
-
-  Staff -> FE: Chọn phương thức thanh toán
-  alt Thanh toán qua cổng
-    FE -> BE: POST /payments/gateway
-    BE -> PG: Tạo giao dịch thanh toán
-    PG --> BE: Kết quả giao dịch
-    alt Giao dịch thành công
-      BE -> DB: Cập nhật đã thanh toán + giảm công nợ
-      DB --> BE: OK
-    else Giao dịch thất bại/timeout
-      BE -> DB: Cập nhật trạng thái chờ xử lý
-      DB --> BE: OK
-    end
-  else Thanh toán tại quầy
-    FE -> BE: POST /payments/manual
-    BE -> DB: Ghi nhận thanh toán tiền mặt/chuyển khoản
-    DB --> BE: OK
+alt Không hợp lệ
+  Svc --> API: Lỗi hóa đơn/công nợ
+  API --> FE: Response lỗi
+  FE --> Staff: Hiển thị lỗi
+else Hợp lệ
+  Svc -> DB: Lưu hóa đơn và cập nhật công nợ
+  DB --> Svc: Trạng thái hóa đơn mới
+  alt Còn công nợ
+    Svc ->> N8N: Phát sự kiện nhắc công nợ
+  else Hết công nợ
+    Svc ->> N8N: Cập nhật/dừng lịch nhắc công nợ
   end
+  Svc --> API: Kết quả cập nhật
+  API --> FE: Response thành công
+  FE --> Staff: Hiển thị hóa đơn/công nợ mới
+end
 
-  opt Còn công nợ
-    BE -->> N8N: Phát sự kiện DebtOutstanding
-    N8N -> Notif: Gửi nhắc thanh toán định kỳ
-  end
-
-  opt Xuất chứng từ
-    FE -> BE: GET /invoices/{id}/pdf
-    BE -> BE: Tạo file PDF hóa đơn/biên nhận
-    BE --> FE: Trả file PDF
-  end
-
-  BE --> FE: Trả trạng thái hóa đơn mới nhất
-  FE --> Staff: Hiển thị kết quả thanh toán
+opt Xuất chứng từ
+  Staff -> FE: Bấm xuất PDF/gửi chứng từ
+  FE -> API: Yêu cầu xuất chứng từ
+  API -> Svc: Tạo chứng từ
+  Svc --> API: File/link chứng từ
+  API --> FE: Response
+  FE --> Staff: Tải hoặc gửi chứng từ
 end
 
 @enduml

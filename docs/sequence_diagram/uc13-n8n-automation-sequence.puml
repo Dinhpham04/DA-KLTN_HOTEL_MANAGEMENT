@@ -1,0 +1,52 @@
+@startuml uc13_n8n_automation_sequence
+autonumber
+
+participant "Nguồn sự kiện" as Source
+participant "Event/Webhook" as Event
+participant "n8n Workflow" as N8N
+participant "Hotel Management API" as InternalAPI
+database "Database" as DB
+participant "Email/SMS Gateway" as Notify
+actor "Nhân viên/Quản lý" as Staff
+
+Source -> Event: Phát sự kiện nghiệp vụ hoặc lịch chạy
+Event ->> N8N: Gửi payload sự kiện
+N8N -> N8N: Xác thực token/chữ ký và idempotency key
+
+alt Payload không hợp lệ
+  N8N -> N8N: Ghi log lỗi
+  N8N --> Event: Từ chối xử lý
+else Payload hợp lệ
+  opt Cần bổ sung dữ liệu
+    N8N -> InternalAPI: GET dữ liệu liên quan
+    InternalAPI -> DB: Truy vấn đặt phòng/phòng/hóa đơn
+    DB --> InternalAPI: Dữ liệu
+    InternalAPI --> N8N: Response
+  end
+
+  alt Sự kiện đặt phòng
+    N8N -> Notify: Gửi xác nhận/nhắc check-in/direct check-in
+  else Sự kiện check-out
+    N8N -> InternalAPI: POST tạo nhiệm vụ dọn dẹp
+    InternalAPI -> DB: Lưu task dọn dẹp
+    DB --> InternalAPI: Kết quả
+    InternalAPI --> N8N: Response
+    N8N -> Notify: Thông báo nhóm dọn dẹp
+  else Sự kiện công nợ
+    N8N -> Notify: Gửi nhắc công nợ/chứng từ
+  else Lịch báo cáo
+    N8N -> InternalAPI: GET dữ liệu báo cáo
+    InternalAPI -> DB: Tổng hợp dữ liệu
+    DB --> InternalAPI: Báo cáo
+    InternalAPI --> N8N: Response
+    N8N -> Notify: Gửi báo cáo định kỳ
+  end
+
+  N8N -> InternalAPI: POST log/trạng thái workflow
+  InternalAPI -> DB: Lưu log
+  DB --> InternalAPI: Kết quả
+  InternalAPI --> N8N: OK
+  Notify --> Staff: Email/SMS/thông báo nội bộ
+end
+
+@enduml

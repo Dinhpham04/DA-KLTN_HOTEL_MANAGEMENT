@@ -1,0 +1,470 @@
+{
+  "name": "UC13 - Workflow 2 - Daily Operations Report 07:00",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-report-schedule",
+      "name": "Every Day 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: 'dev-internal-token',\n    source: 'n8n-uc13-daily-operations-report-0700',\n    reportDate: formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh'),\n    smtpFrom: 'hotel-management@example.com',\n    managerEmails: ['manager@example.com'],\n    slackWebhookUrl: 'PASTE_SLACK_WEBHOOK_URL_HERE',\n    telegramBotToken: 'PASTE_TELEGRAM_BOT_TOKEN_HERE',\n    telegramChatId: 'PASTE_TELEGRAM_CHAT_ID_HERE',\n    technicalAlertWebhookUrl: 'PASTE_TECH_ALERT_WEBHOOK_URL_HERE',\n  },\n};"
+      },
+      "id": "build-report-config",
+      "name": "Build Report Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendBaseUrl + '/internal/automation/reports/daily/stay-movements' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $json.reportDate }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "get-stay-movements",
+      "name": "Get Check-in Check-out Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendBaseUrl + '/internal/automation/reports/daily/occupancy' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $json.reportDate }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "get-occupancy",
+      "name": "Get Occupancy Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        360
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendBaseUrl + '/internal/automation/reports/daily/overdue-payments' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $json.reportDate }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.internalToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "get-overdue-payments",
+      "name": "Get Overdue Payment Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        540
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function firstJson(nodeName) {\n  const items = $items(nodeName);\n  const item = items?.[0]?.json ?? {};\n  return item.data ?? item;\n}\n\nconst config = $('Build Report Config').item.json;\nconst movements = firstJson('Get Check-in Check-out Data');\nconst occupancy = firstJson('Get Occupancy Data');\nconst overdue = firstJson('Get Overdue Payment Data');\nconst checkIns = movements.checkIns ?? movements.checkInList ?? [];\nconst checkOuts = movements.checkOuts ?? movements.checkOutList ?? [];\nconst overdueItems = overdue.items ?? overdue.overduePayments ?? [];\nconst occupancyRate = occupancy.occupancyRate ?? 0;\nconst vacantRooms = occupancy.vacantRooms ?? occupancy.availableRooms ?? 0;\nconst totalRooms = occupancy.totalRooms ?? 0;\nconst overdueAmount = overdue.totalAmount ?? overdue.outstandingAmount ?? 0;\n\nconst checkInRows = checkIns.map((item) => `<tr><td>${item.reservationCode ?? item.code ?? item.id}</td><td>${item.customerName ?? item.customer?.name ?? ''}</td><td>${item.roomName ?? item.room?.name ?? ''}</td><td>${item.checkInAt ?? item.time ?? ''}</td></tr>`).join('');\nconst checkOutRows = checkOuts.map((item) => `<tr><td>${item.reservationCode ?? item.code ?? item.id}</td><td>${item.customerName ?? item.customer?.name ?? ''}</td><td>${item.roomName ?? item.room?.name ?? ''}</td><td>${item.checkOutAt ?? item.time ?? ''}</td></tr>`).join('');\nconst overdueRows = overdueItems.map((item) => `<tr><td>${item.invoiceCode ?? item.code ?? item.id}</td><td>${item.customerName ?? item.customer?.name ?? ''}</td><td>${Number(item.amount ?? item.remainingAmount ?? 0).toLocaleString('vi-VN')}</td><td>${item.dueDate ?? ''}</td></tr>`).join('');\n\nconst html = `\n  <h2>Bao cao van hanh ngay ${config.reportDate}</h2>\n  <h3>Chi so chinh</h3>\n  <table border=\"1\" cellpadding=\"8\" cellspacing=\"0\">\n    <tr><td>Ty le lap day</td><td>${occupancyRate}%</td></tr>\n    <tr><td>Phong trong</td><td>${vacantRooms}/${totalRooms}</td></tr>\n    <tr><td>Check-in hom nay</td><td>${checkIns.length}</td></tr>\n    <tr><td>Check-out hom nay</td><td>${checkOuts.length}</td></tr>\n    <tr><td>Cong no qua han</td><td>${Number(overdueAmount).toLocaleString('vi-VN')} VND</td></tr>\n  </table>\n  <h3>Danh sach check-in</h3>\n  <table border=\"1\" cellpadding=\"8\" cellspacing=\"0\"><tr><th>Ma</th><th>Khach</th><th>Phong</th><th>Gio</th></tr>${checkInRows || '<tr><td colspan=\"4\">Khong co</td></tr>'}</table>\n  <h3>Danh sach check-out</h3>\n  <table border=\"1\" cellpadding=\"8\" cellspacing=\"0\"><tr><th>Ma</th><th>Khach</th><th>Phong</th><th>Gio</th></tr>${checkOutRows || '<tr><td colspan=\"4\">Khong co</td></tr>'}</table>\n  <h3>Cong no qua han</h3>\n  <table border=\"1\" cellpadding=\"8\" cellspacing=\"0\"><tr><th>Hoa don</th><th>Khach</th><th>So tien</th><th>Han thanh toan</th></tr>${overdueRows || '<tr><td colspan=\"4\">Khong co</td></tr>'}</table>\n`;\n\nconst summaryText = `Bao cao van hanh ${config.reportDate}\\nOccupancy: ${occupancyRate}%\\nPhong trong: ${vacantRooms}/${totalRooms}\\nCheck-in: ${checkIns.length}\\nCheck-out: ${checkOuts.length}\\nCong no qua han: ${Number(overdueAmount).toLocaleString('vi-VN')} VND`;\n\nreturn {\n  json: {\n    ...config,\n    report: {\n      checkIns: checkIns.length,\n      checkOuts: checkOuts.length,\n      occupancyRate,\n      vacantRooms,\n      totalRooms,\n      overdueCount: overdueItems.length,\n      overdueAmount,\n      html,\n      summaryText,\n    },\n    email: {\n      from: config.smtpFrom,\n      to: config.managerEmails.join(','),\n      subject: `Bao cao van hanh khach san - ${config.reportDate}`,\n      html,\n    },\n    slackPayload: {\n      text: `*Bao cao van hanh ${config.reportDate}*\\n${summaryText}`,\n    },\n    telegramPayload: {\n      chat_id: config.telegramChatId,\n      text: summaryText,\n    },\n  },\n};"
+      },
+      "id": "build-daily-report",
+      "name": "Build Daily Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.email.from }}",
+        "toEmail": "={{ $json.email.to }}",
+        "subject": "={{ $json.email.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email.html }}",
+        "options": {}
+      },
+      "id": "send-report-email",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1380,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-slack-summary",
+      "name": "Send Slack Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1380,
+        360
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $json.telegramBotToken + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegramPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-telegram-summary",
+      "name": "Send Telegram Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1380,
+        540
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $json;\nconst config = $('Build Daily Report').item.json;\nconst error = current.error ?? current.message?.error;\nreturn {\n  json: {\n    hasError: Boolean(error),\n    technicalAlertWebhookUrl: config.technicalAlertWebhookUrl,\n    alertPayload: {\n      text: `Daily report distribution issue\\nDate: ${config.reportDate}\\nNode output: ${JSON.stringify(current).slice(0, 1200)}`,\n    },\n  },\n};"
+      },
+      "id": "build-technical-alert",
+      "name": "Build Technical Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-distribution-error",
+              "leftValue": "={{ $json.hasError }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-distribution-failed",
+      "name": "Distribution Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1940,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.technicalAlertWebhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.alertPayload) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-technical-alert",
+      "name": "Send Technical Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Every Day 07:00": {
+      "main": [
+        [
+          {
+            "node": "Build Report Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report Config": {
+      "main": [
+        [
+          {
+            "node": "Get Check-in Check-out Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Occupancy Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Overdue Payment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Check-in Check-out Data": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Occupancy Data": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Overdue Payment Data": {
+      "main": [
+        [
+          {
+            "node": "Build Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Daily Report": {
+      "main": [
+        [
+          {
+            "node": "Send Report Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Telegram Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Report Email": {
+      "main": [
+        [
+          {
+            "node": "Build Technical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Summary": {
+      "main": [
+        [
+          {
+            "node": "Build Technical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Summary": {
+      "main": [
+        [
+          {
+            "node": "Build Technical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Technical Alert": {
+      "main": [
+        [
+          {
+            "node": "Distribution Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Distribution Failed?": {
+      "main": [
+        [
+          {
+            "node": "Send Technical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "uc13-daily-operations-report-0700-v2"
+}

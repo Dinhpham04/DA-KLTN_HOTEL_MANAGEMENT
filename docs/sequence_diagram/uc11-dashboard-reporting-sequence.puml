@@ -1,47 +1,45 @@
 @startuml uc11_dashboard_reporting_sequence
-title UC11 - Dashboard và báo cáo
 autonumber
 
-actor "Quản lý" as Manager
-participant "Frontend" as FE
-participant "Backend API" as BE
-database "CSDL" as DB
-participant "n8n" as N8N
-participant "Email/SMS" as Notif
+actor "Quản lý/Admin" as Manager
+participant "Dashboard Page" as FE
+participant "Dashboard API" as API
+participant "Dashboard Service" as Svc
+database "Database" as DB
+participant "Export Service" as Export
 
 Manager -> FE: Mở Dashboard
-FE -> BE: GET /dashboard
-BE -> DB: Tổng hợp KPI vận hành + doanh thu
-DB --> BE: Bộ chỉ số
-BE --> FE: Trả dữ liệu dashboard
-FE --> Manager: Hiển thị KPI
+FE -> API: GET dữ liệu tổng quan
+API -> Svc: Kiểm tra quyền và lấy số liệu
+Svc -> DB: Truy vấn phòng, đặt phòng, hóa đơn, dọn dẹp
+DB --> Svc: Dữ liệu vận hành
+Svc --> API: Chỉ số và danh sách quản lý
+API --> FE: Response
+FE --> Manager: Hiển thị thông báo, chỉ số, tab báo cáo
 
-Manager -> FE: Chọn báo cáo và bộ lọc
-FE -> BE: GET /reports?filters=...
-BE -> BE: Kiểm tra quyền truy cập báo cáo
+Manager -> FE: Chọn ngày/bộ lọc/tab
+FE -> API: GET báo cáo theo bộ lọc
+API -> Svc: Tổng hợp dữ liệu báo cáo
+Svc -> DB: Truy vấn theo phạm vi quyền
+DB --> Svc: Dữ liệu chi tiết
+Svc --> API: Kết quả báo cáo
+API --> FE: Response
+FE --> Manager: Hiển thị danh sách nhận phòng/trả phòng/vệ sinh/bãi đỗ/công nợ
 
-alt Không đủ quyền xem báo cáo nhạy cảm
-  BE --> FE: 403 + từ chối truy cập
-  FE --> Manager: Hiển thị cảnh báo
-else Đủ quyền truy cập
-  BE -> DB: Truy vấn dữ liệu báo cáo theo bộ lọc
-  DB --> BE: Kết quả báo cáo
-  BE --> FE: Trả dữ liệu báo cáo
-  FE --> Manager: Hiển thị bảng/biểu đồ
-
-  opt Xuất Excel/PDF
-    FE -> BE: GET /reports/export?format=excel|pdf
-    BE -> BE: Tạo file báo cáo
-    BE --> FE: Trả file xuất
-  end
+opt Mở bản ghi nguồn
+  Manager -> FE: Chọn một dòng báo cáo
+  FE --> Manager: Điều hướng sang màn hình nghiệp vụ liên quan
 end
 
-opt Tự động gửi báo cáo định kỳ
-  N8N -> BE: Trigger workflow tổng hợp báo cáo theo lịch
-  BE -> DB: Lấy dữ liệu báo cáo định kỳ
-  DB --> BE: Kết quả tổng hợp
-  BE --> N8N: Trả nội dung hoặc link báo cáo
-  N8N -> Notif: Gửi báo cáo cho quản lý
+opt Xuất báo cáo
+  Manager -> FE: Chọn xuất Excel/PDF
+  FE -> API: POST yêu cầu xuất báo cáo
+  API -> Svc: Chuẩn bị dữ liệu xuất
+  Svc -> Export: Tạo file báo cáo
+  Export --> Svc: File/link
+  Svc --> API: Kết quả xuất
+  API --> FE: Response
+  FE --> Manager: Tải file báo cáo
 end
 
 @enduml

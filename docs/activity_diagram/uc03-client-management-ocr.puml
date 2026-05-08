@@ -1,5 +1,4 @@
 @startuml uc03_client_management_ocr
-title UC03 - Quản lý khách hàng
 start
 :Mở form khách hàng;
 :Nhập thông tin cơ bản;

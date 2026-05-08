@@ -1,0 +1,42 @@
+@startuml
+title Layered Architecture của Backend API (tổng quan)
+
+top to bottom direction
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultTextAlignment center
+
+actor "Client\n(Frontend SPA / n8n)" as Client
+
+package "Presentation Layer\n(API)" as Presentation {
+  [Controllers\n(REST Endpoints)] as Controllers
+}
+
+package "Application Layer\n(Use cases)" as Application {
+  [Services\n(Business logic)] as Services
+}
+
+package "Infrastructure Layer\n(Data access + External)" as Infrastructure {
+  [Repository / Prisma] as Repo
+  [External Services\n(ví dụ: Cloudinary)] as External
+}
+
+database "Data Layer\n(PostgreSQL)" as DB
+
+Client --> Controllers : HTTP/JSON
+Controllers --> Services
+Services --> Repo
+Repo --> DB
+Services --> External
+
+note right of Controllers
+Cross-cutting concerns (không đi sâu chi tiết):
+- Auth Guard / Role Guard
+- ValidationPipe (DTO)
+- Interceptor (chuẩn hoá response)
+- Logging
+end note
+
+@enduml

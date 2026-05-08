@@ -1,5 +1,4 @@
 @startuml uc03_client_management_sequence
-title UC03 - Quản lý khách hàng (không OCR AI)
 autonumber
 
 actor "Nhân viên vận hành" as Staff

@@ -24,13 +24,17 @@ import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import ReservationInfoCommonSection from '@/components/reservation/ReservationInfoCommonSection'
 import ReservationRequestNormalSection from '@/components/reservation/ReservationRequestNormalSection'
+import { ReservationOccupierTable } from '@/components/reservation/ReservationOccupierTable'
+import ReservationParkingSection from '@/components/reservation/ReservationParkingSection'
 import { DialogClose } from '@/components/ui/dialog'
 import { NButton } from '@/components/ui/new-button'
 import { DATA_TYPE_OPTIONS, SEX_OPTIONS, USED_MESSY_LEVEL_OPTIONS } from '@/constants/reservation'
 
 import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import SearchClientModal from '@/components/dialogs/SearchClientModal'
+import { reservationWithParkingApi } from '@/api/reservation-with-parking.api'
 import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
+import { useCreateReserveOccupierBatch } from '@/hooks/mutations/useCreateReserveOccupier'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
@@ -126,8 +130,9 @@ function ReservationCreatePage() {
     },
   })
 
-  const { mutateAsync: createReservation, isPending: isCreating } = useCreateReservation()
+  const { isPending: isCreating } = useCreateReservation()
   const { mutateAsync: createSmartLockPin } = useCreateSmartLockPin()
+  const { mutateAsync: createReserveOccupierBatch } = useCreateReserveOccupierBatch()
   const navigate = useNavigate()
 
   // ─── Options ─────────────────────────────────────────────────────
@@ -312,7 +317,7 @@ function ReservationCreatePage() {
 
     setIsLoading(true)
     try {
-      const reservationResponse = await createReservation({
+      const reservationPayload = {
         clientId: Number(values.client.client_id),
         facilityId: values.reserve.facility_id ? Number(values.reserve.facility_id) : undefined,
         roomId: values.reserve.room_id ? Number(values.reserve.room_id) : undefined,
@@ -338,38 +343,89 @@ function ReservationCreatePage() {
         autoExtendFlag: values.reserve.auto_extend_flag,
         note: values.reserve.note,
         memo: values.client.memo,
+      }
+
+      const parkingPayload = values.reserve.parking_reserve
+        .filter((pr: any) => pr.parking_id)
+        .map((pr: any) => ({
+          parkingId: pr.parking_id,
+          periodFrom: pr.period_from,
+          periodTo: pr.period_to || null,
+          stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
+          carType: pr.car_type,
+          licensePlate: pr.license_plate,
+          note: pr.note,
+        }))
+
+      const bicycleParkingPayload = values.reserve.bicycle_parking_reserve
+        .filter((br: any) => br.bicycle_parking_id)
+        .map((br: any) => ({
+          bicycleParkingId: br.bicycle_parking_id,
+          periodFrom: br.period_from,
+          periodTo: br.period_to || null,
+          stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
+          bicycleTypeNote: br.bicycle_type_note,
+          note: br.note,
+        }))
+
+      const reservationResponse = await reservationWithParkingApi.createWithParkings({
+        reservation: reservationPayload,
+        parkingReserves: parkingPayload.length > 0 ? parkingPayload : undefined,
+        bicycleParkingReserves: bicycleParkingPayload.length > 0 ? bicycleParkingPayload : undefined,
       })
 
-      if (isSelfCheckin && values.reserve.room_id && smartLockPin) {
-        const createdReserveId =
-          typeof reservationResponse.data === 'object' &&
-          reservationResponse.data !== null &&
-          'reserveId' in reservationResponse.data &&
-          typeof reservationResponse.data.reserveId === 'number'
-            ? reservationResponse.data.reserveId
-            : null
+      const createdReserveId =
+        typeof reservationResponse.data === 'object' &&
+        reservationResponse.data !== null &&
+        'reserveId' in reservationResponse.data &&
+        typeof reservationResponse.data.reserveId === 'number'
+          ? reservationResponse.data.reserveId
+          : null
 
-        if (!createdReserveId) {
-          toast.warning('Đặt phòng đã tạo nhưng không lấy được mã đặt phòng để tạo PIN smart lock')
-        } else {
-          try {
-            const smartLockValidFromIso = dayjs(smartLockValidFrom).toISOString()
-            const smartLockValidToIso = dayjs(smartLockValidTo).toISOString()
+      if (!createdReserveId) {
+        toast.warning('Đặt phòng đã tạo nhưng không lấy được mã đặt phòng')
+      }
 
-            await createSmartLockPin({
-              reserveId: createdReserveId,
-              roomId: Number(values.reserve.room_id),
-              pin: smartLockPin,
-              validFrom: smartLockValidFromIso,
-              validTo: smartLockValidToIso,
-              status: 1,
-              dataStatus: 1,
-            })
-          } catch {
-            toast.warning(
-              'Đặt phòng đã tạo nhưng tạo PIN smart lock thất bại. Vui lòng kiểm tra lại.'
-            )
-          }
+      // Create occupiers if any
+      if (createdReserveId && values.reserve.occupiers.length > 0) {
+        try {
+          await createReserveOccupierBatch({
+            reserveId: createdReserveId,
+            occupiers: values.reserve.occupiers.map((occ) => ({
+              occupierName: occ.occupier_name,
+              sex: Number(occ.sex) || 9,
+              tel: occ.tel || undefined,
+              birthday: occ.birthday || undefined,
+              address1: occ.address1 || undefined,
+              orderNum: occ.order_num,
+            })),
+          })
+        } catch {
+          toast.warning(
+            'Đặt phòng đã tạo nhưng tạo người ở thất bại. Vui lòng kiểm tra lại.'
+          )
+        }
+      }
+
+      // Create smart lock PIN if needed
+      if (isSelfCheckin && createdReserveId && values.reserve.room_id && smartLockPin) {
+        try {
+          const smartLockValidFromIso = dayjs(smartLockValidFrom).toISOString()
+          const smartLockValidToIso = dayjs(smartLockValidTo).toISOString()
+
+          await createSmartLockPin({
+            reserveId: createdReserveId,
+            roomId: Number(values.reserve.room_id),
+            pin: smartLockPin,
+            validFrom: smartLockValidFromIso,
+            validTo: smartLockValidToIso,
+            status: 1,
+            dataStatus: 1,
+          })
+        } catch {
+          toast.warning(
+            'Đặt phòng đã tạo nhưng tạo PIN smart lock thất bại. Vui lòng kiểm tra lại.'
+          )
         }
       }
 
@@ -1055,6 +1111,19 @@ function ReservationCreatePage() {
                           periodFrom={periodFrom}
                           periodTo={periodTo}
                           staffOptions={staffOptions}
+                        />
+
+                        <ReservationOccupierTable
+                          control={form.control as unknown as Control<FieldValues>}
+                          fieldName="reserve.occupiers"
+                          client={form.getValues('client')}
+                          disabled={false}
+                        />
+
+                        <ReservationParkingSection
+                          facilityId={selectedFacilityId}
+                          periodFrom={periodFrom}
+                          periodTo={periodTo}
                         />
                       </div>
                     </CustomAccordionContent>

@@ -1,14 +1,32 @@
 @startuml uc10_cleaning_shift
-title UC10 - Dọn dẹp theo ca
 start
-:Quản lý vệ sinh tạo ca dọn;
-:Hệ thống gợi ý phòng cần dọn;
-:Phân công nhân viên;
-:Nhân viên cập nhật trạng thái dọn dẹp;
-if (Có sự cố phòng?) then (Có)
-  :Đánh dấu sự cố và thông báo vận hành;
-else (Không)
-  :Cập nhật phòng sẵn sàng khai thác;
+
+:Quản lý vệ sinh mở màn hình dọn dẹp;
+:Tạo ca dọn dẹp theo ngày;
+:Hệ thống hiển thị phòng cần dọn/kiểm tra;
+:Quản lý vệ sinh phân công phòng cho nhân viên;
+:Hệ thống tạo nhiệm vụ dọn dẹp;
+
+:Nhân viên vệ sinh mở danh sách công việc;
+:Cập nhật trạng thái đang dọn;
+
+if (Hoàn tất dọn?) then (Có)
+  :Cập nhật kết quả đã dọn;
+  if (Cần kiểm tra lại?) then (Có)
+    :Quản lý vệ sinh kiểm tra;
+    if (Đạt?) then (Có)
+      :Cập nhật phòng sẵn sàng;
+    else (Không)
+      :Chuyển nhiệm vụ về cần làm lại;
+    endif
+  else (Không)
+    :Cập nhật phòng sẵn sàng;
+  endif
+else (Có sự cố)
+  :Ghi nhận sự cố phòng;
+  :Chuyển phòng sang cần kiểm tra/bảo trì;
+  :Thông báo bộ phận vận hành;
 endif
+
 stop
 @enduml

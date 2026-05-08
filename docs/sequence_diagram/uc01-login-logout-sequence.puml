@@ -1,5 +1,4 @@
 @startuml uc01_login_logout_sequence
-title UC01 - Đăng nhập / Đăng xuất
 autonumber
 
 actor "Người dùng" as User

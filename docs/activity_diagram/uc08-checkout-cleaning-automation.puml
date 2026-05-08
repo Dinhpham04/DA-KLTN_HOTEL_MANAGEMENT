@@ -1,16 +1,31 @@
 @startuml uc08_checkout_cleaning_automation
-title UC08 - Check-out (kèm tự động hóa dọn dẹp)
 start
-:Mở chi tiết đặt phòng;
-:Kiểm tra công nợ;
-if (Còn công nợ bắt buộc?) then (Có)
-  :Yêu cầu xử lý thanh toán trước;
+
+:Nhân viên mở chi tiết đặt phòng;
+:Hệ thống hiển thị thông tin lưu trú;
+:Nhân viên kiểm tra khoản phát sinh và công nợ;
+
+if (Còn công nợ bắt buộc xử lý?) then (Có)
+  :Cảnh báo và chuyển sang xử lý hóa đơn/công nợ;
+  stop
 else (Không)
-  :Xác nhận check-out;
-  :Cập nhật phòng chờ dọn;
-  :Phát sự kiện ReservationCheckedOut;
-  :n8n tạo task dọn dẹp;
-  :Gửi thông báo cho quản lý vệ sinh;
+  :Nhân viên xác nhận check-out;
+  :Ghi nhận thời điểm check-out thực tế;
+  :Cập nhật đặt phòng sang đã check-out;
+  :Cập nhật phòng sang chờ dọn;
+  :Phát sự kiện reservation.checked_out;
+
+  fork
+    :n8n tạo nhiệm vụ dọn dẹp;
+    :Thông báo quản lý vệ sinh/nhóm dọn dẹp;
+  fork again
+    :Thu hồi/cập nhật quyền truy cập Smart Lock nếu có;
+  fork again
+    :Cập nhật hóa đơn/công nợ cuối kỳ;
+  end fork
+
+  :Hiển thị kết quả trả phòng;
 endif
+
 stop
 @enduml

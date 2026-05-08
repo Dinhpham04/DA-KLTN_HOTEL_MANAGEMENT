@@ -1,18 +1,31 @@
 @startuml uc12_ai_assistant
-title UC12 - Trợ lý AI tra cứu và tóm tắt
 start
-:Người dùng nhập câu hỏi nghiệp vụ;
-:Kiểm tra quyền truy cập dữ liệu;
-if (Đủ quyền?) then (Có)
-  :Thu thập ngữ cảnh theo phạm vi cho phép;
-  :Gọi AI tạo câu trả lời;
+
+:Người dùng mở AI Assistant;
+:Nhập câu hỏi hoặc chọn mẫu có sẵn;
+:Hệ thống xác định màn hình/bản ghi hiện tại;
+:Hệ thống kiểm tra quyền xem dữ liệu;
+
+if (Được phép truy cập?) then (Có)
+  :Truy vấn dữ liệu liên quan qua API nội bộ;
+  :Tạo ngữ cảnh ngắn gọn cho AI;
+  :Gửi câu hỏi và ngữ cảnh sang AI Engine;
+
   if (AI phản hồi thành công?) then (Có)
-    :Hiển thị tóm tắt và liên kết chi tiết;
+    :Hiển thị câu trả lời/tóm tắt;
+    :Hiển thị liên kết tới bản ghi nguồn nếu có;
+    if (Người dùng cần thao tác nghiệp vụ?) then (Có)
+      :Điều hướng sang màn hình chức năng tương ứng;
+    else (Không)
+      :Người dùng tiếp tục hỏi hoặc kết thúc;
+    endif
   else (Không)
-    :Thông báo lỗi AI và cho phép thử lại;
+    :Thông báo lỗi hoặc cho phép thử lại;
   endif
 else (Không)
-  :Từ chối truy cập và thông báo;
+  :Không gửi dữ liệu bị hạn chế sang AI;
+  :Thông báo không đủ quyền truy cập;
 endif
+
 stop
 @enduml

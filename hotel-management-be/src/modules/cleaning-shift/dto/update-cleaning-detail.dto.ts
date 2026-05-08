@@ -1,12 +1,14 @@
 import {
   IsBoolean,
   IsDateString,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { CleaningStatus } from '../enums';
 
 export class UpdateCleaningDetailDto {
   @ApiPropertyOptional()
@@ -58,6 +60,11 @@ export class UpdateCleaningDetailDto {
   @IsOptional()
   @IsDateString()
   readonly finishDatetime?: string | null;
+
+  @ApiPropertyOptional({ enum: CleaningStatus, description: 'Cleaning status (1..7)' })
+  @IsOptional()
+  @IsEnum(CleaningStatus)
+  readonly cleanStatus?: CleaningStatus;
 
   @ApiPropertyOptional()
   @IsOptional()

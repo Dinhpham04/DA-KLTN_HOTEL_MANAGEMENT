@@ -195,9 +195,9 @@ html {
     @apply bg-accent text-accent-foreground;
   }
 
-  /* Default button — unified blue background */
+  /* Default button — light gray background */
   .btn-default {
-    background-color: rgba(32, 65, 114, 1);
+    background-color: #efefef;
     color: #000;
     border: 1px solid rgba(32, 65, 114, 1);
   }
