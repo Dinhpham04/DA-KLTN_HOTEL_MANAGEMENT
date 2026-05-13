@@ -5,3 +5,14 @@
 5. auto file khi đặt phòng từ whiteboard
 6. refresh dữ liệu lỗi thời khi dùng mutaion
 7. chọn ngày đến, ngày đi trước khi chọn phòng để tự fetch phòng trống
+
+** Nhiệm vụ đầu ca cho các bộ phận
+ưu tiên check-in sớm
+
+I. auto khi đặt phòng thành công
+    1. Email xác nhận đặt phòng (ngay lập tức)
+    2. Trước check-in: Email hướng dẫn và nhắc nhở (trước 24 - 48 giờ)
+    3. Check-in: Email chào mừng 
+    4. Kiểm tra kỹ thuật
+    5. Tạo task dọn dẹp trước checkin
+    6. Kiểm tra yêu cầu đặc biệt

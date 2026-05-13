@@ -1,0 +1,127 @@
+{
+  "name": "Hotel Assistant Tool - Today Checkin Checkout",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000301",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nreturn [{ json: { ...$json, date: $json.date || today, mode: $json.mode || 'both', apiBaseUrl, internalToken: 'dev-internal-token' } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000302",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBaseUrl + '/daily-reserve' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $json.date }}"
+            },
+            {
+              "name": "facilityId",
+              "value": "={{ $json.facilityId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000303",
+      "name": "GET Daily Reserve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json.data ?? $json\nreturn [{ json: { dailyReserve: result, checkins: result.checkins ?? result.checkIns ?? [], checkouts: result.checkouts ?? result.checkOuts ?? [], sources: [{ type: 'api', name: 'GET /daily-reserve' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000304",
+      "name": "Normalize Daily Reserve",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Daily Reserve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Daily Reserve": {
+      "main": [
+        [
+          {
+            "node": "Normalize Daily Reserve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-today-checkin-checkout-v1"
+}

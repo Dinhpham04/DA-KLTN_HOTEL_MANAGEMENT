@@ -106,10 +106,11 @@
     "service_box": "Hộp đồ",
     "status_inUse": "Đang sử dụng",
     "legend": {
-      "inUse": "Đang sử dụng",
-      "reserved": "Đã đặt",
-      "draft": "Bản nháp",
-      "rakuten": "Rakuten"
+      "unconfirmed": "Đang ở / Chưa xác nhận ngày ra",
+      "confirmed": "Đã xác nhận ngày ra",
+      "corporate": "Khách công ty",
+      "advertising": "Đặt phòng trực tuyến",
+      "draft": "Bản nháp"
     },
     "bookingActions": {
       "create": "Đặt phòng",
@@ -458,9 +459,11 @@
   },
   "billing": {
     "title": "Quản lý thanh toán",
+    "sectionTitle": "Hóa đơn & Thanh toán",
     "totalAmount": "Tổng tiền",
     "paidAmount": "Đã thanh toán",
     "remainingAmount": "Còn lại",
+    "overpaid": "Thừa",
     "paymentStatus": {
       "unpaid": "Chưa thanh toán",
       "partial": "Thanh toán một phần",
@@ -472,6 +475,63 @@
       "card": "Thẻ",
       "transfer": "Chuyển khoản",
       "other": "Khác"
+    },
+    "invoice": {
+      "sectionTitle": "■ Khoản mục hóa đơn",
+      "addItem": "Thêm khoản mục",
+      "editItem": "Sửa khoản mục",
+      "deleteConfirm": "Xóa khoản mục này?",
+      "columns": {
+        "no": "STT",
+        "itemType": "Loại khoản",
+        "period": "Kỳ tính",
+        "unitPrice": "Đơn giá",
+        "quantity": "Số lượng",
+        "totalPrice": "Thành tiền",
+        "actions": "Thao tác"
+      },
+      "form": {
+        "itemType": "Loại khoản",
+        "periodFrom": "Từ ngày",
+        "periodTo": "Đến ngày",
+        "unitPrice": "Đơn giá",
+        "count": "Số lượng",
+        "countUnit": "Đơn vị",
+        "totalPrice": "Thành tiền",
+        "occupierName": "Tên người ở",
+        "taxFreeFlag": "Miễn thuế"
+      },
+      "countUnit": {
+        "1": "Tháng",
+        "2": "Ngày",
+        "3": "Lần"
+      }
+    },
+    "payment": {
+      "sectionTitle": "■ Lịch sử thanh toán",
+      "addPayment": "Thêm thanh toán",
+      "editPayment": "Sửa thanh toán",
+      "deleteConfirm": "Xóa bản ghi thanh toán này?",
+      "columns": {
+        "no": "STT",
+        "saleDate": "Ngày TT",
+        "paymentMethod": "Phương thức",
+        "totalPrice": "Số tiền",
+        "isConfirmed": "Xác nhận",
+        "summary": "Ghi chú",
+        "actions": "Thao tác"
+      },
+      "form": {
+        "itemType": "Loại khoản",
+        "paymentMethod": "Phương thức thanh toán",
+        "totalPrice": "Số tiền",
+        "saleDate": "Ngày thanh toán",
+        "receiptPaymentDate": "Ngày trên biên lai",
+        "summary": "Ghi chú",
+        "isConfirmed": "Xác nhận thanh toán"
+      },
+      "confirmed": "Đã xác nhận",
+      "pending": "Chờ xác nhận"
     }
   },
   "cleaning": {

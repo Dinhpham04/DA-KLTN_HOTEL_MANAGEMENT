@@ -31,6 +31,7 @@ type ReservationInfoCommonSectionProps = {
   roomOptions: Option[]
   onRoomChange: (value: string) => void
   isFacilitySelected: boolean
+  isRoomSelectEnabled?: boolean
   stayTypeOptions: Option[]
   checkinTimeFieldName: 'reserve.checkin_time' | 'reserve.period_from_time'
   disableRentalKeysSelect?: boolean
@@ -56,6 +57,7 @@ export default function ReservationInfoCommonSection({
   roomOptions,
   onRoomChange,
   isFacilitySelected,
+  isRoomSelectEnabled = isFacilitySelected,
   stayTypeOptions,
   checkinTimeFieldName,
   disableRentalKeysSelect = false,
@@ -71,7 +73,7 @@ export default function ReservationInfoCommonSection({
     <>
       <h5 className="font-bold text-[2.3rem] leading-none">■ Thông tin đặt phòng</h5>
 
-      {/* Row 1: Main grid (Facility -> RoomType -> Room -> Dates -> StayType -> Flags) */}
+      {/* Row 1: Main grid (Facility -> RoomType -> Dates -> Room -> StayType -> Flags) */}
       <div className="flex items-center mt-[1.6rem]">
         <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
           <div className="flex flex-col">
@@ -113,30 +115,6 @@ export default function ReservationInfoCommonSection({
                     selected={roomTypeOptions.find((o) => o.value === field.value)}
                     selectedLabel={selectedRoomTypeShortLabel}
                     change={(o) => onRoomTypeChange(o.value)}
-                    disabledSelect={!isFacilitySelected}
-                    customClassMain="w-full h-16 rounded-none border-black"
-                  />
-                )}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
-          <div className="flex flex-col">
-            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
-              Số phòng
-            </p>
-            <div className="relative w-full">
-              <Controller
-                control={control}
-                name="reserve.room_id"
-                render={({ field }) => (
-                  <CustomSelectClean
-                    isAll
-                    option={roomOptions}
-                    selected={roomOptions.find((o) => o.value === field.value)}
-                    change={(o) => onRoomChange(o.value)}
                     disabledSelect={!isFacilitySelected}
                     customClassMain="w-full h-16 rounded-none border-black"
                   />
@@ -232,6 +210,29 @@ export default function ReservationInfoCommonSection({
                     option={NORESERVE_COUNT_OPTIONS}
                     selected={NORESERVE_COUNT_OPTIONS.find((o) => o.value === field.value)}
                     change={(o) => field.onChange(o.value)}
+                    customClassMain="w-full h-16 rounded-none border-black"
+                  />
+                )}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="my-0 ml-[-0.1rem] first:ml-0 min-w-[12.4rem]">
+          <div className="flex flex-col">
+            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-b-0 w-full h-16 font-bold text-[1.6rem]">
+              Số phòng
+            </p>
+            <div className="relative w-full">
+              <Controller
+                control={control}
+                name="reserve.room_id"
+                render={({ field }) => (
+                  <CustomSelectClean
+                    isAll
+                    option={roomOptions}
+                    selected={roomOptions.find((o) => o.value === field.value)}
+                    change={(o) => onRoomChange(o.value)}
+                    disabledSelect={!isRoomSelectEnabled}
                     customClassMain="w-full h-16 rounded-none border-black"
                   />
                 )}

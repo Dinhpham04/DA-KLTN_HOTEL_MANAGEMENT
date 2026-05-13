@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
 import { occupierApi } from '@/api/occupier.api'
+import { useQuery } from '@tanstack/react-query'
 
 interface UseGetReserveOccupiersParams {
   reserveId?: number

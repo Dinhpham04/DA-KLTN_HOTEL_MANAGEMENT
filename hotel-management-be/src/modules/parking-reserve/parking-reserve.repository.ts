@@ -82,6 +82,29 @@ export class ParkingReserveRepository {
     });
   }
 
+  async hasParkingReserveOverlap(
+    parkingId: number,
+    periodFrom: Date,
+    periodTo: Date | null,
+    excludeParkingReserveId?: number,
+  ): Promise<boolean> {
+    const overlap = await this.prisma.parkingReserve.findFirst({
+      where: {
+        parkingId,
+        deletedAt: null,
+        dataStatus: 1,
+        ...(excludeParkingReserveId !== undefined && {
+          parkingReserveId: { not: excludeParkingReserveId },
+        }),
+        ...(periodTo && { periodFrom: { lte: periodTo } }),
+        OR: [{ periodTo: null }, { periodTo: { gte: periodFrom } }],
+      },
+      select: { parkingReserveId: true },
+    });
+
+    return overlap !== null;
+  }
+
   // ─── Bicycle Parking Reserve ─────────────────────────
 
   async createBicycleParkingReserve(dto: CreateBicycleParkingReserveDto, staffId: number) {
@@ -149,5 +172,28 @@ export class ParkingReserveRepository {
     return this.prisma.bicycleParkingReserve.findFirst({
       where: { bicycleParkingReserveId: id, deletedAt: null },
     });
+  }
+
+  async hasBicycleParkingReserveOverlap(
+    bicycleParkingId: number,
+    periodFrom: Date,
+    periodTo: Date | null,
+    excludeBicycleParkingReserveId?: number,
+  ): Promise<boolean> {
+    const overlap = await this.prisma.bicycleParkingReserve.findFirst({
+      where: {
+        bicycleParkingId,
+        deletedAt: null,
+        dataStatus: 1,
+        ...(excludeBicycleParkingReserveId !== undefined && {
+          bicycleParkingReserveId: { not: excludeBicycleParkingReserveId },
+        }),
+        ...(periodTo && { periodFrom: { lte: periodTo } }),
+        OR: [{ periodTo: null }, { periodTo: { gte: periodFrom } }],
+      },
+      select: { bicycleParkingReserveId: true },
+    });
+
+    return overlap !== null;
   }
 }

@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { CurrentUser, Roles, RolesGuard } from '@common/index';
+import { CurrentUser, JwtOrInternalAutomationGuard, Roles, RolesGuard } from '@common/index';
 import type { CurrentStaff } from '@common/decorators/current-user.decorator';
 import { StaffType } from '@common/enums/index';
 import { DailyReserveService } from './daily-reserve.service';
@@ -27,12 +27,12 @@ import {
 
 @ApiTags('Daily Reserve')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller()
 export class DailyReserveController {
   constructor(private readonly dailyReserveService: DailyReserveService) {}
 
   @Get('daily-reserve')
+  @UseGuards(JwtOrInternalAutomationGuard, RolesGuard)
   @ApiOperation({ summary: 'Get daily check-in reserve management rows' })
   findAll(
     @Query() filter: DailyReserveFilterDto,
@@ -42,6 +42,7 @@ export class DailyReserveController {
   }
 
   @Put('daily-reserve/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update a daily reserve row and smart lock credential' })
@@ -54,6 +55,7 @@ export class DailyReserveController {
   }
 
   @Put('daily-reserves')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bulk update daily reserve rows' })

@@ -77,7 +77,7 @@ const reservationCommonReserveSchema = z.object({
   noreserve_count_before: z.string().default('0'),
   noreserve_count_after: z.string().default('0'),
   auto_extend_flag: z.boolean().default(false),
-  confirm_flag: z.string().default('0'),
+  confirm_flag: z.string().default('1'),
   directcheckin_type: z.string().default('1'),
   advertising_type: z.string().default('0'),
   rental_keys: z.string().default('0'),
@@ -109,7 +109,7 @@ function getReservationCommonReserveDefaultValues(): ReservationCommonReserveFor
     noreserve_count_before: '0',
     noreserve_count_after: '0',
     auto_extend_flag: false,
-    confirm_flag: '0',
+    confirm_flag: '1',
     directcheckin_type: '1',
     advertising_type: '0',
     rental_keys: '0',
@@ -129,6 +129,7 @@ function getReservationCommonReserveDefaultValues(): ReservationCommonReserveFor
 }
 
 const reservationRequestNormalRowSchema = z.object({
+  request_detail_id: z.number().optional(),
   is_checked: z.boolean().default(false),
   request_type_id: z.string().optional(),
   request_from: z.string().optional(),
@@ -137,6 +138,9 @@ const reservationRequestNormalRowSchema = z.object({
   count_unit: z.string().optional(),
   unit_price: z.string().optional(),
   charge_staff_id: z.string().optional(),
+  source_type: z.string().optional(),
+  source_id: z.string().optional(),
+  source_key: z.string().optional(),
 })
 
 export const reservationOccupierRowSchema = z.object({
@@ -150,29 +154,33 @@ export const reservationOccupierRowSchema = z.object({
 })
 
 const parkingReserveRowSchema = z.object({
+  parking_reserve_id: z.number().optional(),
   parking_id: z.number().optional(),
   facility_name: z.string().optional(),
   facility_no: z.string().optional(),
   period_from: z.string().optional().nullable(),
   period_to: z.string().optional().nullable(),
   stay_type_id: z.number().optional(),
+  confirm_flag: z.boolean().optional(),
   note: z.string().optional(),
   license_plate: z.string().default(''),
   car_type: z.string().default(''),
 })
 
 const bicycleParkingReserveRowSchema = z.object({
+  bicycle_parking_reserve_id: z.number().optional(),
   bicycle_parking_id: z.number().optional(),
   facility_name: z.string().optional(),
   facility_no: z.string().optional(),
   period_from: z.string().optional().nullable(),
   period_to: z.string().optional().nullable(),
+  confirm_flag: z.boolean().optional(),
   bicycle_type_note: z.string().optional(),
   note: z.string().optional(),
 })
 
 export const reservationCreateReserveSchema = reservationCommonReserveSchema.extend({
-  auto_extend_flag: z.boolean().default(true),
+  auto_extend_flag: z.boolean().default(false),
   checkin_time: z.string().optional(),
   request_normal: z.array(reservationRequestNormalRowSchema).default([]),
   occupiers: z.array(reservationOccupierRowSchema).default([]),
@@ -185,8 +193,8 @@ export type ReservationCreateReserveFormValues = z.infer<typeof reservationCreat
 export function getReservationCreateReserveDefaultValues(): ReservationCreateReserveFormValues {
   return {
     ...getReservationCommonReserveDefaultValues(),
-    auto_extend_flag: true,
-    checkin_time: '',
+    auto_extend_flag: false,
+    checkin_time: '14:00',
     request_normal: [],
     occupiers: [],
     parking_reserve: [],
@@ -216,7 +224,10 @@ export const reservationEditReserveSchema = reservationCommonReserveSchema.exten
   charge_staff_id2: z.string().optional(),
   request_announcement: z.string().max(1024).optional(),
   sale_announcement: z.string().max(1024).optional(),
+  request_normal: z.array(reservationRequestNormalRowSchema).default([]),
   occupiers: z.array(reservationOccupierRowSchema).default([]),
+  parking_reserve: z.array(parkingReserveRowSchema).default([]),
+  bicycle_parking_reserve: z.array(bicycleParkingReserveRowSchema).default([]),
 })
 
 export type ReservationEditReserveFormValues = z.infer<typeof reservationEditReserveSchema>
@@ -225,7 +236,7 @@ export function getReservationEditReserveDefaultValues(): ReservationEditReserve
   return {
     ...getReservationCommonReserveDefaultValues(),
     area_id: '',
-    period_from_time: '',
+    period_from_time: '14:00',
     return_keys: '0',
     key_return_flag: false,
     key_return_contact_type: '',
@@ -245,6 +256,9 @@ export function getReservationEditReserveDefaultValues(): ReservationEditReserve
     charge_staff_id2: '',
     request_announcement: '',
     sale_announcement: '',
+    request_normal: [],
     occupiers: [],
+    parking_reserve: [],
+    bicycle_parking_reserve: [],
   }
 }

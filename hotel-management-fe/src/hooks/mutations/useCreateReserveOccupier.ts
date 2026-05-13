@@ -1,6 +1,6 @@
-import { useMutation } from '@tanstack/react-query'
 import { occupierApi } from '@/api/occupier.api'
-import type { CreateReserveOccupierBody, CreateReserveOccupierBatchBody } from '@/types/occupier'
+import type { CreateReserveOccupierBatchBody, CreateReserveOccupierBody } from '@/types/occupier'
+import { useMutation } from '@tanstack/react-query'
 
 interface UseCreateReserveOccupierParams {
   onSuccess?: () => void

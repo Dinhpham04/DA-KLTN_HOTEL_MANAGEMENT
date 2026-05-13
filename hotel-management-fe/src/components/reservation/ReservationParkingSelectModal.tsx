@@ -1,10 +1,10 @@
-import CustomDialog from '@/components/common/CustomDialog'
 import CustomDatePicker from '@/components/common/CustomDatePicker'
-import CustomSelect from '@/components/common/CustomSelect'
-import type { CustomSelectOption } from '@/components/common/CustomSelect'
+import CustomDialog from '@/components/common/CustomDialog'
+import { CustomInput } from '@/components/common/CustomInput'
 import ParkingOverflow from '@/components/parking/ParkingOverflow'
 import { NButton } from '@/components/ui/new-button'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
+import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useParkingStatus } from '@/hooks/queries/useParkingStatus'
 import { cn } from '@/lib/utils'
 import type {
@@ -13,13 +13,20 @@ import type {
   ParkingReserveItem,
   ParkingSlot,
 } from '@/types/parking-status'
+import { zodResolver } from '@hookform/resolvers/zod'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Controller, useFieldArray, useForm, useFormContext } from 'react-hook-form'
+import { Fragment, useEffect, useMemo } from 'react'
+import {
+  type Control,
+  Controller,
+  type FieldPath,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 
 dayjs.extend(isSameOrAfter)
 dayjs.extend(isSameOrBefore)
@@ -27,6 +34,7 @@ dayjs.extend(isSameOrBefore)
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const parkingItemSchema = z.object({
+  parking_reserve_id: z.number().optional(),
   slotIndex: z.number().optional(),
   parking_id: z.number().optional(),
   facility_name: z.string().optional(),
@@ -34,18 +42,21 @@ const parkingItemSchema = z.object({
   period_from: z.string().nullable(),
   period_to: z.string().nullable(),
   stay_type_id: z.number().nullable().optional(),
+  confirm_flag: z.boolean().optional(),
   note: z.string().optional(),
-  license_plate: z.string().default(''),
-  car_type: z.string().default(''),
+  license_plate: z.string().trim().min(1, 'Vui lòng nhập biển số').default(''),
+  car_type: z.string().trim().min(1, 'Vui lòng nhập loại xe').default(''),
 })
 
 const bicycleItemSchema = z.object({
+  bicycle_parking_reserve_id: z.number().optional(),
   slotIndex: z.number().optional(),
   bicycle_parking_id: z.number().optional(),
   facility_name: z.string().optional(),
   facility_no: z.string().optional(),
   period_from: z.string().nullable(),
   period_to: z.string().nullable(),
+  confirm_flag: z.boolean().optional(),
   bicycle_type_note: z.string().optional(),
   note: z.string().optional(),
 })
@@ -55,6 +66,8 @@ const bicycleFormSchema = z.object({ bicycle_parking_reserve: z.array(bicycleIte
 
 type ParkingFormType = z.infer<typeof parkingFormSchema>
 type BicycleFormType = z.infer<typeof bicycleFormSchema>
+type ParkingReserveRow = ParkingFormType['parking_reserve'][number]
+type BicycleParkingReserveRow = BicycleFormType['bicycle_parking_reserve'][number]
 
 // ─── Free slot computation ────────────────────────────────────────────────────
 
@@ -64,7 +77,7 @@ interface FreeSlot {
 }
 
 function computeFreeSlots(
-  reserves: Array<ParkingReserveItem | BicycleParkingReserveItem>,
+  reserves: Array<ParkingReserveItem | BicycleParkingReserveItem>
 ): FreeSlot[] {
   const today = dayjs().startOf('day')
 
@@ -128,6 +141,28 @@ function calcStayTypeId(from: string, to?: string | null): number {
   return 7
 }
 
+function formatModalDate(value?: string | null): string | null {
+  if (!value) return null
+  const date = dayjs(value)
+  return date.isValid() ? date.format('YYYY/MM/DD') : null
+}
+
+function rangesOverlap(
+  firstFrom: string,
+  firstTo: string | null,
+  secondFrom?: string | null,
+  secondTo?: string | null
+) {
+  if (!secondFrom) return false
+
+  const startA = dayjs(firstFrom).startOf('day')
+  const endA = firstTo ? dayjs(firstTo).startOf('day') : null
+  const startB = dayjs(secondFrom).startOf('day')
+  const endB = secondTo ? dayjs(secondTo).startOf('day') : null
+
+  return (!endB || !startA.isAfter(endB)) && (!endA || !startB.isAfter(endA))
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface ReservationParkingSelectModalProps {
@@ -135,6 +170,7 @@ interface ReservationParkingSelectModalProps {
   facilityId?: number
   periodFrom?: string
   periodTo?: string
+  reserveId?: number
   trigger: React.ReactNode
 }
 
@@ -145,12 +181,13 @@ export default function ReservationParkingSelectModal({
   facilityId,
   periodFrom: propPeriodFrom,
   periodTo: propPeriodTo,
+  reserveId,
   trigger,
 }: ReservationParkingSelectModalProps) {
   const methods = useFormContext()
-  const [selectedFacilityId, setSelectedFacilityId] = useState<number | undefined>(
-    facilityId,
-  )
+  const selectedFacilityId = facilityId
+  const selectedRoomId = methods.watch('reserve.room_id')
+  const reservationConfirmFlag = methods.watch('reserve.confirm_flag') === '1'
 
   // ── Local form for selected slots inside modal
   const parkingForm = useForm<ParkingFormType>({
@@ -162,31 +199,50 @@ export default function ReservationParkingSelectModal({
     defaultValues: { bicycle_parking_reserve: [] },
   })
 
-  const { fields: parkingFields, append: appendParking, remove: removeParking } = useFieldArray({
+  const {
+    fields: parkingFields,
+    append: appendParking,
+    remove: removeParking,
+    replace: replaceParking,
+  } = useFieldArray({
     control: parkingForm.control,
     name: 'parking_reserve',
   })
-  const { fields: bicycleFields, append: appendBicycle, remove: removeBicycle } = useFieldArray({
+  const {
+    fields: bicycleFields,
+    append: appendBicycle,
+    remove: removeBicycle,
+    replace: replaceBicycle,
+  } = useFieldArray({
     control: bicycleForm.control,
     name: 'bicycle_parking_reserve',
   })
 
-  // ── Facilities
+  // ── Room/facility display
   const { data: facilitiesResponse } = useGetFacilities()
-  const facilityOptions = useMemo<CustomSelectOption[]>(() => {
-    const list = facilitiesResponse?.data ?? []
-    return list
-      .filter((f) => (isBicycle ? f.bicycleParkingFlag : f.parkingFlag))
-      .map((f) => ({ value: String(f.facilityId), label: f.facilityName }))
-  }, [facilitiesResponse, isBicycle])
+  const { data: roomsResponse } = useGetRooms({
+    params: selectedFacilityId ? { facilityId: selectedFacilityId, dataStatus: 1 } : undefined,
+    enabled: !!selectedFacilityId,
+  })
 
-  // Auto-select facility when options load
-  useEffect(() => {
-    if (!facilityOptions.length) return
-    const match = facilityOptions.find((o) => Number(o.value) === facilityId)
-    if (match) setSelectedFacilityId(Number(match.value))
-    else setSelectedFacilityId(Number(facilityOptions[0].value))
-  }, [facilityOptions, facilityId])
+  const selectedFacility = useMemo(
+    () => facilitiesResponse?.data?.find((facility) => facility.facilityId === selectedFacilityId),
+    [facilitiesResponse, selectedFacilityId]
+  )
+
+  const selectedRoom = useMemo(
+    () => roomsResponse?.data?.find((room) => String(room.roomId) === String(selectedRoomId)),
+    [roomsResponse, selectedRoomId]
+  )
+
+  const roomDisplay = useMemo(() => {
+    const facilityNo = selectedRoom?.facilityNo ?? selectedFacility?.facilityNo ?? ''
+    const roomNumber = selectedRoom?.roomNumber ?? ''
+    if (!facilityNo && !roomNumber) return 'Chưa chọn phòng'
+
+    const roomCode = [facilityNo, roomNumber].filter(Boolean).join('-')
+    return roomCode
+  }, [selectedFacility, selectedRoom])
 
   // ── Parking status
   const { data: parkingStatusList = [], refetch: refetchStatus } = useParkingStatus({
@@ -198,61 +254,132 @@ export default function ReservationParkingSelectModal({
 
   useEffect(() => {
     if (selectedFacilityId) refetchStatus()
-  }, [selectedFacilityId])
+  }, [selectedFacilityId, refetchStatus])
 
   // Extract car/bicycle slots for the selected facility
   const currentFacilityStatus = useMemo(
     () => parkingStatusList.find((f) => f.facilityId === selectedFacilityId),
-    [parkingStatusList, selectedFacilityId],
+    [parkingStatusList, selectedFacilityId]
   )
 
   const carSlots: ParkingSlot[] = useMemo(
     () => currentFacilityStatus?.parkings ?? [],
-    [currentFacilityStatus],
+    [currentFacilityStatus]
   )
 
   const bicycleSlots: BicycleParkingSlot[] = useMemo(
     () => currentFacilityStatus?.bicycleParkings ?? [],
-    [currentFacilityStatus],
+    [currentFacilityStatus]
   )
-
-  const prices: number[] = useMemo(() => {
-    const p = currentFacilityStatus?.prices ?? {}
-    return Object.values(p).slice(0, 5)
-  }, [currentFacilityStatus])
 
   // ── Period from parent form (prop or watch)
   const roomPeriodFrom = propPeriodFrom ?? methods.watch('reserve.period_from') ?? ''
   const roomPeriodTo = propPeriodTo ?? methods.watch('reserve.period_to') ?? ''
 
+  function buildSavedParkingRows(statusList = parkingStatusList): ParkingReserveRow[] {
+    if (!reserveId) return []
+
+    return (
+      statusList
+        .find((facility) => facility.facilityId === selectedFacilityId)
+        ?.parkings.flatMap((parking) =>
+          parking.parkingReserves
+            .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
+            .map((reserve) => ({
+              parking_reserve_id: reserve.parkingReserveId,
+              parking_id: reserve.parkingId,
+              facility_name: parking.facilityName,
+              facility_no: parking.number,
+              period_from: formatModalDate(reserve.periodFrom),
+              period_to: formatModalDate(reserve.periodTo),
+              confirm_flag: reserve.confirmFlag,
+              car_type: reserve.carType ?? '',
+              license_plate: reserve.licensePlate ?? '',
+              note: reserve.note ?? '',
+            }))
+        ) ?? []
+    )
+  }
+
+  function buildSavedBicycleRows(statusList = parkingStatusList): BicycleParkingReserveRow[] {
+    if (!reserveId) return []
+
+    return (
+      statusList
+        .find((facility) => facility.facilityId === selectedFacilityId)
+        ?.bicycleParkings.flatMap((parking) =>
+          parking.bicycleParkingReserves
+            .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
+            .map((reserve) => ({
+              bicycle_parking_reserve_id: reserve.bicycleParkingReserveId,
+              bicycle_parking_id: reserve.bicycleParkingId,
+              facility_name: parking.facilityName,
+              facility_no: parking.number,
+              period_from: formatModalDate(reserve.periodFrom),
+              period_to: formatModalDate(reserve.periodTo),
+              confirm_flag: reserve.confirmFlag,
+              bicycle_type_note: reserve.bicycleTypeNote ?? '',
+              note: reserve.note ?? '',
+            }))
+        ) ?? []
+    )
+  }
+
   // ── Open modal: restore from parent form values
-  function handleOpen() {
-    refetchStatus()
+  async function handleOpen() {
+    const statusResult = selectedFacilityId ? await refetchStatus() : undefined
+    const statusList = statusResult?.data ?? parkingStatusList
+
     if (isBicycle) {
       const existing = methods.getValues('reserve.bicycle_parking_reserve') ?? []
-      bicycleForm.setValue('bicycle_parking_reserve', existing)
+      const savedRows = buildSavedBicycleRows(statusList)
+      const nextRows = existing.length > 0 ? existing : savedRows
+      replaceBicycle(nextRows)
+      if (existing.length === 0 && savedRows.length > 0) {
+        methods.setValue('reserve.bicycle_parking_reserve', savedRows, { shouldDirty: false })
+      }
     } else {
       const existing = methods.getValues('reserve.parking_reserve') ?? []
-      parkingForm.setValue('parking_reserve', existing)
+      const savedRows = buildSavedParkingRows(statusList)
+      const nextRows = existing.length > 0 ? existing : savedRows
+      replaceParking(nextRows)
+      if (existing.length === 0 && savedRows.length > 0) {
+        methods.setValue('reserve.parking_reserve', savedRows, { shouldDirty: false })
+      }
     }
   }
 
   // ── Close modal: reset local form
   function handleClose() {
-    parkingForm.setValue('parking_reserve', [])
-    bicycleForm.setValue('bicycle_parking_reserve', [])
+    replaceParking([])
+    replaceBicycle([])
   }
 
   // ── Check if a slot is already selected or out of room period
-  function isSlotDisabled(id: number, slotFrom: string, slotTo: string | null, slotIdx: number): boolean {
+  function isSlotDisabled(
+    id: number,
+    slotFrom: string,
+    slotTo: string | null,
+    slotIdx: number
+  ): boolean {
     if (!roomPeriodFrom && !roomPeriodTo) return true
-    const selectedList = isBicycle
-      ? bicycleForm.getValues('bicycle_parking_reserve')
-      : parkingForm.getValues('parking_reserve')
-
-    const alreadySelected = selectedList.some(
-      (s: any) => (isBicycle ? s.bicycle_parking_id : s.parking_id) === id && s.slotIndex === slotIdx,
-    )
+    const alreadySelected = isBicycle
+      ? bicycleForm
+          .getValues('bicycle_parking_reserve')
+          .some(
+            (selectedSlot) =>
+              selectedSlot.bicycle_parking_id === id &&
+              (selectedSlot.slotIndex === slotIdx ||
+                rangesOverlap(slotFrom, slotTo, selectedSlot.period_from, selectedSlot.period_to))
+          )
+      : parkingForm
+          .getValues('parking_reserve')
+          .some(
+            (selectedSlot) =>
+              selectedSlot.parking_id === id &&
+              (selectedSlot.slotIndex === slotIdx ||
+                rangesOverlap(slotFrom, slotTo, selectedSlot.period_from, selectedSlot.period_to))
+          )
     if (alreadySelected) return true
 
     // Check date overlap with room period
@@ -268,13 +395,34 @@ export default function ReservationParkingSelectModal({
 
     if (roomTo && slotToDay) {
       // Finite slot: disabled if slot doesn't overlap room period
-      const noOverlap =
-        slotToDay.isBefore(roomFrom ?? slotFromDay) ||
-        slotFromDay.isAfter(roomTo)
+      const noOverlap = slotToDay.isBefore(roomFrom ?? slotFromDay) || slotFromDay.isAfter(roomTo)
       return noOverlap
     }
 
     return false
+  }
+
+  function getBookableFreeSlots(freeSlots: FreeSlot[]): FreeSlot[] {
+    if (!roomPeriodFrom || !roomPeriodTo) return []
+
+    const roomFrom = dayjs(roomPeriodFrom).startOf('day')
+    const roomTo = dayjs(roomPeriodTo).startOf('day')
+
+    return freeSlots
+      .map((freeSlot): FreeSlot | null => {
+        const freeFrom = dayjs(freeSlot.from).startOf('day')
+        const freeTo = freeSlot.to ? dayjs(freeSlot.to).startOf('day') : null
+        const from = freeFrom.isAfter(roomFrom) ? freeFrom : roomFrom
+        const to = freeTo?.isBefore(roomTo) ? freeTo : roomTo
+
+        if (to.isBefore(from)) return null
+
+        return {
+          from: from.format('YYYY/MM/DD'),
+          to: to.format('YYYY/MM/DD'),
+        }
+      })
+      .filter((slot): slot is FreeSlot => slot !== null)
   }
 
   // ── Append selected slot to local form
@@ -283,24 +431,29 @@ export default function ReservationParkingSelectModal({
     slotId: number,
     slotNumber: string,
     slotFrom: string,
-    slotTo: string | null,
+    slotTo: string | null
   ) {
-    const facilityLabel = facilityOptions.find((o) => Number(o.value) === selectedFacilityId)?.label ?? ''
+    const facilityLabel = selectedFacility?.facilityName ?? ''
 
     let periodFrom: string | null = null
     let periodTo: string | null = null
 
     if (slotTo) {
-      periodFrom = roomPeriodFrom && dayjs(roomPeriodFrom).isBefore(dayjs(slotFrom))
-        ? slotFrom
-        : roomPeriodFrom ? dayjs(roomPeriodFrom).format('YYYY/MM/DD') : slotFrom
-      periodTo = roomPeriodTo && dayjs(roomPeriodTo).isSameOrBefore(dayjs(slotTo))
-        ? dayjs(roomPeriodTo).format('YYYY/MM/DD')
-        : slotTo
+      periodFrom =
+        roomPeriodFrom && dayjs(roomPeriodFrom).isBefore(dayjs(slotFrom))
+          ? slotFrom
+          : roomPeriodFrom
+            ? dayjs(roomPeriodFrom).format('YYYY/MM/DD')
+            : slotFrom
+      periodTo =
+        roomPeriodTo && dayjs(roomPeriodTo).isSameOrBefore(dayjs(slotTo))
+          ? dayjs(roomPeriodTo).format('YYYY/MM/DD')
+          : slotTo
     } else {
-      periodFrom = roomPeriodFrom && dayjs(roomPeriodFrom).isSameOrAfter(dayjs(slotFrom))
-        ? dayjs(roomPeriodFrom).format('YYYY/MM/DD')
-        : slotFrom
+      periodFrom =
+        roomPeriodFrom && dayjs(roomPeriodFrom).isSameOrAfter(dayjs(slotFrom))
+          ? dayjs(roomPeriodFrom).format('YYYY/MM/DD')
+          : slotFrom
       periodTo = roomPeriodTo ? dayjs(roomPeriodTo).format('YYYY/MM/DD') : null
     }
 
@@ -312,6 +465,7 @@ export default function ReservationParkingSelectModal({
         facility_no: slotNumber,
         period_from: periodFrom,
         period_to: periodTo,
+        confirm_flag: reservationConfirmFlag,
         bicycle_type_note: '',
         note: '',
       })
@@ -325,6 +479,7 @@ export default function ReservationParkingSelectModal({
         period_from: periodFrom,
         period_to: periodTo,
         stay_type_id: stayTypeId,
+        confirm_flag: reservationConfirmFlag,
         car_type: '',
         license_plate: '',
         note: '',
@@ -333,10 +488,15 @@ export default function ReservationParkingSelectModal({
   }
 
   // ── Save and close
-  function handleSave() {
+  async function handleSave() {
     if (isBicycle) {
-      methods.setValue('reserve.bicycle_parking_reserve', bicycleForm.getValues('bicycle_parking_reserve'))
+      methods.setValue(
+        'reserve.bicycle_parking_reserve',
+        bicycleForm.getValues('bicycle_parking_reserve')
+      )
     } else {
+      const isValid = await parkingForm.trigger('parking_reserve')
+      if (!isValid) return
       methods.setValue('reserve.parking_reserve', parkingForm.getValues('parking_reserve'))
     }
     const closeBtn = document.querySelector('.close-btn') as HTMLButtonElement
@@ -355,65 +515,46 @@ export default function ReservationParkingSelectModal({
   const selectedFields = isBicycle ? bicycleFields : parkingFields
   const selectedForm = isBicycle ? bicycleForm : parkingForm
   const selectedFieldName = isBicycle ? 'bicycle_parking_reserve' : 'parking_reserve'
+  const selectedControl = selectedForm.control as unknown as Control<
+    ParkingFormType | BicycleFormType
+  >
+  const availableTableColSpan = isBicycle ? 3 : 4
+  const selectedTableColSpan = isBicycle ? 6 : 7
 
   return (
     <CustomDialog
       size="medium"
       changeOnOpened={(open) => {
-        if (open) handleOpen()
+        if (open) void handleOpen()
         else handleClose()
       }}
       trigger={trigger}
       title={isBicycle ? 'Thiết lập bãi xe đạp' : 'Thiết lập bãi đỗ xe'}
       content={
-        <div className="flex flex-col gap-[2rem] [&_thead_td]:bg-gray-50 [&_*]:text-[1.6rem]">
-
-          {/* ── Facility selector + Prices ── */}
-          <div className="flex w-full h-[4rem]">
-            <div className="flex items-center h-[100%] font-bold">Cơ sở</div>
-            <div className="ml-[1rem] [&>*]:h-[100%]">
-              <CustomSelect
-                customClassMain="h-[100%] w-[20rem]"
-                option={facilityOptions}
-                selected={selectedFacilityId ? String(selectedFacilityId) : ''}
-                change={(e) => setSelectedFacilityId(Number(e.value))}
-              />
+        <div className="flex flex-col gap-[1rem] [&_thead_td]:bg-gray-50 [&_*]:text-[1.6rem]">
+          {/* ── Room display ── */}
+          <div className="grid grid-cols-2">
+            <div className="flex items-center w-[20rem] h-[4rem]">
+              <div className="mr-[1rem] font-bold">Phòng:</div>
+              <div className="font-bold">{roomDisplay}</div>
             </div>
-            {!isBicycle && prices.length > 0 && (
-              <div className="relative flex-1 ml-[2.6rem]">
-                <div className="top-0 right-0 bottom-0 left-0 absolute flex border border-black">
-                  {prices.map((price, idx) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        'flex flex-shrink-0 flex-1 justify-center items-center h-[100%]',
-                        'border-l border-black box-border',
-                        { 'border-l-0': !idx },
-                      )}
-                    >
-                      {price} đ
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* ── Room period display ── */}
-          <div className="flex">
-            <div className="mr-[2.6rem] font-bold">Thời gian đặt phòng</div>
-            {(roomPeriodFrom || roomPeriodTo) && (
-              <>
-                <div>{roomPeriodFrom ? dayjs(roomPeriodFrom).format('YYYY/MM/DD') : null}</div>
-                <div className="mx-[.5rem]">～</div>
-                <div>{roomPeriodTo ? dayjs(roomPeriodTo).format('YYYY/MM/DD') : null}</div>
-              </>
-            )}
+            {/* ── Room period display ── */}
+            <div className="flex w-[45rem]">
+              <div className="mr-[1rem] font-bold">Thời gian đặt phòng:</div>
+              {(roomPeriodFrom || roomPeriodTo) && (
+                <>
+                  <div>{roomPeriodFrom ? dayjs(roomPeriodFrom).format('YYYY/MM/DD') : null}</div>
+                  <div className="mx-[.5rem]">～</div>
+                  <div>{roomPeriodTo ? dayjs(roomPeriodTo).format('YYYY/MM/DD') : null}</div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* ── Available slots table ── */}
           <div className="flex flex-col">
-            <div className="font-bold">Tình trạng trống</div>
+            <div className="font-bold text-[1.6rem] mb-4">Tình trạng trống</div>
             <div className="relative w-[100%] max-h-[26rem] overflow-auto">
               <table
                 className={cn(
@@ -421,15 +562,15 @@ export default function ReservationParkingSelectModal({
                   'border-separate border-spacing-0',
                   '[&_td]:border [&_td]:border-black',
                   '[&_td]:border-l-0 [&_td:first-child]:!border-l-[.1rem]',
-                  '[&_tbody_tr_td]:border-t-transparent',
-                  '[&_tbody_tr:nth-last-child(2)_td]:border-b-transparent',
+                  // '[&_tbody_tr_td]:border-t-transparent',
+                  '[&_tbody_tr:nth-last-child(2)_td]:border-b-transparent'
                 )}
               >
                 <thead>
                   <tr
                     className={cn(
                       '[&_td]:font-bold [&>*]:text-center',
-                      'sticky top-0 bg-white [&>td]:!border-y-[.1rem] z-[2]',
+                      'sticky top-0 bg-white [&>td]:!border-y-[.1rem] z-[2]'
                     )}
                   >
                     <td className="w-[5.2rem]">No</td>
@@ -439,18 +580,18 @@ export default function ReservationParkingSelectModal({
                   </tr>
                 </thead>
                 <tbody className="z-[3] [&>tr:first-child_td]:!border-t-0 [&>tr:last-child_td]:!border-b-0">
-                  {slotsToRender.map((slot, slotIdx) => {
+                  {slotsToRender.map((slot) => {
                     const slotId = isBicycle
                       ? (slot as BicycleParkingSlot).bicycleParkingId
                       : (slot as ParkingSlot).parkingId
                     const reserves = isBicycle
                       ? (slot as BicycleParkingSlot).bicycleParkingReserves
                       : (slot as ParkingSlot).parkingReserves
-                    const freeSlots = computeFreeSlots(reserves)
+                    const freeSlots = getBookableFreeSlots(computeFreeSlots(reserves))
 
                     return (
                       <tr
-                        key={slotIdx}
+                        key={`${isBicycle ? 'bicycle' : 'parking'}-${slotId}`}
                         className={cn('[&>td]:relative [&>td]:text-center', {
                           '!bg-gray-400': !slot.dataStatus,
                         })}
@@ -478,17 +619,27 @@ export default function ReservationParkingSelectModal({
                           >
                             {slot.dataStatus ? (
                               <ParkingOverflow customEndBorder="!border-l-black border-l-[.1rem]">
+                                {freeSlots.length === 0 && (
+                                  <div className="flex justify-center items-center w-full min-h-[3.2rem]">
+                                    Không có khoảng trống
+                                  </div>
+                                )}
                                 {freeSlots.map((freeSlot, freeIdx) => {
-                                  const disabled = isSlotDisabled(slotId, freeSlot.from, freeSlot.to, freeIdx)
+                                  const disabled = isSlotDisabled(
+                                    slotId,
+                                    freeSlot.from,
+                                    freeSlot.to,
+                                    freeIdx
+                                  )
                                   return (
                                     <div
-                                      key={freeIdx}
+                                      key={`${slotId}-${freeSlot.from}-${freeSlot.to ?? 'open'}`}
                                       className="flex last:!border-r-0 border-l-[.1rem] border-l-black first:border-l-transparent"
                                     >
                                       <div
                                         className={cn(
                                           'flex justify-center items-center w-[22rem]',
-                                          { 'gap-[.5rem]': !freeSlot.to },
+                                          { 'gap-[.5rem]': !freeSlot.to }
                                         )}
                                       >
                                         <div>{dayjs(freeSlot.from).format('YYYY/MM/DD')}</div>
@@ -503,11 +654,18 @@ export default function ReservationParkingSelectModal({
                                         <NButton
                                           type="button"
                                           className={cn('bg-gray w-[100%]', {
-                                            '!bg-gray-200 !border-none !text-gray-400 cursor-default': disabled,
+                                            '!bg-gray-200 !border-none !text-gray-400 cursor-default':
+                                              disabled,
                                           })}
                                           disabled={disabled}
                                           onClick={() =>
-                                            handleAppend(freeIdx, slotId, slot.number, freeSlot.from, freeSlot.to)
+                                            handleAppend(
+                                              freeIdx,
+                                              slotId,
+                                              slot.number,
+                                              freeSlot.from,
+                                              freeSlot.to
+                                            )
                                           }
                                         >
                                           Chọn
@@ -529,7 +687,10 @@ export default function ReservationParkingSelectModal({
                   })}
                   {slotsToRender.length === 0 && (
                     <tr>
-                      <td className="font-bold text-red-500 text-center" colSpan={9}>
+                      <td
+                        className="font-bold text-red-500 text-center"
+                        colSpan={availableTableColSpan}
+                      >
                         Không có dữ liệu
                       </td>
                     </tr>
@@ -550,12 +711,11 @@ export default function ReservationParkingSelectModal({
                   '!border-separate !border-spacing-0 [&_td]:!p-0',
                   '[&_td]:!border-[.001px] [&_td]:!border-black [&_td]:!box-border',
                   '[&_td>div]:p-[.5rem] [&_tr_td]:!border-l-0 [&_tr_td:first-child]:!border-l-[.001px]',
-                  '[&_tbody_tr>td]:border-b-transparent [&_tbody_tr:first-child>td]:!border-t-0',
+                  '[&_tbody_tr>td]:border-b-transparent [&_tbody_tr:first-child>td]:!border-t-0'
                 )}
               >
                 <thead>
                   <tr className="[&_td]:font-bold [&>*]:text-center bg-gray-100 z-[2]">
-                    <td className="w-[10.4rem]">Cơ sở</td>
                     <td className="w-[6rem]">No</td>
                     {isBicycle ? (
                       <td className="w-[20rem]">Thông tin xe đạp</td>
@@ -565,8 +725,9 @@ export default function ReservationParkingSelectModal({
                         <td className="w-[15rem]">Biển số</td>
                       </>
                     )}
-                    <td className="w-[28rem]">Thời gian sử dụng</td>
+                    <td className="w-[34rem]">Thời gian sử dụng</td>
                     <td className="w-[12rem]">Ghi chú</td>
+                    <td className="w-[14rem]">Trạng thái</td>
                     <td className="w-[8rem]">Thao tác</td>
                   </tr>
                 </thead>
@@ -577,13 +738,9 @@ export default function ReservationParkingSelectModal({
                         key={field.id}
                         className="[&_td]:px-[.5rem] [&_input]:outline-gray [&_input]:text-center"
                       >
-                        {/* Facility name */}
-                        <td className="!w-[10.4rem]">
-                          <div className="text-center">{(field as any).facility_name}</div>
-                        </td>
                         {/* Facility no */}
                         <td className="w-[6rem]">
-                          <div className="text-center">{(field as any).facility_no}</div>
+                          <div className="text-center">{field.facility_no}</div>
                         </td>
 
                         {/* Bicycle type / Car type + License plate */}
@@ -611,13 +768,31 @@ export default function ReservationParkingSelectModal({
                                   control={parkingForm.control}
                                   name={`parking_reserve.${selectIdx}.car_type`}
                                   render={({ field: { value, onChange } }) => (
-                                    <input
-                                      className="flex-1 w-full h-[2.4rem]"
+                                    <CustomInput
+                                      className={cn(
+                                        'flex-1 rounded-none border-black w-full h-[2.8rem] text-center',
+                                        {
+                                          'border-red-500':
+                                            parkingForm.formState.errors.parking_reserve?.[
+                                              selectIdx
+                                            ]?.car_type,
+                                        }
+                                      )}
+                                      placeholder="Nhập loại xe"
                                       value={value ?? ''}
                                       onChange={onChange}
                                     />
                                   )}
                                 />
+                                {parkingForm.formState.errors.parking_reserve?.[selectIdx]
+                                  ?.car_type && (
+                                  <p className="font-bold text-[1.2rem] text-red-500">
+                                    {
+                                      parkingForm.formState.errors.parking_reserve[selectIdx]
+                                        ?.car_type?.message
+                                    }
+                                  </p>
+                                )}
                               </div>
                             </td>
                             <td className="w-[15rem]">
@@ -626,32 +801,54 @@ export default function ReservationParkingSelectModal({
                                   control={parkingForm.control}
                                   name={`parking_reserve.${selectIdx}.license_plate`}
                                   render={({ field: { value, onChange } }) => (
-                                    <textarea
-                                      className="flex-1 p-2 resize-none w-full"
+                                    <CustomInput
+                                      className={cn(
+                                        'flex-1 rounded-none border-black w-full h-[2.8rem] text-center',
+                                        {
+                                          'border-red-500':
+                                            parkingForm.formState.errors.parking_reserve?.[
+                                              selectIdx
+                                            ]?.license_plate,
+                                        }
+                                      )}
+                                      placeholder="Nhập biển số"
                                       value={value ?? ''}
                                       onChange={onChange}
                                     />
                                   )}
                                 />
+                                {parkingForm.formState.errors.parking_reserve?.[selectIdx]
+                                  ?.license_plate && (
+                                  <p className="font-bold text-[1.2rem] text-red-500">
+                                    {
+                                      parkingForm.formState.errors.parking_reserve[selectIdx]
+                                        ?.license_plate?.message
+                                    }
+                                  </p>
+                                )}
                               </div>
                             </td>
                           </>
                         )}
 
                         {/* Period from/to */}
-                        <td className="w-[28rem]">
+                        <td className="w-[34rem]">
                           <div className="flex [&>*]:flex [&>*]:justify-center [&>*]:items-center gap-[.5rem] !py-0 h-full">
                             <div className="flex-1">
                               <Controller
-                                control={selectedForm.control as any}
-                                name={`${selectedFieldName}.${selectIdx}.period_from`}
+                                control={selectedControl}
+                                name={
+                                  `${selectedFieldName}.${selectIdx}.period_from` as FieldPath<
+                                    ParkingFormType | BicycleFormType
+                                  >
+                                }
                                 render={({ field: { value, onChange, onBlur } }) => (
                                   <CustomDatePicker
                                     onBlur={onBlur}
                                     format="yyyy/MM/dd"
-                                    className="flex-1 [&>div]:px-4 w-[12rem] h-[3.5rem] font-bold text-2xl cursor-pointer"
+                                    className="flex-1 [&>div]:px-4 w-[14rem] h-[3.5rem] font-bold text-2xl cursor-pointer"
                                     change={(e) => onChange(dayjs(e as Date).format('YYYY/MM/DD'))}
-                                    value={value}
+                                    value={typeof value === 'string' ? value : null}
                                   />
                                 )}
                               />
@@ -661,15 +858,19 @@ export default function ReservationParkingSelectModal({
                             </div>
                             <div className="flex-1">
                               <Controller
-                                control={selectedForm.control as any}
-                                name={`${selectedFieldName}.${selectIdx}.period_to`}
+                                control={selectedControl}
+                                name={
+                                  `${selectedFieldName}.${selectIdx}.period_to` as FieldPath<
+                                    ParkingFormType | BicycleFormType
+                                  >
+                                }
                                 render={({ field: { value, onChange, onBlur } }) => (
                                   <CustomDatePicker
                                     onBlur={onBlur}
                                     format="yyyy/MM/dd"
-                                    className="flex-1 [&>div]:px-4 w-[12rem] h-[3.5rem] font-bold text-2xl cursor-pointer"
+                                    className="flex-1 [&>div]:px-4 w-[14rem] h-[3.5rem] font-bold text-2xl cursor-pointer"
                                     change={(e) => onChange(dayjs(e as Date).format('YYYY/MM/DD'))}
-                                    value={value}
+                                    value={typeof value === 'string' ? value : null}
                                   />
                                 )}
                               />
@@ -681,16 +882,31 @@ export default function ReservationParkingSelectModal({
                         <td className="w-[12rem]">
                           <div className="flex flex-col items-center gap-[.5rem] py-[.5rem] [&>*]:w-[100%]">
                             <Controller
-                              control={selectedForm.control as any}
-                              name={`${selectedFieldName}.${selectIdx}.note`}
+                              control={selectedControl}
+                              name={
+                                `${selectedFieldName}.${selectIdx}.note` as FieldPath<
+                                  ParkingFormType | BicycleFormType
+                                >
+                              }
                               render={({ field: { value, onChange } }) => (
                                 <input
                                   className="flex-shrink-0 flex-1 w-[100%] h-[2.4rem]"
-                                  value={value ?? ''}
+                                  value={
+                                    typeof value === 'string' || typeof value === 'number'
+                                      ? value
+                                      : ''
+                                  }
                                   onChange={onChange}
                                 />
                               )}
                             />
+                          </div>
+                        </td>
+
+                        {/* Confirm status */}
+                        <td className="w-[14rem]">
+                          <div className="text-center">
+                            {field.confirm_flag ? 'Đã xác nhận đặt chỗ' : 'Chưa xác nhận đặt chỗ'}
                           </div>
                         </td>
 
@@ -700,7 +916,9 @@ export default function ReservationParkingSelectModal({
                             <NButton
                               type="button"
                               className="bg-gray w-[100%]"
-                              onClick={() => isBicycle ? removeBicycle(selectIdx) : removeParking(selectIdx)}
+                              onClick={() =>
+                                isBicycle ? removeBicycle(selectIdx) : removeParking(selectIdx)
+                              }
                             >
                               Xóa
                             </NButton>
@@ -710,7 +928,10 @@ export default function ReservationParkingSelectModal({
                     ))
                   ) : (
                     <tr>
-                      <td className="font-bold text-red-500 text-center" colSpan={9}>
+                      <td
+                        className="font-bold text-red-500 text-center"
+                        colSpan={selectedTableColSpan}
+                      >
                         Không có dữ liệu
                       </td>
                     </tr>
@@ -723,14 +944,14 @@ export default function ReservationParkingSelectModal({
             <div
               className={cn(
                 'flex justify-center gap-[1rem] mt-[2rem]',
-                '[&>*]:h-[3.5rem] [&>*]:w-[7.5rem] [&>*]:bg-gray',
+                '[&>*]:h-[3.5rem] [&>*]:w-[12.5rem] [&>*]:bg-gray'
               )}
             >
               <NButton type="button" onClick={handleSave}>
                 Thiết lập
               </NButton>
               <NButton type="button" onClick={handleClearAll}>
-                Xóa tất cả
+                Xóa
               </NButton>
             </div>
           </form>

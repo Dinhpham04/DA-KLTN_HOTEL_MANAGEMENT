@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next'
 
 const LEGEND = [
-  { key: 'inUse', color: '#37A86B' },
-  { key: 'reserved', color: '#79A3E0' },
-  { key: 'draft', color: '#999999' },
-  { key: 'rakuten', color: '#BF0000' },
+  { key: 'unconfirmed', color: '#8BD08E' },
+  { key: 'confirmed', color: '#FCFF61' },
+  { key: 'corporate', color: '#F86F6F' },
+  { key: 'advertising', color: '#4ADEDE' },
+  { key: 'draft', color: '#000000' },
 ]
 
 export function WhiteboardLegend() {

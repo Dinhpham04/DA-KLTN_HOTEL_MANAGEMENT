@@ -188,8 +188,6 @@ interface ReservationDetail extends Reservation {
   substituteRoomContent?: string
   requestNormalCount?: number
   saleNormalCount?: number
-  noreserveCountBefore?: number
-  noreserveCountAfter?: number
   createdStaffName?: string
   updatedStaffName?: string
 }

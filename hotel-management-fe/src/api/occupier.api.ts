@@ -23,6 +23,5 @@ export const occupierApi = {
   update: (id: number, data: UpdateReserveOccupierBody) =>
     apiClient.patch<ReserveOccupier>(`/reserve-occupiers/${id}`, data),
 
-  delete: (id: number) =>
-    apiClient.delete(`/reserve-occupiers/${id}`),
+  delete: (id: number) => apiClient.delete(`/reserve-occupiers/${id}`),
 }

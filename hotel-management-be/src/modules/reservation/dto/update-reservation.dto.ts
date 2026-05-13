@@ -41,6 +41,18 @@ export class UpdateReservationDto {
   @IsDateString()
   readonly periodTo?: string;
 
+  @ApiPropertyOptional({ description: 'Buffer days before reservation' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  readonly noreserveCountBefore?: number;
+
+  @ApiPropertyOptional({ description: 'Buffer days after reservation' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  readonly noreserveCountAfter?: number;
+
   @ApiPropertyOptional({ description: 'Reserve type: 1=Normal, 2=English' })
   @IsOptional()
   @IsInt()

@@ -65,6 +65,23 @@ export class EnvironmentVariables {
   @IsOptional()
   INTERNAL_AUTOMATION_TOKEN?: string;
 
+  @IsString()
+  @IsOptional()
+  N8N_RESERVATION_CREATED_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  N8N_RESERVATION_CHECKED_IN_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  N8N_AUTOMATION_SECRET?: string;
+
+  @Transform(({ value }) => parseInt(value as string, 10))
+  @IsNumber()
+  @IsOptional()
+  RESERVATION_AUTOMATION_STAFF_ID?: number;
+
   @Transform(({ value }) => parseInt(value as string, 10))
   @IsNumber()
   @IsOptional()

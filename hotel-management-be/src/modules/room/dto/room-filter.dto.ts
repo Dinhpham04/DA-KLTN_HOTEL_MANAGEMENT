@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '@common/dto/pagination.dto';
@@ -38,4 +38,14 @@ export class RoomFilterDto extends PaginationDto {
   @Type(() => Number)
   @IsInt()
   dataStatus?: number;
+
+  @ApiPropertyOptional({ description: 'Only include rooms available from this date/time' })
+  @IsOptional()
+  @IsDateString()
+  periodFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Only include rooms available until this date/time' })
+  @IsOptional()
+  @IsDateString()
+  periodTo?: string;
 }

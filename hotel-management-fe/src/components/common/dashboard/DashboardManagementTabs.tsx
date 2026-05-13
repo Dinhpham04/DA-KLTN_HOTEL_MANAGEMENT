@@ -450,7 +450,6 @@ function DashboardCleaningShiftTab({ date, staffs, facilities }: DashboardCleani
   const [roomTypeSearch, setRoomTypeSearch] = useState<string[]>([])
   const [staffSearch, setStaffSearch] = useState('-1')
 
-
   const selectedFacilityIds = useMemo(() => {
     if (facilitySearch.length > 0) return facilitySearch.map(Number)
     return facilities.map((facility) => facility.facilityId)
@@ -505,7 +504,6 @@ function DashboardCleaningShiftTab({ date, staffs, facilities }: DashboardCleani
     () => filteredDetails.filter((detail) => detail.dataType === CleaningDataType.COMMON_AREA),
     [filteredDetails]
   )
-
 
   const isReportLoading = isLoading || isFetching
   const refetchReport = () => {

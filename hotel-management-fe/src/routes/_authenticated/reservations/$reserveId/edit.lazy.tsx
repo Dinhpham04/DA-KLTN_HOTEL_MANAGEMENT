@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -29,17 +29,14 @@ import CustomSelectClean from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
+import ReservationBillingSection from '@/components/reservation/ReservationBillingSection'
 import ReservationInfoCommonSection from '@/components/reservation/ReservationInfoCommonSection'
 import { ReservationOccupierTable } from '@/components/reservation/ReservationOccupierTable'
-import { BicycleSvg } from '@/components/svgs/BicycleSVG'
-import { CarSvg } from '@/components/svgs/CarSvg'
-import { DogSvg } from '@/components/svgs/DogSvg'
-import { RugSVG } from '@/components/svgs/RugSVG'
+import ReservationParkingSection from '@/components/reservation/ReservationParkingSection'
+import ReservationRequestNormalSection from '@/components/reservation/ReservationRequestNormalSection'
 import { DialogClose } from '@/components/ui/dialog'
 import { NButton } from '@/components/ui/new-button'
 import {
-  BILLING_ADVANCE_HEADERS,
-  BILLING_NORMAL_HEADERS,
   DATA_TYPE_OPTIONS,
   DELETE_STATUS_OPTIONS,
   SEX_OPTIONS,
@@ -47,15 +44,17 @@ import {
   USED_MESSY_LEVEL_OPTIONS,
 } from '@/constants/reservation'
 
-import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
-import { useUpdateSmartLockPin } from '@/hooks/mutations/useUpdateSmartLockPin'
 import { useCreateReserveOccupier } from '@/hooks/mutations/useCreateReserveOccupier'
+import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
 import { useDeleteReserveOccupier } from '@/hooks/mutations/useDeleteReserveOccupier'
-import type { ReserveOccupier } from '@/types/occupier'
+import { useSyncRequestDetails } from '@/hooks/mutations/useSyncRequestDetails'
+import { useUpdateSmartLockPin } from '@/hooks/mutations/useUpdateSmartLockPin'
 import { useGetClientById } from '@/hooks/queries/useGetClientById'
-import { useGetReserveOccupiers } from '@/hooks/queries/useGetReserveOccupiers'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
+import { useGetRequestDetails } from '@/hooks/queries/useGetRequestDetails'
+import { useGetRequestTypes } from '@/hooks/queries/useGetRequestTypes'
+import { useGetReserveOccupiers } from '@/hooks/queries/useGetReserveOccupiers'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
 import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useGetSmartLockPins } from '@/hooks/queries/useGetSmartLockPins'
@@ -81,6 +80,7 @@ import {
   resolveSelfCheckinSmartLockState,
 } from '@/lib/smart-lock-directcheckin'
 import { cn } from '@/lib/utils'
+import type { ReserveOccupier } from '@/types/occupier'
 import type { Reservation, UpdateReservationBody } from '@/types/reservation'
 
 export const Route = createLazyFileRoute('/_authenticated/reservations/$reserveId/edit')({
@@ -164,9 +164,7 @@ function ReservationEditPage() {
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
   // Refs for scroll
-  const refBilling = useRef<HTMLDivElement>(null)
   const refInvoice = useRef<HTMLDivElement>(null)
-  const refSales = useRef<HTMLDivElement>(null)
   const refOccupier = useRef<HTMLDivElement>(null)
   const formPopulateKeyRef = useRef('')
   const submittingRef = useRef(false)
@@ -204,9 +202,26 @@ function ReservationEditPage() {
   })
 
   const { data: facilitiesData } = useGetFacilities()
-  const { data: roomTypesData } = useGetRoomTypes()
+  const { data: roomTypesData } = useGetRoomTypes({
+    params: facilityId
+      ? {
+          facilityId: Number(facilityId),
+          dataStatus: 1,
+          limit: 1000,
+        }
+      : {
+          dataStatus: 1,
+          limit: 1000,
+        },
+  })
   const { data: roomsData } = useGetRooms({
-    params: facilityId ? { facilityId: Number(facilityId) } : undefined,
+    params: facilityId
+      ? {
+          facilityId: Number(facilityId),
+          limit: 1000,
+          dataStatus: 1,
+        }
+      : undefined,
   })
   const { data: stayTypes } = useGetStayTypes()
   const { data: countries } = useGetCountries()
@@ -224,6 +239,12 @@ function ReservationEditPage() {
     enabled: Number.isFinite(reserveIdNum) && reserveIdNum > 0,
   })
   const latestSmartLockCredential = smartLockPinsData?.data?.[0]
+
+  const { data: requestTypesData } = useGetRequestTypes()
+  const requestTypes = requestTypesData ?? []
+
+  const { data: requestDetailsData } = useGetRequestDetails(reserveIdNum)
+  const { sync: syncRequestDetails } = useSyncRequestDetails()
 
   const { data: occupiersData } = useGetReserveOccupiers({
     reserveId: reserveIdNum && Number.isFinite(reserveIdNum) ? reserveIdNum : undefined,
@@ -276,6 +297,53 @@ function ReservationEditPage() {
         })),
     [roomsData, roomTypeId]
   )
+
+  const resolvedFacilityShortLabel = useMemo(() => {
+    if (selectedFacilityShortLabel !== '---') return selectedFacilityShortLabel
+    if (reserve?.facilityNo) return `Cơ sở ${reserve.facilityNo}`
+    return '---'
+  }, [selectedFacilityShortLabel, reserve?.facilityNo])
+
+  const resolvedRoomTypeOptions: Option[] = useMemo(() => {
+    if (
+      reserve?.roomTypeId &&
+      reserve.roomTypeName &&
+      !roomTypeOptions.some((option) => option.value === String(reserve.roomTypeId))
+    ) {
+      return [
+        {
+          label: reserve.roomTypeName,
+          value: String(reserve.roomTypeId),
+        },
+        ...roomTypeOptions,
+      ]
+    }
+
+    return roomTypeOptions
+  }, [roomTypeOptions, reserve?.roomTypeId, reserve?.roomTypeName])
+
+  const resolvedRoomTypeShortLabel = useMemo(() => {
+    if (selectedRoomTypeShortLabel !== '---') return selectedRoomTypeShortLabel
+    return reserve?.roomTypeName ?? '---'
+  }, [selectedRoomTypeShortLabel, reserve?.roomTypeName])
+
+  const resolvedRoomOptions: Option[] = useMemo(() => {
+    if (
+      reserve?.roomId &&
+      reserve.roomNumber &&
+      !roomOptions.some((option) => option.value === String(reserve.roomId))
+    ) {
+      return [
+        {
+          label: reserve.roomNumber,
+          value: String(reserve.roomId),
+        },
+        ...roomOptions,
+      ]
+    }
+
+    return roomOptions
+  }, [roomOptions, reserve?.roomId, reserve?.roomNumber])
 
   const stayTypeOptions: Option[] = useMemo(
     () =>
@@ -342,6 +410,7 @@ function ReservationEditPage() {
       reserve.updatedAt ?? 'no-reserve-updated-at',
       clientDetail?.updatedAt ?? 'no-client-detail',
       latestSmartLockCredential?.updatedAt ?? 'no-smart-lock-pin',
+      requestDetailsData ? 'rd-loaded' : 'rd-pending',
     ].join('-')
     if (formPopulateKeyRef.current === populateKey) return
 
@@ -385,11 +454,11 @@ function ReservationEditPage() {
         room_id: reserve.roomId ? String(reserve.roomId) : '',
         stay_type_id: reserve.stayTypeId ? String(reserve.stayTypeId) : '',
         period_from: reserve.periodFrom ? dayjs(reserve.periodFrom).format('YYYY-MM-DD') : '',
-        period_to: reserve.periodTo ?? '',
-        period_from_time: extractTimeValue(reserve.periodFrom),
+        period_to: reserve.periodTo ? dayjs(reserve.periodTo).format('YYYY-MM-DD') : '',
+        period_from_time: extractTimeValue(reserve.periodFrom) || '14:00',
         payment_due_date: reserve.paymentDueDate ?? '',
-        noreserve_count_before: '0',
-        noreserve_count_after: '0',
+        noreserve_count_before: String(reserve.noreserveCountBefore ?? 0),
+        noreserve_count_after: String(reserve.noreserveCountAfter ?? 0),
         auto_extend_flag: reserve.autoExtendFlag ?? false,
         confirm_flag: reserve.confirmFlag ? '1' : '0',
         directcheckin_type: normalizeDirectcheckinType(reserve.directcheckinType),
@@ -438,6 +507,53 @@ function ReservationEditPage() {
         charge_staff_id2: reserve.chargeStaffId2 ? String(reserve.chargeStaffId2) : '',
         request_announcement: reserve.requestAnnouncement ?? '',
         sale_announcement: reserve.saleAnnouncement ?? '',
+        request_normal: (requestDetailsData?.data ?? []).map((rd) => {
+          const rdFrom = rd.requestFrom ? dayjs(rd.requestFrom).format('YYYY-MM-DD') : ''
+          const rdTo = rd.requestTo ? dayjs(rd.requestTo).format('YYYY-MM-DD') : ''
+          const rt = requestTypes.find((r) => r.requestTypeId === rd.requestTypeId)
+          // Reconstruct source_type + source_key so isSyncedFeeRow()
+          // recognises auto-generated rows and avoids duplicates with syncAutoFees.
+          let source_type = ''
+          let source_id = ''
+          let source_key = ''
+
+          if (rd.requestTypeId === 1) {
+            // Rent — must match createSourceKey(RENT_SOURCE_TYPE, roomTypeId, stayTypeId, from, to)
+            source_type = 'rent'
+            source_id = String(reserve.roomTypeId ?? '')
+            source_key = [
+              'rent',
+              reserve.roomTypeId ?? 0,
+              reserve.stayTypeId ?? 0,
+              rdFrom,
+              rdTo,
+            ].join(':')
+          } else if (rt?.category === 'service') {
+            // Rent-extra fees (management, utility, cleaning…)
+            source_type = 'rent_extra'
+            source_id = String(rd.requestTypeId)
+            source_key = ['rent_extra', rd.requestTypeId, 0, rdFrom, rdTo].join(':')
+          } else if (rt?.category === 'parking') {
+            source_type = 'parking'
+            source_id = String(rd.requestTypeId)
+            source_key = ['parking', rd.requestTypeId, 0, rdFrom, rdTo].join(':')
+          }
+
+          return {
+            request_detail_id: rd.requestDetailId,
+            is_checked: true,
+            request_type_id: String(rd.requestTypeId),
+            request_from: rdFrom,
+            request_to: rdTo,
+            count: String(rd.count),
+            count_unit: String(rd.countUnit),
+            unit_price: String(rd.unitPrice ?? 0),
+            charge_staff_id: rd.chargeStaffId ? String(rd.chargeStaffId) : '',
+            source_type,
+            source_id,
+            source_key,
+          }
+        }),
         occupiers: (occupiersData?.data ?? []).map((occ) => ({
           reserve_occupier_id: occ.reserveOccupierId,
           occupier_name: occ.occupierName,
@@ -447,9 +563,11 @@ function ReservationEditPage() {
           address1: occ.address1 ?? '',
           order_num: occ.orderNum ?? 0,
         })),
+        parking_reserve: [],
+        bicycle_parking_reserve: [],
       },
     })
-  }, [reserve, clientDetail, form, latestSmartLockCredential, occupiersData])
+  }, [reserve, clientDetail, form, latestSmartLockCredential, occupiersData, requestDetailsData])
 
   // ─── Submit handler ───────────────────────────────────────────────
   const handleSubmit = async (values: FormValues) => {
@@ -489,9 +607,15 @@ function ReservationEditPage() {
         roomId: values.reserve.room_id ? Number(values.reserve.room_id) : undefined,
         stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
         periodFrom: values.reserve.period_from
-          ? mergeDateAndTime(values.reserve.period_from, values.reserve.period_from_time)
+          ? mergeDateAndTime(values.reserve.period_from, values.reserve.period_from_time || '14:00')
           : undefined,
         periodTo: values.reserve.period_to || undefined,
+        noreserveCountBefore: values.reserve.noreserve_count_before
+          ? Number(values.reserve.noreserve_count_before)
+          : 0,
+        noreserveCountAfter: values.reserve.noreserve_count_after
+          ? Number(values.reserve.noreserve_count_after)
+          : 0,
         advertisingType: values.reserve.advertising_type
           ? Number(values.reserve.advertising_type)
           : undefined,
@@ -538,6 +662,17 @@ function ReservationEditPage() {
       }
 
       await updateReservation(body)
+
+      // Sync request_normal rows → RequestDetail + SaleDetail APIs
+      try {
+        await syncRequestDetails(
+          reserveIdNum,
+          values.reserve.request_normal ?? [],
+          requestDetailsData?.data ?? []
+        )
+      } catch {
+        toast.warning('Lưu đặt phòng thành công nhưng đồng bộ khoản mục thất bại.')
+      }
 
       // Handle occupier changes
       const originalOccupiers = occupiersData?.data ?? []
@@ -1315,12 +1450,12 @@ function ReservationEditPage() {
                           periodFrom={periodFrom}
                           nightCount={nights}
                           facilityOptions={facilityOptions}
-                          selectedFacilityShortLabel={selectedFacilityShortLabel}
+                          selectedFacilityShortLabel={resolvedFacilityShortLabel}
                           onFacilityChange={handleFacilityChange}
-                          roomTypeOptions={roomTypeOptions}
-                          selectedRoomTypeShortLabel={selectedRoomTypeShortLabel}
+                          roomTypeOptions={resolvedRoomTypeOptions}
+                          selectedRoomTypeShortLabel={resolvedRoomTypeShortLabel}
                           onRoomTypeChange={handleRoomTypeChange}
-                          roomOptions={roomOptions}
+                          roomOptions={resolvedRoomOptions}
                           onRoomChange={handleRoomChange}
                           isFacilitySelected={!!facilityId}
                           stayTypeOptions={stayTypeOptions}
@@ -1401,99 +1536,18 @@ function ReservationEditPage() {
                           </CustomCollapsibleContent>
                         </CustomCollapsible>
 
-                        {/* ── Section: Billing Normal (Mock) ─────────── */}
-                        <div ref={refBilling} className="scroll-mt-[10rem]">
-                          <h5 className="mt-12 font-bold text-[2.3rem]">
-                            ■ Thông tin thanh toán của đặt phòng này
-                          </h5>
-                          <div className="mt-8 max-h-[40rem] overflow-y-auto">
-                            <table className="border-black border-l w-full min-w-[120rem] font-bold text-[1.6rem] border-separate border-spacing-0">
-                              <thead>
-                                <tr>
-                                  {BILLING_NORMAL_HEADERS.map((h) => (
-                                    <th
-                                      key={h}
-                                      className="sticky top-0 z-10 bg-[#EEEEEE] border border-black border-l-0 px-4 h-16 text-center"
-                                    >
-                                      {h}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td
-                                    colSpan={BILLING_NORMAL_HEADERS.length}
-                                    className="text-center py-8 text-gray-400 border border-black border-l-0"
-                                  >
-                                    Chưa có dữ liệu
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                          <div className="flex mr-14 border border-black h-[3.6rem] mt-4">
-                            <div className="flex items-center justify-center bg-[#EEEEEE] px-4 w-[18.2rem] font-bold text-[1.6rem]">
-                              Tổng phụ
-                            </div>
-                            <div className="flex items-center justify-center min-w-[18.2rem] font-bold text-[1.6rem]">
-                              0₫
-                            </div>
-                          </div>
-                          <NButton
-                            type="button"
-                            className="bg-[#D9D9D9] w-[18.2rem] h-[3.6rem] mt-2"
-                            disabled
-                          >
-                            Thêm dòng
-                          </NButton>
+                        {/* Billing section */}
+                        <div className="scroll-mt-[10rem]">
+                          <ReservationRequestNormalSection
+                            control={form.control as unknown as Control<FieldValues>}
+                            periodFrom={periodFrom}
+                            periodTo={periodTo}
+                            staffOptions={staffOptions}
+                            roomTypeId={roomTypeId}
+                            stayTypeId={form.watch('reserve.stay_type_id')}
+                            facilityId={facilityId}
+                          />
                         </div>
-
-                        {/* ── Section: Billing Advance (Mock) ────────── */}
-                        <h5 className="mt-12 font-bold text-[2.3rem]">
-                          ■ Thông tin thanh toán trước
-                        </h5>
-                        <div className="mt-8 w-full min-w-[120rem] font-bold text-[1.6rem]">
-                          <table className="border-black border-l w-full border-separate border-spacing-0">
-                            <thead>
-                              <tr>
-                                {BILLING_ADVANCE_HEADERS.map((h) => (
-                                  <th
-                                    key={h}
-                                    className="bg-[#EEEEEE] border border-black border-l-0 px-4 h-16 text-center"
-                                  >
-                                    {h}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr>
-                                <td
-                                  colSpan={BILLING_ADVANCE_HEADERS.length}
-                                  className="text-center py-8 text-gray-400 border border-black border-l-0"
-                                >
-                                  Chưa có dữ liệu
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="flex mr-14 border border-black h-[3.6rem] mt-4">
-                          <div className="flex items-center justify-center bg-[#EEEEEE] px-4 w-[18.2rem] font-bold text-[1.6rem]">
-                            Tổng phụ
-                          </div>
-                          <div className="flex items-center justify-center min-w-[18.2rem] font-bold text-[1.6rem]">
-                            0₫
-                          </div>
-                        </div>
-                        <NButton
-                          type="button"
-                          className="bg-[#D9D9D9] w-[18.2rem] h-[3.6rem] mt-2"
-                          disabled
-                        >
-                          Thêm dòng
-                        </NButton>
 
                         {/* ── Section: Occupier Table ─────────────── */}
                         <div ref={refOccupier} className="scroll-mt-[10rem]">
@@ -1577,156 +1631,45 @@ function ReservationEditPage() {
                         {/* ── Collapsible: Parking / Bicycle / Trunk / Pet ── */}
                         <CustomCollapsible className="my-8">
                           <CustomCollapsibleTrigger>
-                            <h5 className="font-bold text-[2.3rem] leading-none">
-                              Bãi đỗ xe, Xe đạp, Kho, Thú cưng, RC/Tel
-                            </h5>
+                            <h5 className="font-bold text-[2.3rem] leading-none">Bãi đỗ xe</h5>
                           </CustomCollapsibleTrigger>
                           <CustomCollapsibleContent className="mt-4">
                             <div className="md:flex md:flex-wrap md:items-center grid grid-cols-1 w-full md:max-w-[92.4rem]">
-                              {/* Row 1 */}
-                              <div className="flex w-[calc(50%+0.05rem)]">
-                                <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
-                                  <CarSvg className="w-6 h-6 mr-2" /> Bãi đỗ xe
-                                </div>
-                                <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
-                                  <NButton
-                                    type="button"
-                                    className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
-                                  >
-                                    Cài đặt
-                                  </NButton>
-                                </div>
-                              </div>
-                              <div className="flex w-[calc(50%+0.05rem)]">
-                                <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
-                                  <BicycleSvg className="w-6 h-6 mr-2" /> Xe đạp
-                                </div>
-                                <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
-                                  <NButton
-                                    type="button"
-                                    className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
-                                  >
-                                    Cài đặt
-                                  </NButton>
-                                </div>
-                              </div>
-                              {/* Row 2 */}
-                              <div className="flex w-[calc(50%+0.05rem)] md:mt-[-0.1rem]">
-                                <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
-                                  <RugSVG className="w-6 h-6 mr-2" /> Phòng kho
-                                </div>
-                                <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
-                                  <NButton
-                                    type="button"
-                                    className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
-                                  >
-                                    Cài đặt
-                                  </NButton>
-                                </div>
-                              </div>
-                              <div className="flex w-[calc(50%+0.05rem)] md:mt-[-0.1rem]">
-                                <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
-                                  <DogSvg className="w-6 h-6 mr-2" /> Thú cưng/Chăn/Hộp
-                                </div>
-                                <div className="flex flex-1 items-center px-4 border border-black h-[4.8rem]">
-                                  <span className="text-gray-400 text-[1.4rem]">Chưa cài đặt</span>
-                                  <NButton
-                                    type="button"
-                                    className="bg-[#EEEEEE] ml-8 w-[4.9rem] h-[1.8rem] !min-h-[1.8rem] text-[1.1rem]"
-                                    onClick={() => toast.info('Tính năng chưa được triển khai')}
-                                  >
-                                    Cài đặt
-                                  </NButton>
-                                </div>
-                              </div>
-                              {/* RC/Tel row */}
-                              <div className="flex w-full md:mt-[-0.1rem]">
-                                <div className="flex justify-center items-center bg-[#EEEEEE] px-8 border border-black border-r-0 w-[18.6rem] h-[4.8rem] font-bold text-[1.6rem]">
-                                  RC/Tel
-                                </div>
-                                <div className="flex flex-1 items-center border border-black h-[4.8rem]">
-                                  <CustomInput
-                                    {...form.register('reserve.amendment')}
-                                    className="!border-none !w-full h-16"
-                                  />
-                                </div>
+                              <div className="mb-6 w-full md:max-w-none">
+                                <ReservationParkingSection
+                                  facilityId={facilityId}
+                                  periodFrom={periodFrom}
+                                  periodTo={periodTo}
+                                  reserveId={reserveIdNum}
+                                />
                               </div>
                             </div>
                           </CustomCollapsibleContent>
                         </CustomCollapsible>
-
-                        {/* ── Announcement Memos ────────────────────── */}
-                        <div className="mt-[1.6rem] w-[51.7rem]">
-                          <div className="flex">
-                            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[8.6rem] min-h-[6.9rem] font-bold text-[1.4rem] text-center">
-                              Ghi chú yêu cầu
-                            </p>
-                            <CustomTextarea
-                              {...form.register('reserve.request_announcement')}
-                              className="flex-1 border border-black h-[6.9rem] min-h-full font-bold text-[1.4rem]"
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-[-0.1rem] w-[51.7rem]">
-                          <div className="flex">
-                            <p className="flex justify-center items-center bg-[#EEEEEE] border border-black border-r-0 w-[8.6rem] min-h-[6.9rem] font-bold text-[1.4rem] text-center">
-                              Ghi chú doanh thu
-                            </p>
-                            <CustomTextarea
-                              {...form.register('reserve.sale_announcement')}
-                              className="flex-1 border border-black h-[6.9rem] min-h-full font-bold text-[1.4rem]"
-                            />
-                          </div>
-                        </div>
                       </div>
                     </CustomAccordionContent>
                   </CustomAccordionItem>
 
                   {/* ═══════════════════════════════════════════════════════════
-                      ACCORDION 3: HÓA ĐƠN (TEAL #D0E0E3)
+                      ACCORDION 3: HÓA ĐƠN & THANH TOÁN (TEAL #D0E0E3)
                   ═══════════════════════════════════════════════════════════ */}
                   <div ref={refInvoice} className="mt-[2rem] scroll-mt-[10rem]">
                     <CustomAccordionItem
-                      value="invoice"
+                      value="billing"
                       className="bg-white first:mt-0 mb-20 border !border-black rounded-[0.8rem]"
                     >
                       <CustomAccordionTrigger className="bg-[#D0E0E3] py-3 border-none rounded-[0.8rem] [&[data-state=open]]:rounded-[0.8rem_0.8rem_0_0]">
-                        <span className="font-bold text-xl sm:text-3xl px-4">Hóa đơn</span>
-                      </CustomAccordionTrigger>
-                      <CustomAccordionContent>
-                        <div className="p-[2rem] overflow-auto">
-                          <div className="flex items-center justify-center py-12 text-gray-400 text-[1.6rem]">
-                            Tính năng hóa đơn chưa được triển khai
-                          </div>
-                        </div>
-                      </CustomAccordionContent>
-                    </CustomAccordionItem>
-                  </div>
-
-                  {/* ═══════════════════════════════════════════════════════════
-                      ACCORDION 4: CHỈNH SỬA DOANH THU (PINK)
-                  ═══════════════════════════════════════════════════════════ */}
-                  <div ref={refSales} className="scroll-mt-[10rem]">
-                    <CustomAccordionItem
-                      value="sales"
-                      className="bg-white first:mt-0 mb-20 border !border-black rounded-[0.8rem]"
-                    >
-                      <CustomAccordionTrigger className="bg-pink-200 py-3 border-none rounded-[0.8rem] [&[data-state=open]]:rounded-[0.8rem_0.8rem_0_0]">
                         <span className="font-bold text-xl sm:text-3xl px-4">
-                          Chỉnh sửa doanh thu / Biên lai
+                          Hóa đơn & Thanh toán
                         </span>
                       </CustomAccordionTrigger>
                       <CustomAccordionContent>
                         <div className="p-[2rem] overflow-auto">
-                          <div className="flex items-center justify-center py-12 text-gray-400 text-[1.6rem]">
-                            Tính năng chỉnh sửa doanh thu chưa được triển khai
-                          </div>
+                          <ReservationBillingSection
+                            reserveId={reserveIdNum}
+                            requestTypes={requestTypes}
+                            staffOptions={staffOptions}
+                          />
                         </div>
                       </CustomAccordionContent>
                     </CustomAccordionItem>
@@ -1757,23 +1700,9 @@ function ReservationEditPage() {
                     <button
                       type="button"
                       className="font-bold text-[1.6rem] text-primary underline"
-                      onClick={() => refBilling.current?.scrollIntoView({ behavior: 'smooth' })}
-                    >
-                      Đăng ký thanh toán
-                    </button>
-                    <button
-                      type="button"
-                      className="font-bold text-[1.6rem] text-primary underline"
                       onClick={() => refInvoice.current?.scrollIntoView({ behavior: 'smooth' })}
                     >
-                      Xuất hóa đơn
-                    </button>
-                    <button
-                      type="button"
-                      className="font-bold text-[1.6rem] text-primary underline"
-                      onClick={() => refSales.current?.scrollIntoView({ behavior: 'smooth' })}
-                    >
-                      Chỉnh sửa doanh thu
+                      Hóa đơn & Thanh toán
                     </button>
                   </div>
                   <div className="flex flex-row justify-center items-center gap-4">

@@ -54,7 +54,7 @@ export default function ParkingOverflow({
       Array.from((wrapperRef.current as HTMLDivElement).childNodes).map((ele) => {
         const tmp = ele as HTMLDivElement
         return tmp
-      }),
+      })
     )
     const { offsetWidth } = cellRef.current as HTMLDivElement
     if (!(num - 1)) {
@@ -95,12 +95,18 @@ export default function ParkingOverflow({
         ref={cellRef}
         className={cn(
           'absolute top-0 left-0 right-0 bottom-0 overflow-x-auto flex no-scrollbar',
-          className,
+          className
         )}
         onScroll={(e) => {
           const { scrollLeft, clientWidth, scrollWidth } = e.target as HTMLDivElement
-          if (!scrollLeft) { setScrollXPos(0); return }
-          if (scrollLeft + clientWidth >= scrollWidth) { setScrollXPos(2); return }
+          if (!scrollLeft) {
+            setScrollXPos(0)
+            return
+          }
+          if (scrollLeft + clientWidth >= scrollWidth) {
+            setScrollXPos(2)
+            return
+          }
           setScrollXPos(1)
         }}
         {...props}
@@ -123,7 +129,7 @@ export default function ParkingOverflow({
         className={cn(
           'absolute w-[2.5rem] top-0 left-0 bottom-0 bg-[rgba(0,0,0,0)]',
           'flex justify-center items-center opacity-0 hover:opacity-100',
-          { hidden: !scrollXPos || scrollXPos === -1 },
+          { hidden: !scrollXPos || scrollXPos === -1 }
         )}
         style={{ transition: '.5s' }}
       >
@@ -141,7 +147,7 @@ export default function ParkingOverflow({
         className={cn(
           'absolute w-[2.5rem] top-0 right-0 bottom-0 bg-[rgba(0,0,0,0)]',
           'flex justify-center items-center opacity-0 hover:opacity-100',
-          { hidden: scrollXPos === 2 || scrollXPos === -1 },
+          { hidden: scrollXPos === 2 || scrollXPos === -1 }
         )}
         style={{ transition: '.5s', transform: 'rotate(180deg)' }}
       >

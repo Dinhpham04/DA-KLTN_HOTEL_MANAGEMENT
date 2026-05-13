@@ -6,6 +6,7 @@ export interface CreateParkingReservePayload {
   periodFrom?: string
   periodTo?: string | null
   stayTypeId?: number
+  confirmFlag?: boolean
   carType?: string
   licensePlate?: string
   note?: string
@@ -17,6 +18,7 @@ export interface CreateBicycleParkingReservePayload {
   periodFrom?: string
   periodTo?: string | null
   stayTypeId?: number
+  confirmFlag?: boolean
   bicycleTypeNote?: string
   note?: string
   saleDate?: string | null

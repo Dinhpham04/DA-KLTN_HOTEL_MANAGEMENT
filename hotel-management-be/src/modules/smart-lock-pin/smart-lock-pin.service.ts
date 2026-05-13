@@ -68,6 +68,11 @@ export class SmartLockPinService {
     const encryptedPin = await bcrypt.hash(dto.pin, BCRYPT_ROUNDS);
     const maskedPin = this.maskPin(dto.pin);
 
+    const providerPayload = {
+      ...(dto.providerPayload ?? {}),
+      automationReleasePin: dto.pin,
+    };
+
     const credential = await this.smartLockPinRepository.create({
       room: { connect: { roomId: dto.roomId } },
       ...(dto.reserveId !== undefined && {
@@ -88,9 +93,7 @@ export class SmartLockPinService {
       ...(dto.providerCredentialId !== undefined && {
         providerCredentialId: dto.providerCredentialId,
       }),
-      ...(dto.providerPayload !== undefined && {
-        providerPayload: dto.providerPayload as Prisma.InputJsonValue,
-      }),
+      providerPayload: providerPayload as Prisma.InputJsonValue,
       createdBy: { connect: { staffId } },
       updatedBy: { connect: { staffId } },
     });
@@ -174,6 +177,10 @@ export class SmartLockPinService {
     if (dto.pin !== undefined) {
       updateData.encryptedPin = await bcrypt.hash(dto.pin, BCRYPT_ROUNDS);
       updateData.maskedPin = this.maskPin(dto.pin);
+      updateData.providerPayload = {
+        ...this.readProviderPayloadObject(existing.providerPayload),
+        automationReleasePin: dto.pin,
+      };
     }
 
     if (dto.status === SMART_LOCK_PIN_STATUS_REVOKED && dto.revokedAt === undefined) {
@@ -285,5 +292,13 @@ export class SmartLockPinService {
   private maskPin(pin: string): string {
     const visible = pin.slice(-4);
     return `****${visible}`;
+  }
+
+  private readProviderPayloadObject(value: Prisma.JsonValue): Record<string, unknown> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    return {};
   }
 }

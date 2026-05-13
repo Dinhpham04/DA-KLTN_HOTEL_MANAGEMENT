@@ -1,0 +1,247 @@
+{
+  "name": "Hotel - Reservation Checked-in Welcome and Team Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "reservation-checked-in",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "70b9860b-599a-4f9c-88dd-a4d246847b9d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        0
+      ],
+      "webhookId": "reservation-checked-in",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Hotel Automation Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json; const customer = body.customer ?? {}; const stay = body.stay ?? {}; const room = body.room ?? {}; const hotel = body.hotel ?? {}; const reservationCode = body.reservationCode ?? `RSV-${String(body.reservationId ?? '').padStart(6, '0')}`; function esc(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); } function safe(value, fallback = '-') { return value === undefined || value === null || value === '' ? fallback : value; } function formatDate(value) { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(date); } function row(label, value) { return `<tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569;width:220px'>${esc(label)}</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#0f172a'><strong>${esc(value)}</strong></td></tr>`; } function mrkdwn(value) { return String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); } const facts = { reservationCode, guestName: safe(customer.name, 'Quý khách'), guestEmail: customer.email ?? '', guestPhone: customer.phone ?? '', hotelName: safe(hotel.name, 'Khách sạn'), hotelAddress: safe(hotel.address), roomNumber: safe(room.roomNumber), floor: safe(room.floor), roomType: safe(room.roomType), checkInAt: formatDate(stay.checkInAt ?? body.checkedInAt), checkOutAt: formatDate(stay.checkOutAt), checkoutTime: safe(stay.checkoutTime, '12:00'), guestCount: safe(stay.guestCount, 1), frontDeskExtension: safe(hotel.frontDeskExtension, '0'), wifiSsid: safe(hotel.wifiSsid, 'Hotel-Guest'), wifiPassword: safe(hotel.wifiPassword, 'Welcome2026'), checkedInAt: formatDate(body.checkedInAt) }; const services = [{ name: 'Nhà hàng buffet sáng', time: '06:30 - 10:00', contact: 'Tầng 2' }, { name: 'Hồ bơi', time: '06:00 - 21:00', contact: 'Tầng 5' }, { name: 'Spa & massage', time: '09:00 - 22:00', contact: 'Gọi ext. 108' }, { name: 'Room service', time: '24/7', contact: 'Gọi ext. 0' }]; const serviceRows = services.map((item) => `<tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'>${esc(item.name)}</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'>${esc(item.time)}</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'>${esc(item.contact)}</td></tr>`).join(''); const subject = `Chào mừng quý khách đến ${facts.hotelName} - Phòng ${facts.roomNumber}`; const html = `<div style='font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a'><p>Xin chào ${esc(facts.guestName)},</p><p>Chúc mừng quý khách đã check-in thành công. Khách sạn gửi quý khách một số thông tin cần thiết trong thời gian lưu trú.</p><h3 style='margin:20px 0 8px;color:#0f172a'>Thông tin phòng</h3><table style='border-collapse:collapse;width:100%;max-width:760px;border:1px solid #e5e7eb'>${row('Mã đặt phòng', facts.reservationCode)}${row('Số phòng', facts.roomNumber)}${row('Tầng', facts.floor)}${row('Loại phòng', facts.roomType)}${row('WiFi', `${facts.wifiSsid} / ${facts.wifiPassword}`)}${row('Lễ tân 24/7', `Gọi ext. ${facts.frontDeskExtension}`)}${row('Giờ check-out', facts.checkoutTime)}${row('Ngày check-out', facts.checkOutAt)}</table><h3 style='margin:20px 0 8px;color:#0f172a'>Dịch vụ trong ngày</h3><table style='border-collapse:collapse;width:100%;max-width:760px;border:1px solid #e5e7eb'><thead><tr style='background:#f8fafc'><th style='text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb'>Dịch vụ</th><th style='text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb'>Giờ hoạt động</th><th style='text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb'>Liên hệ</th></tr></thead><tbody>${serviceRows}</tbody></table><h3 style='margin:20px 0 8px;color:#0f172a'>Hướng dẫn nhanh</h3><ul><li><strong>Điều hòa:</strong> dùng remote trong phòng, đặt nhiệt độ khuyến nghị 24-26°C.</li><li><strong>TV:</strong> bật nguồn bằng remote, chọn HDMI/TV theo nhu cầu.</li><li><strong>Két an toàn:</strong> đặt mã cá nhân trước khi khóa, kiểm tra lại trước khi rời phòng.</li><li><strong>Hút thuốc:</strong> vui lòng chỉ hút thuốc tại khu vực được phép.</li><li><strong>Thú cưng:</strong> chỉ áp dụng nếu đặt phòng đã được khách sạn xác nhận cho phép.</li><li><strong>Giờ yên tĩnh:</strong> vui lòng hạn chế tiếng ồn từ 22:00 đến 06:00.</li></ul><p>Nếu cần hỗ trợ, quý khách vui lòng gọi lễ tân qua ext. ${esc(facts.frontDeskExtension)}.</p><p>Trân trọng,<br>${esc(facts.hotelName)}</p></div>`; const baseSlack = `Reservation ${facts.reservationCode} đã check-in. Khách: ${facts.guestName}. Phòng: ${facts.roomNumber} - tầng ${facts.floor}. Check-out: ${facts.checkOutAt}.`; function buildBlocks(icon, title, action, detail) { return [{ type: 'header', text: { type: 'plain_text', text: `${icon} ${title}`, emoji: true } }, { type: 'section', fields: [{ type: 'mrkdwn', text: `*Mã đặt phòng*\\n${mrkdwn(facts.reservationCode)}` }, { type: 'mrkdwn', text: `*Khách*\\n${mrkdwn(facts.guestName)}` }, { type: 'mrkdwn', text: `*Phòng / tầng*\\n${mrkdwn(facts.roomNumber)} / ${mrkdwn(facts.floor)}` }, { type: 'mrkdwn', text: `*Loại phòng*\\n${mrkdwn(facts.roomType)}` }, { type: 'mrkdwn', text: `*Check-in*\\n${mrkdwn(facts.checkedInAt)}` }, { type: 'mrkdwn', text: `*Check-out*\\n${mrkdwn(facts.checkOutAt)} (${mrkdwn(facts.checkoutTime)})` }] }, { type: 'section', text: { type: 'mrkdwn', text: `*Việc cần làm*\\n${mrkdwn(action)}\\n\\n*Ghi chú*\\n${mrkdwn(detail)}` } }, { type: 'context', elements: [{ type: 'mrkdwn', text: `${mrkdwn(facts.hotelName)} • ${mrkdwn(facts.hotelAddress)} • Lễ tân ext. ${mrkdwn(facts.frontDeskExtension)}` }] }]; } const slack = { housekeeping: `:broom: ${baseSlack}\\nBuồng phòng: ghi nhận phòng đã có khách, tạm ngưng mọi lịch dọn chưa xác nhận, chỉ vào phòng khi có yêu cầu/được phép.`, frontDesk: `:bell: ${baseSlack}\\nLễ tân: khách đã vào ở, theo dõi yêu cầu trong ngày, sẵn sàng hỗ trợ qua ext. ${facts.frontDeskExtension}.`, engineering: `:wrench: ${baseSlack}\\nKỹ thuật: ưu tiên xử lý nếu khách báo lỗi điều hòa/TV/két/WiFi; kiểm tra ticket liên quan phòng ${facts.roomNumber}.` }; const slackBlocks = { housekeeping: buildBlocks('🧹', 'Khách đã check-in - Buồng phòng', 'Ghi nhận phòng đã có khách. Tạm ngưng mọi lịch dọn chưa xác nhận.', 'Chỉ vào phòng khi có yêu cầu từ khách hoặc xác nhận từ lễ tân.'), frontDesk: buildBlocks('🛎️', 'Khách đã check-in - Lễ tân', 'Theo dõi yêu cầu phát sinh trong ngày và sẵn sàng hỗ trợ khách.', `Khách có thể gọi ext. ${facts.frontDeskExtension}. Kiểm tra các ghi chú đặc biệt nếu có.`), engineering: buildBlocks('🔧', 'Khách đã check-in - Kỹ thuật', 'Ưu tiên xử lý nếu khách báo lỗi điều hòa, TV, két an toàn hoặc WiFi.', `Theo dõi ticket liên quan phòng ${facts.roomNumber}.`) }; return [{ json: { ...body, facts, hasGuestEmail: Boolean(customer.email), emails: { welcome: { subject, html } }, slack, slackBlocks } }];"
+      },
+      "id": "456d0b03-bba4-48a9-bc8b-146d3bd4e694",
+      "name": "Build Welcome and Team Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -740,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasGuestEmail}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a86d83f9-65bb-41a1-8846-7ba81611bc83",
+      "name": "Has Guest Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{$json.customer.email}}",
+        "subject": "={{$json.emails.welcome.subject}}",
+        "emailType": "html",
+        "message": "={{$json.emails.welcome.html}}",
+        "options": {}
+      },
+      "id": "c1e3cc50-dcb7-4f71-9d7d-c1e1fd590b5d",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -260,
+        -260
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3",
+          "name": "Hotel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "buong-phong",
+          "mode": "name"
+        },
+        "messageType": "block",
+        "blocksUi": "={{JSON.stringify({ blocks: $json.slackBlocks.housekeeping })}}",
+        "text": "={{$json.slack.housekeeping}}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "568b801f-703c-4881-8549-c78682089588",
+      "name": "Slack - Housekeeping",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -500,
+        20
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Hotel Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "le-tan",
+          "mode": "name"
+        },
+        "messageType": "block",
+        "blocksUi": "={{JSON.stringify({ blocks: $json.slackBlocks.frontDesk })}}",
+        "text": "={{$json.slack.frontDesk}}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "f1597238-5681-4b13-bf17-eead2b97d9e7",
+      "name": "Slack - Front Desk",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -500,
+        200
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Hotel Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "ky-thuat",
+          "mode": "name"
+        },
+        "messageType": "block",
+        "blocksUi": "={{JSON.stringify({ blocks: $json.slackBlocks.engineering })}}",
+        "text": "={{$json.slack.engineering}}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "bc6dd898-8210-4288-82d8-fbb816065ec7",
+      "name": "Slack - Engineering",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -500,
+        380
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Hotel Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Welcome and Team Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Welcome and Team Messages": {
+      "main": [
+        [
+          {
+            "node": "Has Guest Email?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack - Housekeeping",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack - Front Desk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack - Engineering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Guest Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-11T00:00:00.000Z",
+  "versionId": "e340125d-c465-48b3-93a0-46a3947c1865"
+}

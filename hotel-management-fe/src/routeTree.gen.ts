@@ -18,6 +18,7 @@ import { Route as AuthenticatedStaffMasterRouteImport } from './routes/_authenti
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
+import { Route as AuthenticatedReservationsCreateRouteImport } from './routes/_authenticated/reservations/create'
 
 const AuthenticatedUsageSituationLazyRouteImport = createFileRoute(
   '/_authenticated/usage-situation',
@@ -54,9 +55,6 @@ const AuthenticatedReservationsIndexLazyRouteImport = createFileRoute(
 )()
 const AuthenticatedClientsIndexLazyRouteImport = createFileRoute(
   '/_authenticated/clients/',
-)()
-const AuthenticatedReservationsCreateLazyRouteImport = createFileRoute(
-  '/_authenticated/reservations/create',
 )()
 const AuthenticatedClientsCreateLazyRouteImport = createFileRoute(
   '/_authenticated/clients/create',
@@ -211,16 +209,6 @@ const AuthenticatedClientsIndexLazyRoute =
   } as any).lazy(() =>
     import('./routes/_authenticated/clients/index.lazy').then((d) => d.Route),
   )
-const AuthenticatedReservationsCreateLazyRoute =
-  AuthenticatedReservationsCreateLazyRouteImport.update({
-    id: '/reservations/create',
-    path: '/reservations/create',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any).lazy(() =>
-    import('./routes/_authenticated/reservations/create.lazy').then(
-      (d) => d.Route,
-    ),
-  )
 const AuthenticatedClientsCreateLazyRoute =
   AuthenticatedClientsCreateLazyRouteImport.update({
     id: '/clients/create',
@@ -228,6 +216,16 @@ const AuthenticatedClientsCreateLazyRoute =
     getParentRoute: () => AuthenticatedRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/clients/create.lazy').then((d) => d.Route),
+  )
+const AuthenticatedReservationsCreateRoute =
+  AuthenticatedReservationsCreateRouteImport.update({
+    id: '/reservations/create',
+    path: '/reservations/create',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/reservations/create.lazy').then(
+      (d) => d.Route,
+    ),
   )
 const AuthenticatedReservationsReserveIdEditLazyRoute =
   AuthenticatedReservationsReserveIdEditLazyRouteImport.update({
@@ -287,8 +285,8 @@ export interface FileRoutesByFullPath {
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
   '/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
+  '/reservations/create': typeof AuthenticatedReservationsCreateRoute
   '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
-  '/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/clients/': typeof AuthenticatedClientsIndexLazyRoute
   '/reservations/': typeof AuthenticatedReservationsIndexLazyRoute
   '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
@@ -313,8 +311,8 @@ export interface FileRoutesByTo {
   '/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/store-master': typeof AuthenticatedStoreMasterLazyRoute
   '/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
+  '/reservations/create': typeof AuthenticatedReservationsCreateRoute
   '/clients/create': typeof AuthenticatedClientsCreateLazyRoute
-  '/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/clients': typeof AuthenticatedClientsIndexLazyRoute
   '/reservations': typeof AuthenticatedReservationsIndexLazyRoute
   '/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
@@ -341,8 +339,8 @@ export interface FileRoutesById {
   '/_authenticated/room-master': typeof AuthenticatedRoomMasterLazyRoute
   '/_authenticated/store-master': typeof AuthenticatedStoreMasterLazyRoute
   '/_authenticated/usage-situation': typeof AuthenticatedUsageSituationLazyRoute
+  '/_authenticated/reservations/create': typeof AuthenticatedReservationsCreateRoute
   '/_authenticated/clients/create': typeof AuthenticatedClientsCreateLazyRoute
-  '/_authenticated/reservations/create': typeof AuthenticatedReservationsCreateLazyRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexLazyRoute
   '/_authenticated/reservations/': typeof AuthenticatedReservationsIndexLazyRoute
   '/_authenticated/clients/$clientId/detail': typeof AuthenticatedClientsClientIdDetailLazyRoute
@@ -369,8 +367,8 @@ export interface FileRouteTypes {
     | '/room-master'
     | '/store-master'
     | '/usage-situation'
-    | '/clients/create'
     | '/reservations/create'
+    | '/clients/create'
     | '/clients/'
     | '/reservations/'
     | '/clients/$clientId/detail'
@@ -395,8 +393,8 @@ export interface FileRouteTypes {
     | '/room-master'
     | '/store-master'
     | '/usage-situation'
-    | '/clients/create'
     | '/reservations/create'
+    | '/clients/create'
     | '/clients'
     | '/reservations'
     | '/clients/$clientId/detail'
@@ -422,8 +420,8 @@ export interface FileRouteTypes {
     | '/_authenticated/room-master'
     | '/_authenticated/store-master'
     | '/_authenticated/usage-situation'
-    | '/_authenticated/clients/create'
     | '/_authenticated/reservations/create'
+    | '/_authenticated/clients/create'
     | '/_authenticated/clients/'
     | '/_authenticated/reservations/'
     | '/_authenticated/clients/$clientId/detail'
@@ -573,18 +571,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsIndexLazyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/reservations/create': {
-      id: '/_authenticated/reservations/create'
-      path: '/reservations/create'
-      fullPath: '/reservations/create'
-      preLoaderRoute: typeof AuthenticatedReservationsCreateLazyRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/clients/create': {
       id: '/_authenticated/clients/create'
       path: '/clients/create'
       fullPath: '/clients/create'
       preLoaderRoute: typeof AuthenticatedClientsCreateLazyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reservations/create': {
+      id: '/_authenticated/reservations/create'
+      path: '/reservations/create'
+      fullPath: '/reservations/create'
+      preLoaderRoute: typeof AuthenticatedReservationsCreateRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/reservations/$reserveId/edit': {
@@ -633,8 +631,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRoomMasterLazyRoute: typeof AuthenticatedRoomMasterLazyRoute
   AuthenticatedStoreMasterLazyRoute: typeof AuthenticatedStoreMasterLazyRoute
   AuthenticatedUsageSituationLazyRoute: typeof AuthenticatedUsageSituationLazyRoute
+  AuthenticatedReservationsCreateRoute: typeof AuthenticatedReservationsCreateRoute
   AuthenticatedClientsCreateLazyRoute: typeof AuthenticatedClientsCreateLazyRoute
-  AuthenticatedReservationsCreateLazyRoute: typeof AuthenticatedReservationsCreateLazyRoute
   AuthenticatedClientsIndexLazyRoute: typeof AuthenticatedClientsIndexLazyRoute
   AuthenticatedReservationsIndexLazyRoute: typeof AuthenticatedReservationsIndexLazyRoute
   AuthenticatedClientsClientIdDetailLazyRoute: typeof AuthenticatedClientsClientIdDetailLazyRoute
@@ -659,9 +657,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRoomMasterLazyRoute: AuthenticatedRoomMasterLazyRoute,
   AuthenticatedStoreMasterLazyRoute: AuthenticatedStoreMasterLazyRoute,
   AuthenticatedUsageSituationLazyRoute: AuthenticatedUsageSituationLazyRoute,
+  AuthenticatedReservationsCreateRoute: AuthenticatedReservationsCreateRoute,
   AuthenticatedClientsCreateLazyRoute: AuthenticatedClientsCreateLazyRoute,
-  AuthenticatedReservationsCreateLazyRoute:
-    AuthenticatedReservationsCreateLazyRoute,
   AuthenticatedClientsIndexLazyRoute: AuthenticatedClientsIndexLazyRoute,
   AuthenticatedReservationsIndexLazyRoute:
     AuthenticatedReservationsIndexLazyRoute,

@@ -41,6 +41,10 @@ import { CleaningShiftModule } from '@modules/cleaning-shift/cleaning-shift.modu
 import { DashboardModule } from '@modules/dashboard/dashboard.module';
 import { DailyReserveModule } from '@modules/daily-reserve/daily-reserve.module';
 import { ReserveOccupierModule } from '@modules/reserve-occupier/reserve-occupier.module';
+import { PricingModule } from '@modules/pricing/pricing.module';
+import { PaymentMethodModule } from '@modules/payment-method/payment-method.module';
+import { RequestDetailModule } from '@modules/request-detail/request-detail.module';
+import { SaleDetailModule } from '@modules/sale-detail/sale-detail.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -119,6 +123,10 @@ import { AppService } from './app.service';
     DashboardModule,
     DailyReserveModule,
     ReserveOccupierModule,
+    PricingModule,
+    PaymentMethodModule,
+    RequestDetailModule,
+    SaleDetailModule,
   ],
   controllers: [AppController],
   providers: [

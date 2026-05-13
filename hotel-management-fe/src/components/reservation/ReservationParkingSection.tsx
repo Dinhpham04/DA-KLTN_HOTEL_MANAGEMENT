@@ -1,151 +1,81 @@
-import { useFormContext, useFieldArray } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
 import ReservationParkingSelectModal from './ReservationParkingSelectModal'
 
 interface ReservationParkingSectionProps {
   facilityId?: string | number
   periodFrom?: string
   periodTo?: string
+  reserveId?: string | number
+}
+
+function createTriggerButton() {
+  return (
+    <Button
+      type="button"
+      className={cn(
+        'bg-white border border-black rounded-[.4rem] !min-h-[2.6rem] w-[7.4rem] px-4',
+        'text-[1.4rem] font-bold text-black',
+        'shadow-[0_2px_3px_0_rgba(0,0,0,0.2)]',
+        'hover:text-white hover:bg-primary hover:border-primary'
+      )}
+    >
+      Thiết lập
+    </Button>
+  )
+}
+
+function ParkingCell({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-[23.4rem_1fr] min-w-0 border-black border-r last:border-r-0">
+      <div className="flex items-center justify-end bg-[#EEEEEE] px-[2.6rem] border-black border-r h-[6rem] font-bold text-[1.8rem]">
+        {label}
+      </div>
+      <div className="flex items-center px-[2.6rem] h-[6rem]">{children}</div>
+    </div>
+  )
 }
 
 export default function ReservationParkingSection({
   facilityId,
   periodFrom,
   periodTo,
+  reserveId,
 }: ReservationParkingSectionProps) {
-  const { control, watch } = useFormContext()
-
-  const parkingReserves = watch('reserve.parking_reserve') || []
-  const bicycleParkingReserves = watch('reserve.bicycle_parking_reserve') || []
-
-  const { remove: removeParkingReserve } = useFieldArray({
-    control,
-    name: 'reserve.parking_reserve',
-  })
-
-  const { remove: removeBicycleParkingReserve } = useFieldArray({
-    control,
-    name: 'reserve.bicycle_parking_reserve',
-  })
-
   const facilityIdNum = facilityId ? Number(facilityId) : undefined
-
-  const triggerButton = (
-    <Button
-      type="button"
-      className={cn(
-        'bg-gray border border-black rounded-[.4rem] !min-h-[2.5rem]',
-        'text-[1.4rem] font-bold text-black',
-        'shadow-[0_4px_4px_0_rgba(0,0,0,0.25)]',
-        'hover:text-white hover:bg-primary hover:border-primary',
-      )}
-    >
-      Thiết lập
-    </Button>
-  )
+  const reserveIdNum = reserveId ? Number(reserveId) : undefined
 
   return (
-    <div className="space-y-6 border-t pt-6 mt-6">
-      <h3 className="font-bold text-[1.8rem]">Bãi xe, Bãi xe đạp</h3>
-
-      {/* ── Car Parking ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-[1.5rem]">
-          <span className="font-bold text-[1.6rem] min-w-[12rem]">Bãi xe ô tô</span>
+    <div className="mt-6">
+      <div className="grid grid-cols-2 border border-black bg-white w-full">
+        <ParkingCell label="Bãi xe ô tô">
           <ReservationParkingSelectModal
             isBicycle={false}
             facilityId={facilityIdNum}
             periodFrom={periodFrom}
             periodTo={periodTo}
-            trigger={triggerButton}
+            reserveId={reserveIdNum}
+            trigger={createTriggerButton()}
           />
-        </div>
+        </ParkingCell>
 
-        {parkingReserves.length > 0 ? (
-          <div className="space-y-2 ml-[12rem]">
-            {parkingReserves.map((parking: any, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded border border-black p-[.8rem] bg-gray-50"
-              >
-                <div className="text-[1.4rem]">
-                  <span className="font-bold">{parking.facility_name || parking.facility_no}</span>
-                  {parking.facility_no && parking.facility_name && (
-                    <span className="ml-2 text-gray-600">No.{parking.facility_no}</span>
-                  )}
-                  {parking.period_from && (
-                    <span className="ml-3 text-gray-600">
-                      {parking.period_from} ～ {parking.period_to || '---'}
-                    </span>
-                  )}
-                  {parking.license_plate && (
-                    <span className="ml-3">Biển số: {parking.license_plate}</span>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500 hover:text-red-700 text-[1.3rem]"
-                  onClick={() => removeParkingReserve(idx)}
-                >
-                  Xóa
-                </Button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="ml-[12rem] text-[1.4rem] text-gray-500">Chưa chọn</p>
-        )}
-      </div>
-
-      {/* ── Bicycle Parking ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-[1.5rem]">
-          <span className="font-bold text-[1.6rem] min-w-[12rem]">Bãi xe đạp</span>
+        <ParkingCell label="Bãi xe đạp">
           <ReservationParkingSelectModal
             isBicycle
             facilityId={facilityIdNum}
             periodFrom={periodFrom}
             periodTo={periodTo}
-            trigger={triggerButton}
+            reserveId={reserveIdNum}
+            trigger={createTriggerButton()}
           />
-        </div>
-
-        {bicycleParkingReserves.length > 0 ? (
-          <div className="space-y-2 ml-[12rem]">
-            {bicycleParkingReserves.map((bicycle: any, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded border border-black p-[.8rem] bg-gray-50"
-              >
-                <div className="text-[1.4rem]">
-                  <span className="font-bold">{bicycle.facility_name || bicycle.facility_no}</span>
-                  {bicycle.facility_no && bicycle.facility_name && (
-                    <span className="ml-2 text-gray-600">No.{bicycle.facility_no}</span>
-                  )}
-                  {bicycle.period_from && (
-                    <span className="ml-3 text-gray-600">
-                      {bicycle.period_from} ～ {bicycle.period_to || '---'}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500 hover:text-red-700 text-[1.3rem]"
-                  onClick={() => removeBicycleParkingReserve(idx)}
-                >
-                  Xóa
-                </Button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="ml-[12rem] text-[1.4rem] text-gray-500">Chưa chọn</p>
-        )}
+        </ParkingCell>
       </div>
     </div>
   )

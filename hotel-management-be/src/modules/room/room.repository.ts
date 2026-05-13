@@ -29,6 +29,17 @@ export class RoomRepository {
       where.roomNumber = { contains: filter.search, mode: 'insensitive' };
     }
 
+    if (filter.periodFrom && filter.periodTo) {
+      where.reserves = {
+        none: {
+          deletedAt: null,
+          deleteStatus: null,
+          periodFrom: { lt: new Date(filter.periodTo) },
+          periodTo: { gt: new Date(filter.periodFrom) },
+        },
+      };
+    }
+
     const orderBy: Prisma.RoomOrderByWithRelationInput =
       filter.orderBy ? { [filter.orderBy]: filter.order } : { orderNum: 'asc' };
 

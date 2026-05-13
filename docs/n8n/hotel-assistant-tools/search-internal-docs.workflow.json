@@ -1,0 +1,74 @@
+{
+  "name": "Hotel Assistant Tool - Search Internal Docs",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000801",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = String($json.query ?? '').trim()\nreturn [{ json: { query, limit: $json.limit ?? 5, documents: [], warnings: ['Chưa cấu hình Google Drive/vector search cho tài liệu nội bộ. Tool này hiện không gọi API backend vì /internal/chatbot/docs/search chưa tồn tại.'], sources: [{ type: 'drive', name: 'Internal docs search is not configured' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000802",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json\nconst documents = Array.isArray(result) ? result : Array.isArray(result.documents) ? result.documents : Array.isArray(result.data) ? result.data : []\nreturn [{ json: { documents, warnings: result.warnings ?? [], sources: result.sources ?? [{ type: 'drive', name: 'Google Drive / vector document search' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000804",
+      "name": "Normalize Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Normalize Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-search-internal-docs-v1"
+}

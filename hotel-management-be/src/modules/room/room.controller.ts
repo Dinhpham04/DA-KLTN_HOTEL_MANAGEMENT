@@ -12,31 +12,28 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOperation,
-} from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard, Roles, CurrentUser, ApiPagination } from '@common/index';
+import {
+  ApiPagination,
+  CurrentUser,
+  JwtOrInternalAutomationGuard,
+  Roles,
+  RolesGuard,
+} from '@common/index';
 import type { CurrentStaff } from '@common/decorators/current-user.decorator';
 import { StaffType } from '@common/enums/index';
 import { RoomService } from './room.service';
-import {
-  CreateRoomDto,
-  UpdateRoomDto,
-  UpdateRoomStatusDto,
-  RoomFilterDto,
-} from './dto';
+import { CreateRoomDto, UpdateRoomDto, UpdateRoomStatusDto, RoomFilterDto } from './dto';
 
 @ApiTags('Room')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('rooms')
 export class RoomController {
-  constructor(private readonly roomService: RoomService) { }
+  constructor(private readonly roomService: RoomService) {}
 
   @Get()
+  @UseGuards(JwtOrInternalAutomationGuard, RolesGuard)
   @ApiOperation({ summary: 'List rooms with filtering and pagination' })
   @ApiPagination()
   findAll(@Query() filter: RoomFilterDto) {
@@ -44,22 +41,22 @@ export class RoomController {
   }
 
   @Get(':id')
+  @UseGuards(JwtOrInternalAutomationGuard, RolesGuard)
   @ApiOperation({ summary: 'Get room detail by ID' })
   findById(@Param('id', ParseIntPipe) id: number) {
     return this.roomService.findById(id);
   }
 
   @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER)
   @ApiOperation({ summary: 'Create a new room' })
-  create(
-    @Body() dto: CreateRoomDto,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  create(@Body() dto: CreateRoomDto, @CurrentUser() user: CurrentStaff) {
     return this.roomService.create(dto, user.staffId);
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER)
   @ApiOperation({ summary: 'Update room information' })
   update(
@@ -71,6 +68,7 @@ export class RoomController {
   }
 
   @Patch(':id/status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Update room status' })
   updateStatus(
@@ -82,13 +80,11 @@ export class RoomController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete a room' })
-  remove(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentStaff) {
     return this.roomService.remove(id, user.staffId);
   }
 }

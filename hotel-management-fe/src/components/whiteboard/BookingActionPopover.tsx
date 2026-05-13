@@ -9,6 +9,7 @@ import { DraftReservationDialog } from './DraftReservationDialog'
 interface BookingActionPopoverProps {
   facilityId: number
   facilityName?: string
+  roomTypeId?: number
   roomId: number
   roomNumber?: string
   from: Dayjs
@@ -19,6 +20,7 @@ interface BookingActionPopoverProps {
 export function BookingActionPopover({
   facilityId,
   facilityName,
+  roomTypeId,
   roomId,
   roomNumber,
   from,
@@ -46,16 +48,26 @@ export function BookingActionPopover({
           <NButton
             asChild
             variant="default"
-            className="!px-2 min-w-[16rem] text-[1.3rem] whitespace-nowrap hover:text-[#204172]"
+            className="!px-2 min-w-[16rem] text-[1.3rem] whitespace-nowrap"
           >
-            <Link to="/reservations/create" onClick={() => setPopoverOpen(false)}>
+            <Link
+              to="/reservations/create"
+              search={{
+                facilityId: facilityId || undefined,
+                roomTypeId: roomTypeId || undefined,
+                roomId: roomId || undefined,
+                periodFrom: from.format('YYYY-MM-DD'),
+                periodTo: to ? to.format('YYYY-MM-DD') : undefined,
+              }}
+              onClick={() => setPopoverOpen(false)}
+            >
               {t('whiteboard.bookingActions.create')}
             </Link>
           </NButton>
           <NButton
             type="button"
             variant="default"
-            className="!px-2 min-w-[16rem] text-[1.3rem] whitespace-nowrap hover:text-[#204172]"
+            className="!px-2 min-w-[16rem] text-[1.3rem] whitespace-nowrap"
             onClick={handleOpenDraft}
           >
             {t('whiteboard.bookingActions.createDraft')}

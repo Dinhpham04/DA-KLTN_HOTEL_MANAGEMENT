@@ -29,6 +29,8 @@ export interface Reservation {
   // Period
   periodFrom: string | null
   periodTo: string | null
+  noreserveCountBefore: number | null
+  noreserveCountAfter: number | null
 
   // Dates
   checkedInAt: string | null
@@ -160,6 +162,8 @@ export interface CreateReservationBody {
   stayTypeId?: number
   periodFrom: string
   periodTo: string
+  noreserveCountBefore?: number
+  noreserveCountAfter?: number
   reserveType?: number
   bookingUnitPrice?: number
   adjustmentUnitPrice?: number

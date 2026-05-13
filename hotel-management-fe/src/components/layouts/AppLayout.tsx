@@ -1,4 +1,5 @@
 import type * as React from 'react'
+import { HotelAssistantWidget } from '../chatbot/HotelAssistantWidget'
 import { Footer } from './Footer'
 import { Header } from './Header'
 
@@ -20,6 +21,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Header />
       <main className="flex-1 overflow-y-auto p-6">{children}</main>
       <Footer />
+      <HotelAssistantWidget />
     </div>
   )
 }

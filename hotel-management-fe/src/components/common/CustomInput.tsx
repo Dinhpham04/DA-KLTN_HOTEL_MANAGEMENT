@@ -22,6 +22,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [isComposing, setIsComposing] = React.useState(false)
+    const hasControlledValue = Object.prototype.hasOwnProperty.call(props, 'value')
 
     const convertFullWidthToHalfWidth = (str: string): string => {
       return str.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
@@ -104,7 +105,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, InputProps>(
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
         {...props}
-        value={props.value ? props.value : ''}
+        value={hasControlledValue ? props.value : undefined}
       />
     )
   }

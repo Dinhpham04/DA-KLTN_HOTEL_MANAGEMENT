@@ -12,13 +12,15 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOperation,
-} from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard, Roles, CurrentUser, ApiPagination } from '@common/index';
+import {
+  ApiPagination,
+  CurrentUser,
+  JwtOrInternalAutomationGuard,
+  Roles,
+  RolesGuard,
+} from '@common/index';
 import type { CurrentStaff } from '@common/decorators/current-user.decorator';
 import { StaffType } from '@common/enums/index';
 import { ReservationService } from './reservation.service';
@@ -32,12 +34,12 @@ import {
 
 @ApiTags('Reservation')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('reservations')
 export class ReservationController {
-  constructor(private readonly reservationService: ReservationService) { }
+  constructor(private readonly reservationService: ReservationService) {}
 
   @Get()
+  @UseGuards(JwtOrInternalAutomationGuard, RolesGuard)
   @ApiOperation({ summary: 'List reservations with filtering and pagination' })
   @ApiPagination()
   findAll(@Query() filter: ReservationFilterDto) {
@@ -45,22 +47,22 @@ export class ReservationController {
   }
 
   @Get(':id')
+  @UseGuards(JwtOrInternalAutomationGuard, RolesGuard)
   @ApiOperation({ summary: 'Get reservation detail by ID' })
   findById(@Param('id', ParseIntPipe) id: number) {
     return this.reservationService.findById(id);
   }
 
   @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Create a new reservation' })
-  create(
-    @Body() dto: CreateReservationDto,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  create(@Body() dto: CreateReservationDto, @CurrentUser() user: CurrentStaff) {
     return this.reservationService.create(dto, user.staffId);
   }
 
   @Post('with-parking')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Create reservation with parking reserves (atomic transaction)' })
   createWithParkings(
@@ -71,6 +73,7 @@ export class ReservationController {
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Update reservation information' })
   update(
@@ -82,36 +85,31 @@ export class ReservationController {
   }
 
   @Post(':id/confirm')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Confirm a pending reservation' })
-  confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  confirm(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentStaff) {
     return this.reservationService.confirm(id, user.staffId);
   }
 
   @Post(':id/check-in')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Check-in a confirmed reservation' })
-  checkIn(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  checkIn(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentStaff) {
     return this.reservationService.checkIn(id, user.staffId);
   }
 
   @Post(':id/check-out')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Check-out a checked-in reservation' })
-  checkOut(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  checkOut(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentStaff) {
     return this.reservationService.checkOut(id, user.staffId);
   }
 
   @Post(':id/cancel')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER, StaffType.STAFF)
   @ApiOperation({ summary: 'Cancel a reservation' })
   cancel(
@@ -123,13 +121,11 @@ export class ReservationController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(StaffType.ADMIN, StaffType.MANAGER)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete a reservation' })
-  remove(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: CurrentStaff,
-  ) {
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentStaff) {
     return this.reservationService.remove(id, user.staffId);
   }
 }

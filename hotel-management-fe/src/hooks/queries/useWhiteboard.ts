@@ -24,5 +24,6 @@ export function useWhiteboard({ params, enabled = true }: UseWhiteboardParams = 
       return currentPage < total ? currentPage + 1 : undefined
     },
     enabled,
+    staleTime: 0,
   })
 }

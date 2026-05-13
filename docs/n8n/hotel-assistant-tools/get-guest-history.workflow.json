@@ -1,0 +1,200 @@
+{
+  "name": "Hotel Assistant Tool - Get Guest History",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000701",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nreturn [{ json: { ...$json, apiBaseUrl, internalToken: 'dev-internal-token' } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000702",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBaseUrl + '/clients' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.guestName }}"
+            },
+            {
+              "name": "clientId",
+              "value": "={{ $json.clientId }}"
+            },
+            {
+              "name": "facilityId",
+              "value": "={{ $json.facilityId }}"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000703",
+      "name": "GET Clients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Prepare Input').item.json.apiBaseUrl + '/reservations' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "clientId",
+              "value": "={{ $('Prepare Input').item.json.clientId }}"
+            },
+            {
+              "name": "clientName",
+              "value": "={{ $('Prepare Input').item.json.guestName }}"
+            },
+            {
+              "name": "occupierName",
+              "value": "={{ $('Prepare Input').item.json.guestName }}"
+            },
+            {
+              "name": "facilityId",
+              "value": "={{ $('Prepare Input').item.json.facilityId }}"
+            },
+            {
+              "name": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $('Prepare Input').item.json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000704",
+      "name": "GET Guest Reservations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const clientResult = $('GET Clients').first().json\nconst reservationResult = $('GET Guest Reservations').first().json\nconst clients = Array.isArray(clientResult.data) ? clientResult.data : Array.isArray(clientResult) ? clientResult : []\nconst history = Array.isArray(reservationResult.data) ? reservationResult.data : Array.isArray(reservationResult) ? reservationResult : []\nreturn [{ json: { clients, guestHistory: history, sources: [{ type: 'api', name: 'GET /clients' }, { type: 'api', name: 'GET /reservations' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000705",
+      "name": "Normalize Guest History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Clients": {
+      "main": [
+        [
+          {
+            "node": "GET Guest Reservations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Guest Reservations": {
+      "main": [
+        [
+          {
+            "node": "Normalize Guest History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-get-guest-history-v1"
+}

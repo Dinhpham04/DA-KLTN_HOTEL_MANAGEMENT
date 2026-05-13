@@ -1,0 +1,607 @@
+{
+  "name": "Hotel Assistant - Single AI Agent (n8n 2.12.2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hotel-assistant/chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e738cc86-12dd-4407-9433-66d8d87fc4c4",
+      "name": "Webhook - Chatbot",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "hotel-assistant-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json\n\nconst message = String(body.message ?? '').trim()\nif (!message) {\n  return [\n    {\n      json: {\n        error: 'EMPTY_MESSAGE',\n        answer: 'Vui long nhap noi dung can tra cuu.',\n        cards: [],\n        actions: [],\n        meta: { intent: 'invalid', confidence: 1, calledTools: [], sources: [] },\n      },\n    },\n  ]\n}\n\nconst staffId = body.staffId ?? 'anonymous'\nconst parsedFacilityId = Number(body.facilityId)\nconst facilityId = Number.isInteger(parsedFacilityId) ? parsedFacilityId : undefined\nconst sessionId = body.sessionId ?? `${staffId}-${Date.now()}`\nconst sessionFacilityKey = facilityId ?? 'all'\nconst sessionKey = `hotel-assistant:${sessionFacilityKey}:${staffId}:${sessionId}`\n\nconst today = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Ho_Chi_Minh',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n}).format(new Date())\n\nreturn [\n  {\n    json: {\n      message,\n      sessionId,\n      sessionKey,\n      staffId,\n      facilityId,\n      today,\n      timezone: 'Asia/Ho_Chi_Minh',\n      pageContext: body.pageContext ?? {},\n      guardrails: {\n        mode: 'read_only',\n        allowedMethods: ['GET'],\n        deniedMethods: ['POST', 'PUT', 'PATCH', 'DELETE'],\n      },\n    },\n  },\n]"
+      },
+      "id": "01306d1d-60e5-4df1-acde-893763a5f4dc",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.error}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "e6a47082-7c6e-42e6-9578-b0710b10f68a",
+      "name": "Has Validation Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tin nh?n c?a nh?n vi?n:\n{{ $json.message }}\n\nPage context:\n{{ JSON.stringify($json.pageContext) }}",
+        "options": {
+          "systemMessage": "=Ban la chatbot AI noi bo cho nhan vien khach san. Ban chi ho tro TRA CUU va TOM TAT thong tin nghiep vu.\n\nSystem context hien tai:\n- today: {{ $('Normalize Input').item.json.today }}\n- timezone: {{ $('Normalize Input').item.json.timezone }}\n- facilityId: {{ $('Normalize Input').item.json.facilityId ?? 'khong gioi han' }}\n- pageContext: {{ JSON.stringify($('Normalize Input').item.json.pageContext) }}\n\nBAT BUOC\n- Chi dung tool read-only da noi vao agent. Khong thuc hien, khong noi da thuc hien, khong gia lap POST/PUT/PATCH/DELETE.\n- Neu user yeu cau thao tac ghi du lieu nhu check-in, check-out, huy booking, cap nhat thanh toan, sua phong, doi trang thai phong: tra loi rang ban chi co quyen tra cuu va huong dan nhan vien thao tac truc tiep tren he thong.\n- Khong tu bia so tien, ngay, trang thai, phong, khach, chinh sach. Neu tool khong tra du lieu, noi ro khong tim thay hoac can them thong tin.\n- Moi luot hoi la mot lan tra cuu moi. KHONG dung loi tool hoac du lieu nghiep vu cu trong memory de ket luan. Neu cau hoi hien tai can du lieu he thong, hay goi tool lai.\n- Memory chi dung de hieu tham chieu hoi thoai gan day nhu \"booking do\", \"khach nay\". Khong dung memory lam nguon su that cho booking/phong/thanh toan.\n- Neu pageContext co reserveId va user noi \"don nay\", \"booking nay\", \"khach nay\", \"thanh toan cua don nay\", uu tien reserveId tu pageContext.\n\nTOOL MAP\n1. get_reservation_detail\n- Dung khi da co reserveId chac chan, hoac pageContext.reserveId dang co va cau hoi noi ve don/booking hien tai.\n- Tra ve chi tiet mot dat phong. Khong dung de tim kiem theo ten khach/ma booking.\n\n2. search_reservations\n- Dung de tim booking theo ma booking, ten khach, clientId, roomId, ngay/khoang ngay, hoac trang thai luu tru.\n- Params chuan: bookingCode, guestName, clientId, roomId, date hoac periodFrom/periodTo, leavingType.\n- leavingType chi dung mot trong: before, staying, left. Dung staying khi hoi phong/khach dang o hoac phong co khach.\n- Neu tim ra nhieu booking va user hoi chi tiet/thanh toan nhung chua ro don nao, tom tat ket qua va yeu cau chon booking.\n\n3. get_payment_status\n- Chi dung khi co reserveId. Neu user dua ten khach/ma booking nhung chua co reserveId, goi search_reservations truoc.\n- Tra ve requestDetails, saleDetails, totalInvoice, totalPaid, remaining, status.\n\n4. get_today_checkin_checkout\n- Dung cho danh sach check-in/check-out theo ngay, mac dinh today.\n- Params chuan: date YYYY-MM-DD, mode checkin|checkout|both, facilityId.\n- Neu user hoi check-in hom nay: mode=checkin. Neu hoi check-out hom nay: mode=checkout. Neu hoi ca hai: mode=both.\n\n5. search_rooms\n- Dung de tra cuu thong tin phong hien tai theo so phong, roomTypeId, roomStatus hoac danh sach phong.\n- Khong dung tool nay de kiem tra phong trong theo ngay. Voi phong trong theo ngay phai dung search_available_rooms.\n- Neu hoi phong co khach/dang luu tru, hay dung search_reservations voi leavingType=staying, khong chi dung search_rooms.\n\n6. search_available_rooms\n- Dung de tim phong trong theo ngay hoac khoang ngay. Params chuan: from, to, roomTypeId neu biet, roomType text neu user chi neu ten loai, facilityId.\n- Neu user chi dua mot ngay, dung from=to=ngay do. Neu khong dua ngay, hoi lai ngay/khoang ngay truoc khi goi tool.\n\n7. get_guest_history\n- Dung de xem lich su luu tru theo guestName hoac clientId.\n- Khong dung cho trang thai booking hien tai neu user da co ma booking/reserveId; khi do dung search_reservations/get_reservation_detail.\n\n8. search_internal_docs\n- Dung cho quy trinh nghiep vu, chinh sach khach san, so noi bo, xu ly tinh huong bat thuong, tai lieu noi bo.\n- Hien tool tai lieu co the tra warning neu Google Drive/vector search chua cau hinh. Neu vay, noi ro chua co nguon tai lieu de tra cuu.\n\nDECISION RULES\n- Cau chao/xa giao: tra loi ngan, khong can goi tool.\n- Cau hoi can du lieu booking/phong/thanh toan/khach/tai lieu: chon dung tool va goi tool truoc khi tra loi.\n- Co reserveId hien tai + hoi \"don nay\": goi get_reservation_detail, va goi them get_payment_status neu hoi tien/thanh toan.\n- Hoi phong trong theo ngay: goi search_available_rooms, khong goi search_rooms thay the.\n- Hoi phong nao dang co khach: goi search_reservations voi leavingType=staying.\n- Hoi trang thai phong cu the khong theo ngay: goi search_rooms theo roomNo. Neu can biet dang co khach thi goi them search_reservations voi roomId hoac leavingType=staying neu co roomId.\n\nANSWER RULES\n- Tra loi bang tieng Viet co dau, ngan gon, ro cho le tan/van hanh.\n- Cau tra loi chinh dung Markdown, khong dung HTML.\n- Luon phan anh dung du lieu tool tra ve; khong che giau loi tool. Neu tool loi, noi ro chua tra cuu duoc va goi y kiem tra workflow/API.\n\nOUTPUT FORMAT\nChi tra ve JSON hop le, khong boc markdown, khong them giai thich ngoai JSON:\n{\n  \"answer\": \"cau tra loi markdown bang tieng Viet co dau\",\n  \"cards\": [\n    {\n      \"type\": \"reservation|room|payment|guest|document|summary\",\n      \"title\": \"string\",\n      \"subtitle\": \"string\",\n      \"description\": \"string\",\n      \"fields\": [\n        { \"label\": \"string\", \"value\": \"string\", \"tone\": \"default|success|warning|danger\" }\n      ]\n    }\n  ],\n  \"actions\": [\n    { \"type\": \"link\", \"label\": \"string\", \"href\": \"string\" }\n  ],\n  \"meta\": {\n    \"intent\": \"string\",\n    \"confidence\": 0.0,\n    \"calledTools\": [\"string\"],\n    \"sources\": [\n      { \"type\": \"api|drive|memory\", \"name\": \"string\" }\n    ]\n  }\n}"
+        }
+      },
+      "id": "single-ai-agent",
+      "name": "AI Agent - Hotel Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        940,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5"
+        },
+        "options": {
+          "maxTokensToSample": 2048,
+          "temperature": 0.3
+        }
+      },
+      "id": "claude-chat-model",
+      "name": "Claude Sonnet - Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        780,
+        620
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-credential",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Normalize Input').item.json.sessionKey }}",
+        "contextWindowLength": 10
+      },
+      "id": "798608d4-baa2-46ed-aa6a-2dbaff14cef5",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        940,
+        620
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "9t685Y4KZeHqIWz5",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_reservation_detail",
+        "description": "Read-only. Get exact reservation detail by reserveId. Use only when reserveId is known, or pageContext.reserveId exists and user refers to this booking/order/guest. Input: reserveId(number), facilityId(optional). Never use for free-text search.",
+        "workflowId": {
+          "__rl": true,
+          "value": "oycmrNQX3ld6azeC",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/oycmrNQX3ld6azeC",
+          "cachedResultName": "Hotel Assistant Tool - Get Reservation Detail"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reserveId": "={{ $fromAI('reserveId', 'Reservation ID. Use pageContext reserveId when the user says this booking/order.', 'number') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "3e179aaf-60de-474f-b855-883fbeafb7de",
+      "name": "Tool - Get Reservation Detail",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        620,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_payment_status",
+        "description": "Read-only. Calculate billing/payment status for one reservation. Requires reserveId. Use for paid amount, debt, remaining amount, request details, sale details. If reserveId is unknown, call search_reservations first.",
+        "workflowId": {
+          "__rl": true,
+          "value": "5cFYtrMuFdzEILod",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5cFYtrMuFdzEILod",
+          "cachedResultName": "Hotel Assistant Tool - Get Payment Status"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reserveId": "={{ $fromAI('reserveId', 'Reservation ID to calculate payment status for.', 'number') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "3d6cf80f-579d-4109-b63e-b60ad2d7f276",
+      "name": "Tool - Get Payment Status",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        780,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_reservations",
+        "description": "Read-only. Search/list reservations by bookingCode, guestName, clientId, roomId, date/range, or leavingType. Use for finding bookings, guests currently staying, bookings before/after/staying, check a room occupancy via reservations. Does not modify data.",
+        "workflowId": {
+          "__rl": true,
+          "value": "7sZ5jxi5rzjkCTZQ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/7sZ5jxi5rzjkCTZQ",
+          "cachedResultName": "Hotel Assistant Tool - Search Reservations"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "bookingCode": "={{ $fromAI('bookingCode', 'Booking code or reservation code if present. Put exact code here, not guest name.', 'string') }}",
+            "guestName": "={{ $fromAI('guestName', 'Guest/client/occupier name if present.', 'string') }}",
+            "clientId": "={{ $fromAI('clientId', 'Client ID if known.', 'number') }}",
+            "roomId": "={{ $fromAI('roomId', 'Room ID if known.', 'number') }}",
+            "leavingType": "={{ $fromAI('leavingType', 'Use before, staying, or left only. staying means currently occupying/in-house.', 'string') }}",
+            "date": "={{ $fromAI('date', 'Single reservation date in YYYY-MM-DD if present.', 'string') }}",
+            "periodFrom": "={{ $fromAI('periodFrom', 'Start date in YYYY-MM-DD for reservation range if present.', 'string') }}",
+            "periodTo": "={{ $fromAI('periodTo', 'End date in YYYY-MM-DD for reservation range if present.', 'string') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
+            "limit": 10
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "3d2f5a86-19ed-4d4e-8953-0fdfbe2ece97",
+      "name": "Tool - Search Reservations",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        940,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_today_checkin_checkout",
+        "description": "Read-only. Get daily check-in/check-out list for a specific date. Use for check-in today, check-out today, arrivals/departures. Inputs: date YYYY-MM-DD, mode checkin|checkout|both, facilityId.",
+        "workflowId": {
+          "__rl": true,
+          "value": "JHRubeaJLxrkNiLq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/JHRubeaJLxrkNiLq",
+          "cachedResultName": "Hotel Assistant Tool - Today Checkin Checkout"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $fromAI('date', 'Date in YYYY-MM-DD. Use today if user says hom nay/today.', 'string') || $('Normalize Input').item.json.today }}",
+            "mode": "={{ $fromAI('mode', 'Use checkin, checkout, or both.', 'string') || 'both' }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "f77f96bd-5f46-46c5-ba08-53d6607cb44e",
+      "name": "Tool - Today Checkin Checkout",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_rooms",
+        "description": "Read-only. Search current room master/status data by room number/search text, roomTypeId, or numeric roomStatus. Use for room detail/status now. Do NOT use for availability by date; use search_available_rooms. For occupied rooms, prefer search_reservations with leavingType=staying.",
+        "workflowId": {
+          "__rl": true,
+          "value": "F1oUb16XlYZX6szb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/F1oUb16XlYZX6szb",
+          "cachedResultName": "Hotel Assistant Tool - Search Rooms"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "search": "={{ $fromAI('search', 'Room number or general room search text if present.', 'string') }}",
+            "roomNo": "={{ $fromAI('roomNo', 'Room number if present, e.g. 502.', 'string') }}",
+            "roomType": "={{ $fromAI('roomType', 'Room type name text if present, e.g. Deluxe. Used only for local filtering if backend cannot map it.', 'string') }}",
+            "roomTypeId": "={{ $fromAI('roomTypeId', 'Numeric room type ID if known. Do not invent.', 'number') }}",
+            "roomStatus": "={{ $fromAI('roomStatus', 'Numeric room status code if known. Do not use words like occupied here.', 'number') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
+            "limit": 50
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "cf2e8447-03ac-44aa-b4db-f393fa869b25",
+      "name": "Tool - Search Rooms",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_available_rooms",
+        "description": "Read-only. Search rooms available for a date or date range. Use for phong trong/con phong/available rooms by date. Requires from/to date. Accepts roomTypeId if known; roomType text can be passed but should not be invented.",
+        "workflowId": {
+          "__rl": true,
+          "value": "qUBhPmXIIqf1dzNI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/qUBhPmXIIqf1dzNI",
+          "cachedResultName": "Hotel Assistant Tool - Search Available Rooms"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "roomType": "={{ $fromAI('roomType', 'Room type name text if user mentioned it, e.g. Deluxe.', 'string') }}",
+            "roomTypeId": "={{ $fromAI('roomTypeId', 'Numeric room type ID if known. Do not invent.', 'number') }}",
+            "from": "={{ $fromAI('from', 'Start date in YYYY-MM-DD. Required for availability.', 'string') }}",
+            "to": "={{ $fromAI('to', 'End date in YYYY-MM-DD. If user gives one date, use same date as from.', 'string') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
+            "limit": 50
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "03231597-9b94-4e7b-a0b1-2cddc1f9503f",
+      "name": "Tool - Search Available Rooms",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_guest_history",
+        "description": "Read-only. Get guest stay history by guestName or clientId. Use for lich su luu tru/history/repeat guest. Not for current booking detail when reserveId/bookingCode is known.",
+        "workflowId": {
+          "__rl": true,
+          "value": "e2PlJs2MiL08fyTo",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/e2PlJs2MiL08fyTo",
+          "cachedResultName": "Hotel Assistant Tool - Get Guest History"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "guestName": "={{ $fromAI('guestName', 'Guest name if present.', 'string') }}",
+            "clientId": "={{ $fromAI('clientId', 'Client ID if known.', 'number') }}",
+            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "3207706f-b5f9-4a1c-b2a7-479c93fbbbcb",
+      "name": "Tool - Get Guest History",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_internal_docs",
+        "description": "Read-only. Search internal hotel documents: procedures, policies, department extensions, abnormal situation handling. Use only for policy/process/internal-doc questions. This tool may return a warning if document search is not configured.",
+        "workflowId": {
+          "__rl": true,
+          "value": "vz3USKBmFRNruU9D",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/vz3USKBmFRNruU9D",
+          "cachedResultName": "Hotel Assistant Tool - Search Internal Docs"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $fromAI('query', 'Search query for hotel policy/procedure/internal document.', 'string') }}",
+            "folderId": "REPLACE_GOOGLE_DRIVE_POLICY_FOLDER_ID",
+            "limit": 5
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "e0315b5c-1719-497a-8216-4bd646d25c30",
+      "name": "Tool - Search Internal Docs",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractText(value) {\n  if (typeof value === 'string') return value\n  if (!value || typeof value !== 'object') return String(value ?? '')\n  const direct = value.output ?? value.text ?? value.result\n  if (typeof direct === 'string') return direct\n  const generations = value.response?.generations ?? value.generations\n  const firstGeneration = Array.isArray(generations) ? generations[0]?.[0] ?? generations[0] : undefined\n  if (typeof firstGeneration?.text === 'string') return firstGeneration.text\n  if (typeof firstGeneration?.message?.content === 'string') return firstGeneration.message.content\n  return JSON.stringify(value)\n}\n\nfunction tryParseJson(value) {\n  if (value && typeof value === 'object' && 'answer' in value) return value\n  const text = extractText(value).trim()\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i)\n  const candidate = fenced?.[1] ?? text\n  const jsonMatch = candidate.match(/\\{[\\s\\S]*\\}/)\n  if (!jsonMatch) return null\n  try {\n    return JSON.parse(jsonMatch[0])\n  } catch {\n    return null\n  }\n}\n\nconst response = tryParseJson($json) ?? {\n  answer: extractText($json) || 'T?i ch?a th? t?o c?u tr? l?i t? d? li?u hi?n c?.',\n  cards: [],\n  actions: [],\n  meta: { intent: 'unknown', confidence: 0, calledTools: [], sources: [] },\n}\n\nreturn [\n  {\n    json: {\n      answer: response.answer ?? 'Kh?ng c? c?u tr? l?i.',\n      cards: Array.isArray(response.cards) ? response.cards : [],\n      actions: Array.isArray(response.actions) ? response.actions : [],\n      meta: {\n        intent: response.meta?.intent ?? 'unknown',\n        confidence: response.meta?.confidence ?? 0,\n        calledTools: response.meta?.calledTools ?? [],\n        sources: response.meta?.sources ?? [],\n      },\n    },\n  },\n]"
+      },
+      "id": "dd15623c-049c-43a9-882d-c9de92e57a36",
+      "name": "Normalize Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "1ea47530-2dfc-45eb-acac-bcb204dd1c53",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Chatbot": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Has Validation Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Validation Error?": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Sonnet - Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Reservation Detail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Payment Status": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Reservations": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Today Checkin Checkout": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Rooms": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Available Rooms": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Guest History": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Internal Docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Hotel Assistant": {
+      "main": [
+        [
+          {
+            "node": "Normalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "active": false,
+  "tags": []
+}

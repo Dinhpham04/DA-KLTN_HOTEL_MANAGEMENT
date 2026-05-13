@@ -4,11 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
-import { ERROR_MESSAGES } from '@common/index';
+import { ERROR_MESSAGES, RESERVATION_EVENTS } from '@common/index';
 import { ReserveStatus } from '@common/enums/index';
 import { CleaningStatus } from '@modules/cleaning-shift/enums';
+import { ReservationCheckedInEvent } from '@modules/reservation/events/reservation.events';
 import {
   DailyReserveFilterDto,
   DailyReserveItemDto,
@@ -31,7 +33,10 @@ const SMART_LOCK_ACTIVE = 1;
 const DATA_STATUS_AVAILABLE = 1;
 @Injectable()
 export class DailyReserveService {
-  constructor(private readonly repository: DailyReserveRepository) {}
+  constructor(
+    private readonly repository: DailyReserveRepository,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async findAll(
     filter: DailyReserveFilterDto,
@@ -69,6 +74,12 @@ export class DailyReserveService {
     const hasPositiveCardCountUpdate =
       hasCardCountUpdate && (dto.smartLockCardCount ?? 0) > 0;
     const hasAccessUpdate = shouldIssueSmartLock || hasPositiveCardCountUpdate;
+    const shouldTransitionToCheckin =
+      !reserve.checkinFlag &&
+      (dto.checkinFlag === true ||
+      (dto.checkinFlag === undefined &&
+        hasAccessUpdate &&
+        this.isArrivalDue(reserve)));
     const shouldMarkCheckin =
       dto.checkinFlag === true ||
       (dto.checkinFlag === undefined &&
@@ -114,6 +125,13 @@ export class DailyReserveService {
 
     if (shouldMarkCheckin) {
       await this.repository.markParkingCheckedIn(id);
+    }
+
+    if (shouldTransitionToCheckin) {
+      this.eventEmitter.emit(
+        RESERVATION_EVENTS.CHECKED_IN,
+        new ReservationCheckedInEvent(id, reserve.roomId, currentStaffId),
+      );
     }
 
     return { statusCode: STATUS_OK };
@@ -259,6 +277,10 @@ export class DailyReserveService {
 
       data.encryptedPin = await bcrypt.hash(pin, BCRYPT_ROUNDS);
       data.maskedPin = this.maskPin(pin);
+      data.providerPayload = {
+        ...this.readProviderPayloadObject(existing.providerPayload),
+        automationReleasePin: pin,
+      };
 
       await this.repository.updateSmartLockCredential(existing.roomPinCredentialId, data);
       return;
@@ -277,6 +299,9 @@ export class DailyReserveService {
       validTo,
       status: SMART_LOCK_ACTIVE,
       issuedAt: new Date(),
+      providerPayload: {
+        automationReleasePin: pin,
+      },
       createdStaffId: currentStaffId,
       updatedStaffId: currentStaffId,
     });
@@ -464,6 +489,14 @@ export class DailyReserveService {
 
   private maskPin(pin: string): string {
     return `****${pin.slice(-4)}`;
+  }
+
+  private readProviderPayloadObject(value: Prisma.JsonValue): Record<string, unknown> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    return {};
   }
 
   private parseDate(value: string | undefined): Date | null {

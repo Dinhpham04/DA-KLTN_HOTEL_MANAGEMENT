@@ -10,7 +10,6 @@ import {
   CustomAccordionItem,
   CustomAccordionTrigger,
 } from '@/components/common/CustomAccordion'
-import { CustomCheckbox } from '@/components/common/CustomCheckbox'
 import { CustomTooltip } from '@/components/common/CustomToolTip'
 import { BicycleSvg } from '@/components/svgs/BicycleSVG'
 import { CarSvg } from '@/components/svgs/CarSvg'
@@ -42,8 +41,6 @@ interface RoomTypeGroup {
   rents: WhiteboardStayTypeRent[]
 }
 
-type CheckedItems = Record<number, Record<string, boolean>>
-
 const MIN_TIMELINE_COLUMNS = 4
 
 type TimelineCell =
@@ -61,13 +58,9 @@ export function WhiteboardIndicator({
 }: WhiteboardIndicatorProps) {
   const { t } = useTranslation()
   const [openItems, setOpenItems] = useState<string[]>([])
-  const [checkedItems, setCheckedItems] = useState<CheckedItems>({})
-
-  const hasDateFilter = Boolean(searchFrom || searchTo)
 
   useEffect(() => {
     setOpenItems(facilities.map((facility) => `facility-${facility.facilityId}`))
-    setCheckedItems({})
   }, [facilities])
 
   const displayFacilities = useMemo(
@@ -86,16 +79,6 @@ export function WhiteboardIndicator({
       }),
     [facilities]
   )
-
-  const toggleCheckbox = (facilityId: number, roomTypeKey: string) => {
-    setCheckedItems((prev) => ({
-      ...prev,
-      [facilityId]: {
-        ...prev[facilityId],
-        [roomTypeKey]: !prev[facilityId]?.[roomTypeKey],
-      },
-    }))
-  }
 
   if (isLoading) {
     return (
@@ -168,35 +151,25 @@ export function WhiteboardIndicator({
                       <TrashSVG />
                     </div>
                   ) : null}
-                  <div className="bg-white p-2 ml-2 sm:ml-4 w-fit sm:w-[19.4rem] btn btn-default text-black whitespace-nowrap">
-                    Chi tiet co so
-                  </div>
+                  {/* <div className="bg-white p-2 ml-2 sm:ml-4 w-fit sm:w-[19.4rem] btn btn-default text-black whitespace-nowrap">
+                    Chi tiết cơ sở
+                  </div> */}
                 </div>
               </div>
             </CustomAccordionTrigger>
 
             <CustomAccordionContent className="pb-0">
               <div className="table-manager-hotel bg-[#EEEEEE] text-[1.3rem]">
-                {facility.roomTypeGroups.map((group, roomTypeIndex) => {
-                  const showOccupied = checkedItems[facility.facilityId]?.[group.key] ?? false
-                  const rooms =
-                    hasDateFilter && !showOccupied
-                      ? group.rooms.filter((room) => !isRoomOccupiedNow(room))
-                      : group.rooms
-
+                {facility.roomTypeGroups.map((group) => {
                   return (
                     <div key={`room-type-group-${facility.facilityId}-${group.key}`}>
                       <RoomTypeInfoRow
                         roomTypeLabel={group.label}
                         acreage={group.acreage}
                         rents={group.rents}
-                        hasDateFilter={hasDateFilter}
-                        showOccupied={showOccupied}
-                        checkboxId={`room-type-${facility.facilityId}-${roomTypeIndex}`}
-                        onToggle={() => toggleCheckbox(facility.facilityId, group.key)}
                       />
                       <ul className="grid auto-cols-max overflow-x-auto snap-x hotel-list">
-                        {rooms.map((room) => (
+                        {group.rooms.map((room) => (
                           <RoomTimelineRow
                             key={`timeline-room-${room.roomId}`}
                             room={room}
@@ -226,24 +199,16 @@ function RoomTypeInfoRow({
   roomTypeLabel,
   acreage,
   rents,
-  hasDateFilter,
-  showOccupied,
-  checkboxId,
-  onToggle,
 }: {
   roomTypeLabel: string
   acreage: string | null
   rents: WhiteboardStayTypeRent[]
-  hasDateFilter: boolean
-  showOccupied: boolean
-  checkboxId: string
-  onToggle: () => void
 }) {
   const renderRents =
     rents.length > 0 ? rents : [{ stayTypeId: 0, stayTypeNameShort: null, price: null }]
 
   return (
-    <div className="table-rows flex border-black border-x border-y first:border-t-0 last:border-b-0 text-[1.3rem]">
+    <div className="table-rows flex border-black border-x border-y last:border-b-0 text-[1.3rem]">
       <div className="table-columns flex justify-center items-center px-2 border-black border-l first:border-l-0 w-[8rem] h-16 snap-start">
         <CustomTooltip text={roomTypeLabel} />
       </div>
@@ -258,18 +223,7 @@ function RoomTypeInfoRow({
       <div className="table-columns flex justify-center items-center border-black border-l first:border-l-0 w-48 h-16 snap-start">
         <CustomTooltip text={formatAcreage(acreage)} />
       </div>
-      {hasDateFilter ? (
-        <div className="table-columns flex justify-end items-center px-8 border-black border-l first:border-l-0 w-full h-16 snap-end">
-          <div className="flex items-center gap-4">
-            <CustomCheckbox id={checkboxId} checked={showOccupied} onCheckedChange={onToggle} />
-            <label htmlFor={checkboxId} className="font-semibold text-[1.3rem] cursor-pointer">
-              Hiển thị phòng đang ở
-            </label>
-          </div>
-        </div>
-      ) : (
-        <div className="table-columns flex justify-center items-center border-black border-l first:border-l-0 w-[8rem] h-16 snap-start" />
-      )}
+      <div className="table-columns flex justify-center items-center border-black border-l first:border-l-0 w-[8rem] h-16 snap-start" />
     </div>
   )
 }
@@ -295,7 +249,7 @@ function RoomTimelineRow({
     <li className="flex w-auto snap-start border-b border-x border-black last:border-b-0 min-w-[138rem] hotel-list__items table-rows bg-white">
       <div
         className={cn(
-          'table-columns flex justify-center items-center border-black border-l first:border-l-0 w-[8rem] h-16 sm:h-[5.6rem] font-bold snap-start',
+          'table-columns flex justify-center items-center border-black border-l first:border-l-0 w-[8rem] h-16 sm:h-[5.6rem] font-bold snap-start sticky left-0 z-10',
           isOccupied ? 'bg-[#F86F6F]' : 'bg-white'
         )}
       >
@@ -322,6 +276,7 @@ function RoomTimelineRow({
                 from={cell.from}
                 to={cell.to}
                 facilityId={room.facilityId}
+                roomTypeId={room.roomTypeId}
                 roomId={room.roomId}
                 roomNumber={room.roomNumber}
               />
@@ -435,12 +390,14 @@ function BookingOpportunityCell({
   from,
   to,
   facilityId,
+  roomTypeId,
   roomId,
   roomNumber,
 }: {
   from: Dayjs
   to: Dayjs | null
   facilityId: number
+  roomTypeId: number
   roomId: number
   roomNumber?: string
 }) {
@@ -450,6 +407,7 @@ function BookingOpportunityCell({
     <div className="table-columns flex justify-center items-center p-[0.3rem] border-black border-l first:border-l-0 w-[23.5rem] min-w-[23.5rem] h-16 sm:h-[5.6rem] snap-start usage-station-item-inner">
       <BookingActionPopover
         facilityId={facilityId}
+        roomTypeId={roomTypeId}
         roomId={roomId}
         roomNumber={roomNumber}
         from={from}
@@ -611,8 +569,9 @@ function buildTimelineCells(
     return aTime - bTime
   })
 
+  const today = dayjs().startOf('day')
   const upperBound = searchTo ? dayjs(searchTo).startOf('day') : null
-  let cursor: Dayjs | null = searchFrom ? dayjs(searchFrom).startOf('day') : dayjs().startOf('day')
+  let cursor: Dayjs | null = searchFrom ? dayjs(searchFrom).startOf('day') : today
 
   for (const reserve of sortedReservations) {
     const effective = getEffectiveReservePeriod(reserve)
@@ -622,11 +581,11 @@ function buildTimelineCells(
     }
 
     if (cursor && effective.start.isAfter(cursor, 'day')) {
-      cells.push({
-        type: 'booking',
-        from: cursor,
-        to: effective.start.subtract(1, 'day'),
-      })
+      const bookingFrom = cursor.isBefore(today, 'day') ? today : cursor
+      const bookingTo = effective.start.subtract(1, 'day')
+      if (bookingTo.isAfter(bookingFrom, 'day')) {
+        cells.push({ type: 'booking', from: bookingFrom, to: bookingTo })
+      }
     }
 
     if (effective.beforeDays > 0) {
@@ -661,10 +620,11 @@ function buildTimelineCells(
   }
 
   if (cursor) {
+    const bookingFrom = cursor.isBefore(today, 'day') ? today : cursor
     if (!upperBound) {
-      cells.push({ type: 'booking', from: cursor, to: null })
-    } else if (cursor.isBefore(upperBound, 'day') || cursor.isSame(upperBound, 'day')) {
-      cells.push({ type: 'booking', from: cursor, to: upperBound })
+      cells.push({ type: 'booking', from: bookingFrom, to: null })
+    } else if (bookingFrom.isBefore(upperBound, 'day')) {
+      cells.push({ type: 'booking', from: bookingFrom, to: upperBound })
     }
   }
 

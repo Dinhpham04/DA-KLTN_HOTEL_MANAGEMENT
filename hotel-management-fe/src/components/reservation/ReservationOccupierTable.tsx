@@ -1,11 +1,17 @@
-import { Controller, type Control, type FieldValues, useFieldArray, useWatch } from 'react-hook-form'
-import dayjs from 'dayjs'
-import React from 'react'
-import { CustomInput } from '@/components/common/CustomInput'
 import CustomDatePicker from '@/components/common/CustomDatePicker'
+import { CustomInput } from '@/components/common/CustomInput'
 import CustomSelectClean from '@/components/common/CustomSelectClean'
 import { NButton } from '@/components/ui/new-button'
 import { SEX_OPTIONS } from '@/constants/reservation'
+import dayjs from 'dayjs'
+import type React from 'react'
+import {
+  type Control,
+  Controller,
+  type FieldValues,
+  useFieldArray,
+  useWatch,
+} from 'react-hook-form'
 
 interface ReservationOccupierTableProps {
   control: Control<FieldValues>
@@ -119,10 +125,7 @@ export const ReservationOccupierTable: React.FC<ReservationOccupierTableProps> =
           <tbody>
             {fields.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="border border-black h-16 text-center text-gray-400 py-8"
-                >
+                <td colSpan={8} className="border border-black h-16 text-center text-gray-400 py-8">
                   Chưa có dữ liệu
                 </td>
               </tr>
@@ -188,11 +191,7 @@ export const ReservationOccupierTable: React.FC<ReservationOccupierTableProps> =
 
                   {/* Tuổi (auto-calculated) */}
                   <td className="border border-black h-16 text-center">
-                    <AgeDisplay
-                      control={control}
-                      fieldName={fieldName}
-                      index={index}
-                    />
+                    <AgeDisplay control={control} fieldName={fieldName} index={index} />
                   </td>
 
                   {/* SĐT */}

@@ -35,6 +35,10 @@ services:
       DB_POSTGRESDB_PASSWORD: postgres
       GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
       TZ: Asia/Ho_Chi_Minh
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://host.docker.internal:3000}
+      INTERNAL_AUTOMATION_TOKEN: ${INTERNAL_AUTOMATION_TOKEN:-dev-internal-token}
+      N8N_AUTOMATION_SECRET: ${N8N_AUTOMATION_SECRET:-dev-automation-secret}
+      RESERVATION_AUTOMATION_STAFF_ID: ${RESERVATION_AUTOMATION_STAFF_ID:-1}
     ports:
       - '5678:5678'
     volumes:

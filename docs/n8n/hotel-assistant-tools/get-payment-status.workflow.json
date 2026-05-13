@@ -1,0 +1,172 @@
+{
+  "name": "Hotel Assistant Tool - Get Payment Status",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000401",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const reserveId = $json.reserveId\nif (!reserveId) return [{ json: { payment: null, warnings: ['Missing reserveId'], sources: [] } }]\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nreturn [{ json: { reserveId, apiBaseUrl, internalToken: 'dev-internal-token' } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000402",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBaseUrl + '/request-details' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "reserveId",
+              "value": "={{ $json.reserveId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000403",
+      "name": "GET Request Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Prepare Input').item.json.apiBaseUrl + '/sale-details' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "reserveId",
+              "value": "={{ $('Prepare Input').item.json.reserveId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $('Prepare Input').item.json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000404",
+      "name": "GET Sale Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -60,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const requestResult = $('GET Request Details').first().json\nconst saleResult = $('GET Sale Details').first().json\nconst requestDetails = Array.isArray(requestResult.data) ? requestResult.data : Array.isArray(requestResult) ? requestResult : []\nconst saleDetails = Array.isArray(saleResult.data) ? saleResult.data : Array.isArray(saleResult) ? saleResult : []\nconst totalInvoice = requestDetails.reduce((sum, item) => {\n  const explicitTotal = item.totalPrice ?? item.total_price\n  if (explicitTotal !== undefined && explicitTotal !== null) return sum + Number(explicitTotal)\n  const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)\n  const count = Number(item.count ?? 1)\n  return sum + unitPrice * count\n}, 0)\nconst totalPaid = saleDetails.reduce((sum, item) => sum + Number(item.totalPrice ?? item.total_price ?? 0), 0)\nreturn [{ json: { payment: { reserveId: $('Prepare Input').item.json.reserveId, totalInvoice, totalPaid, remaining: totalInvoice - totalPaid, status: totalPaid >= totalInvoice ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid', requestDetails, saleDetails }, sources: [{ type: 'api', name: 'GET /request-details' }, { type: 'api', name: 'GET /sale-details' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000405",
+      "name": "Calculate Payment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Request Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Request Details": {
+      "main": [
+        [
+          {
+            "node": "GET Sale Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Sale Details": {
+      "main": [
+        [
+          {
+            "node": "Calculate Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-get-payment-status-v1"
+}

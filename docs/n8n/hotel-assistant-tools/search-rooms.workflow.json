@@ -1,0 +1,139 @@
+{
+  "name": "Hotel Assistant Tool - Search Rooms",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000501",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst roomTypeCandidate = $json.roomTypeId ?? $json.roomType\nconst parsedRoomTypeId = Number(roomTypeCandidate)\nconst roomTypeId = Number.isInteger(parsedRoomTypeId) ? parsedRoomTypeId : undefined\nconst parsedRoomStatus = Number($json.roomStatus ?? $json.status)\nconst roomStatus = Number.isInteger(parsedRoomStatus) ? parsedRoomStatus : undefined\nreturn [{ json: { ...$json, search: $json.search ?? $json.roomNo, roomTypeId, roomStatus, apiBaseUrl, internalToken: 'dev-internal-token', limit: $json.limit ?? 20 } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000502",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBaseUrl + '/rooms' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.search }}"
+            },
+            {
+              "name": "roomTypeId",
+              "value": "={{ $json.roomTypeId }}"
+            },
+            {
+              "name": "roomStatus",
+              "value": "={{ $json.roomStatus }}"
+            },
+            {
+              "name": "facilityId",
+              "value": "={{ $json.facilityId }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $json.limit }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000503",
+      "name": "GET Rooms",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeText(value) {\n  return String(value ?? '').trim().toLowerCase()\n}\n\nfunction matchesRoomType(room, roomType) {\n  const expected = normalizeText(roomType)\n  if (!expected) return true\n  return normalizeText(room.roomTypeName).includes(expected) || normalizeText(room.roomClassName).includes(expected)\n}\n\nfunction extractRows(result) {\n  return Array.isArray(result)\n    ? result\n    : Array.isArray(result.availableRooms)\n      ? result.availableRooms\n      : Array.isArray(result.rooms)\n        ? result.rooms\n        : Array.isArray(result.data)\n          ? result.data\n          : Array.isArray(result.items)\n            ? result.items\n            : []\n}\n\nconst input = $('Prepare Input').first().json\nconst rows = extractRows($json)\nconst rooms = rows.filter((room) => matchesRoomType(room, input.roomType))\nreturn [{ json: { rooms, sources: [{ type: 'api', name: 'GET /rooms' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000504",
+      "name": "Normalize Rooms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Rooms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Rooms": {
+      "main": [
+        [
+          {
+            "node": "Normalize Rooms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-search-rooms-v1"
+}

@@ -417,7 +417,11 @@ function UsageSituationPage() {
                       onChange={(e) => {
                         const raw = e.target.value
                         field.onChange(raw)
-                        const normalized = raw.trim().replace(/　/g, ' ').replace(/\s+/g, ' ')
+                        const normalized = raw
+                          .trim()
+                          .replace(/　/g, ' ')
+                          .replace(/-/g, ' ')
+                          .replace(/\s+/g, ' ')
                         const parts = normalized.split(' ').filter(Boolean)
 
                         let facilityNo = ''

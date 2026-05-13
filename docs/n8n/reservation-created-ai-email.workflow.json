@@ -1,0 +1,491 @@
+{
+  "name": "Hotel - Reservation Created Send Emails",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reservation-created",
+        "options": {}
+      },
+      "id": "b6816fe4-8101-4b8e-92e1-751a95bcb48c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2464,
+        1488
+      ],
+      "webhookId": "reservation-created"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json; const customer = body.customer ?? {}; const booking = body.booking ?? {}; const hotel = body.hotel ?? {}; const reservationId = body.reservationId; const reservationCode = body.reservationCode ?? `RSV-${String(reservationId ?? '').padStart(6, '0')}`; function esc(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); } function safe(value, fallback = '-') { return value === undefined || value === null || value === '' ? fallback : value; } function formatDate(value) { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(date); } function formatMoney(value) { if (value === undefined || value === null || value === '') return '-'; return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value)); } function methodLabel(value) { if (value === 'self_checkin') return 'Tự check-in'; if (value === 'meet_and_greet') return 'Nhân viên đón khách'; return 'Check-in tại quầy lễ tân'; } function row(label, value) { return `<tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569;width:210px'>${esc(label)}</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#0f172a'><strong>${esc(value)}</strong></td></tr>`; } function waitTime(baseValue, hoursBefore) { const base = baseValue ? new Date(baseValue) : new Date(Date.now() + 60000); const target = Number.isNaN(base.getTime()) ? new Date(Date.now() + 60000) : new Date(base.getTime() - hoursBefore * 60 * 60 * 1000); return target < new Date() ? new Date(Date.now() + 60000).toISOString() : target.toISOString(); } const isSelfCheckin = booking.checkInMethod === 'self_checkin'; const facts = { reservationCode, customerName: safe(customer.name, 'Quý khách'), checkInAt: formatDate(booking.checkInAt), checkOutAt: formatDate(booking.checkOutAt), roomType: safe(booking.roomType), roomNumber: safe(booking.roomNumber), guestCount: safe(booking.guestCount, 1), totalAmount: formatMoney(booking.totalAmount), deposit: booking.deposit === undefined || booking.deposit === null || booking.deposit === '' ? 'Không có' : formatMoney(booking.deposit), cancellationPolicy: safe(booking.cancellationPolicy, 'Vui lòng liên hệ khách sạn để được hỗ trợ hủy hoặc thay đổi đặt phòng.'), checkInPolicy: safe(booking.checkInPolicy, 'Giờ nhận phòng tiêu chuẩn từ 14:00. Quý khách vui lòng liên hệ trước nếu cần nhận phòng sớm.'), checkInMethod: methodLabel(booking.checkInMethod), hotelName: safe(hotel.name, 'Khách sạn'), hotelAddress: safe(hotel.address), hotelPhone: safe(hotel.phone, ''), hotelEmail: safe(hotel.email, ''), frontDeskGuide: safe(hotel.frontDeskGuide, 'Khi đến khách sạn, quý khách vui lòng đến quầy lễ tân và cung cấp mã đặt phòng.') }; const contactLines = [`${esc(facts.hotelName)}`, `${esc(facts.hotelAddress)}`]; if (facts.hotelPhone) contactLines.push(`Điện thoại: ${esc(facts.hotelPhone)}`); if (facts.hotelEmail) contactLines.push(`Email: ${esc(facts.hotelEmail)}`); const contactHtml = contactLines.filter(Boolean).join('<br>'); const baseInfo = `<h3 style='margin:20px 0 8px;color:#0f172a'>Thông tin đặt phòng</h3><table style='border-collapse:collapse;width:100%;max-width:720px;border:1px solid #e5e7eb'>${row('Mã đặt phòng', facts.reservationCode)}${row('Tên khách', facts.customerName)}${row('Ngày check-in', facts.checkInAt)}${row('Ngày check-out', facts.checkOutAt)}${row('Loại phòng', facts.roomType)}${row('Số phòng', facts.roomNumber)}${row('Số khách', facts.guestCount)}${row('Tổng tiền', facts.totalAmount)}${row('Đặt cọc', facts.deposit)}</table><h3 style='margin:20px 0 8px;color:#0f172a'>Chính sách và liên hệ</h3><p><strong>Chính sách hủy:</strong> ${esc(facts.cancellationPolicy)}</p><p><strong>Thông tin khách sạn:</strong><br>${contactHtml}</p>`; const frontDeskGuide = `<h3 style='margin:20px 0 8px;color:#0f172a'>Hướng dẫn check-in tại quầy</h3><ul><li><strong>Cơ sở:</strong> ${esc(facts.hotelName)}</li><li><strong>Địa chỉ:</strong> ${esc(facts.hotelAddress)}</li><li><strong>Hướng dẫn đến quầy lễ tân:</strong> ${esc(facts.frontDeskGuide)}</li><li><strong>Giấy tờ cần mang theo:</strong> CCCD hoặc hộ chiếu còn hiệu lực.</li><li><strong>Chính sách giờ nhận phòng:</strong> ${esc(facts.checkInPolicy)}</li></ul>`; const selfCheckinGuide = `<h3 style='margin:20px 0 8px;color:#0f172a'>Hướng dẫn tự check-in</h3><p>Đặt phòng của quý khách sử dụng phương thức tự check-in. Mã PIN vào phòng sẽ được gửi qua email trước giờ check-in 3 giờ nếu đặt phòng vẫn còn hiệu lực và thông tin tự check-in đã hoàn tất.</p><ul><li><strong>Cơ sở:</strong> ${esc(facts.hotelName)}</li><li><strong>Địa chỉ:</strong> ${esc(facts.hotelAddress)}</li><li><strong>Giấy tờ cần chuẩn bị:</strong> CCCD hoặc hộ chiếu còn hiệu lực.</li><li><strong>Thông tin cần xác nhận:</strong> họ tên, số điện thoại, email, số lượng khách lưu trú và thời gian dự kiến đến.</li><li><strong>Thông tin giấy tờ:</strong> ảnh CCCD/hộ chiếu và ảnh chân dung nếu khách sạn yêu cầu đối chiếu.</li><li><strong>Lưu ý:</strong> không chia sẻ mã PIN cho người không lưu trú.</li><li><strong>Chính sách giờ nhận phòng:</strong> ${esc(facts.checkInPolicy)}</li></ul><p>Nếu cần hỗ trợ trước khi nhận mã PIN, vui lòng liên hệ khách sạn.</p>`; const immediateSubject = isSelfCheckin ? `Xác nhận đặt phòng và hướng dẫn tự check-in ${reservationCode}` : `Xác nhận đặt phòng và hướng dẫn check-in ${reservationCode}`; const immediateHtml = `<div style='font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a'><p>Xin chào ${esc(facts.customerName)},</p><p>Đặt phòng của quý khách đã được xác nhận. Dưới đây là thông tin đặt phòng và hướng dẫn check-in.</p>${baseInfo}${isSelfCheckin ? selfCheckinGuide : frontDeskGuide}<p>Trân trọng,<br>${esc(facts.hotelName)}</p></div>`; return [{ json: { reservationId, reservationCode, customer, booking, hotel, facts, isSelfCheckin, reminderAt: waitTime(booking.checkInAt, 24), pinReleaseAt: waitTime(booking.checkInAt, 3), hasGuestEmail: Boolean(customer.email), emails: { immediate: { subject: immediateSubject, html: immediateHtml } } } }];"
+      },
+      "id": "e5491810-1f26-45fa-978d-2208071c9817",
+      "name": "Build Confirmation Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2224,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasGuestEmail}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "7f62bc51-606b-4335-8df4-4c3bc90ef009",
+      "name": "Has Guest Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1984,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer.email}}",
+        "subject": "={{$json.emails.immediate.subject}}",
+        "message": "={{$json.emails.immediate.html}}",
+        "options": {}
+      },
+      "id": "802d87a8-ea58-431d-a55f-27bd4d36b2cf",
+      "name": "Send Confirmation and Guide",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1744,
+        1360
+      ],
+      "webhookId": "1371f2ee-73dd-4e8f-807f-94185ca3390c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5kFY9HpRr2V5oLQc",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$('Build Confirmation Template').first().json.isSelfCheckin}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "72df6cf1-e47e-4075-a5ad-c6a4002571b7",
+      "name": "Is Self Check-in?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{$('Build Confirmation Template').first().json.reminderAt}}"
+      },
+      "id": "7ca976a5-7993-4ca0-99db-12f5f6b6491a",
+      "name": "Wait Until 24h Before Check-in",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        1568
+      ],
+      "webhookId": "a3dc91a6-c166-4dc5-8d0f-061f7ec30569"
+    },
+    {
+      "parameters": {
+        "url": "={{'http://host.docker.internal:3000/api/v1/internal/reservations/' + $('Build Confirmation Template').first().json.reservationId + '/automation-status'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-internal-token"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d9370d34-2fff-45d3-832b-7923085223f3",
+      "name": "Check Reservation Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1024,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.data.shouldSendCheckinReminder}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "8b89dc61-0ffd-44c3-9151-07bf38e6f480",
+      "name": "Should Send Reminder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Build Confirmation Template').first().json; const facts = source.facts; function esc(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); } const subject = `Nhắc lịch check-in ${source.reservationCode}`; const html = `<div style='font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a'><p>Xin chào ${esc(facts.customerName)},</p><p>Khách sạn xin nhắc quý khách về lịch nhận phòng sắp tới.</p><ul><li><strong>Mã đặt phòng:</strong> ${esc(facts.reservationCode)}</li><li><strong>Thời gian check-in:</strong> ${esc(facts.checkInAt)}</li><li><strong>Cơ sở:</strong> ${esc(facts.hotelName)}</li><li><strong>Địa chỉ:</strong> ${esc(facts.hotelAddress)}</li><li><strong>Hướng dẫn đến quầy lễ tân:</strong> ${esc(facts.frontDeskGuide)}</li><li><strong>Giấy tờ cần mang theo:</strong> CCCD hoặc hộ chiếu còn hiệu lực.</li><li><strong>Chính sách giờ nhận phòng:</strong> ${esc(facts.checkInPolicy)}</li></ul><p>Nếu quý khách dự kiến đến muộn hoặc cần hỗ trợ, vui lòng liên hệ khách sạn trước giờ nhận phòng.</p><p>Trân trọng,<br>${esc(facts.hotelName)}</p></div>`; return [{ json: { ...source, status: $json, emails: { ...source.emails, reminder: { subject, html } } } }];"
+      },
+      "id": "0754621f-57cf-46da-9107-920310119e88",
+      "name": "Build Reminder Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer.email}}",
+        "subject": "={{$json.emails.reminder.subject}}",
+        "message": "={{$json.emails.reminder.html}}",
+        "options": {}
+      },
+      "id": "50df0b1b-f2c6-4df7-8196-5024d7b216de",
+      "name": "Send 24h Check-in Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -304,
+        1456
+      ],
+      "webhookId": "9ed82e08-7f55-433a-b429-f938862b8ae0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5kFY9HpRr2V5oLQc",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{$('Build Confirmation Template').first().json.pinReleaseAt}}"
+      },
+      "id": "c4333de8-d6f7-4127-815e-59792faf48de",
+      "name": "Wait Until 3h Before Check-in",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        1168
+      ],
+      "webhookId": "de289f2f-633e-4363-9f69-908778cbdfda"
+    },
+    {
+      "parameters": {
+        "url": "={{'http://host.docker.internal:3000/api/v1/internal/reservations/' + $('Build Confirmation Template').first().json.reservationId + '/self-checkin-status'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-internal-token"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "768d5952-9ed5-4bd4-9da3-f1b11c5c8be1",
+      "name": "Check Self Check-in Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1024,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.data.canReleaseCheckinCode}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "b012aab6-4f0e-4808-b119-b3acacfe9458",
+      "name": "Can Release PIN?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'http://host.docker.internal:3000/api/v1/internal/reservations/' + $('Build Confirmation Template').first().json.reservationId + '/release-checkin-code'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-internal-token"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2521d498-2da9-45a3-b740-3958645f9176",
+      "name": "Release Check-in PIN",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -544,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Build Confirmation Template').first().json; const code = $json; const facts = source.facts; function esc(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); } function formatDate(value) { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(date); } const subject = `Mã tự check-in ${source.reservationCode}`; const roomNumber = code.roomNumber ?? facts.roomNumber; const html = `<div style='font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a'><p>Xin chào ${esc(facts.customerName)},</p><p>Quý khách có thể tự check-in theo thông tin dưới đây.</p><table style='border-collapse:collapse;width:100%;max-width:720px;border:1px solid #e5e7eb'><tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569;width:210px'>Mã đặt phòng</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'><strong>${esc(source.reservationCode)}</strong></td></tr><tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569'>Cơ sở</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'><strong>${esc(facts.hotelName)}</strong></td></tr><tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569'>Địa chỉ</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'><strong>${esc(facts.hotelAddress)}</strong></td></tr><tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569'>Phòng</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'><strong>${esc(roomNumber)}</strong></td></tr><tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569'>Mã PIN</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:20px;letter-spacing:2px'><strong>${esc(code.data.pin)}</strong></td></tr><tr><td style='padding:8px 12px;color:#475569'>Hiệu lực</td><td style='padding:8px 12px'><strong>${esc(formatDate(code.data.validFrom))} - ${esc(formatDate(code.data.validTo))}</strong></td></tr></table><h3 style='margin:20px 0 8px;color:#0f172a'>Hướng dẫn sử dụng mã PIN</h3><ol><li>Đến đúng cơ sở và địa chỉ trong email này.</li><li>Di chuyển đến phòng được chỉ định.</li><li>Nhập mã PIN trên khóa cửa thông minh.</li><li>Nếu không mở được cửa, vui lòng liên hệ khách sạn để được hỗ trợ.</li></ol><p>Vui lòng không chia sẻ mã PIN này cho người không lưu trú.</p><p>Trân trọng,<br>${esc(facts.hotelName)}</p></div>`; return [{ json: { ...source, checkinCode: code, emails: { ...source.emails, pin: { subject, html } } } }];"
+      },
+      "id": "b49be107-1e70-4123-9af4-ac9475d79d06",
+      "name": "Build PIN Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer.email}}",
+        "subject": "={{$json.emails.pin.subject}}",
+        "message": "={{$json.emails.pin.html}}",
+        "options": {}
+      },
+      "id": "c76dc71f-4230-489c-87c0-0ba6f9e45c89",
+      "name": "Send Check-in PIN",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        1056
+      ],
+      "webhookId": "03352b9f-326c-4e57-8936-b60d3165571b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5kFY9HpRr2V5oLQc",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Confirmation Template": {
+      "main": [
+        [
+          {
+            "node": "Has Guest Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Guest Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation and Guide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation and Guide": {
+      "main": [
+        [
+          {
+            "node": "Is Self Check-in?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Self Check-in?": {
+      "main": [
+        [
+          {
+            "node": "Wait Until 3h Before Check-in",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Until 24h Before Check-in",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 24h Before Check-in": {
+      "main": [
+        [
+          {
+            "node": "Check Reservation Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reservation Status": {
+      "main": [
+        [
+          {
+            "node": "Should Send Reminder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send Reminder?": {
+      "main": [
+        [
+          {
+            "node": "Build Reminder Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reminder Template": {
+      "main": [
+        [
+          {
+            "node": "Send 24h Check-in Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 3h Before Check-in": {
+      "main": [
+        [
+          {
+            "node": "Check Self Check-in Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Self Check-in Status": {
+      "main": [
+        [
+          {
+            "node": "Can Release PIN?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Release PIN?": {
+      "main": [
+        [
+          {
+            "node": "Release Check-in PIN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Check-in PIN": {
+      "main": [
+        [
+          {
+            "node": "Build PIN Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PIN Email": {
+      "main": [
+        [
+          {
+            "node": "Send Check-in PIN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0a29e0ad-5ac0-40ce-89cd-13e68c14c8eb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1b53063c4bbf34f213e50709dbe4657fa8e848f71b4b93fb629a1ef051860a1c"
+  },
+  "id": "abbkal3MWW271aXH",
+  "tags": []
+}

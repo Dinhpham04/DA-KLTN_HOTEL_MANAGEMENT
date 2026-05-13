@@ -1,0 +1,159 @@
+{
+  "name": "Hotel Assistant Tool - Search Reservations",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000101",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst date = input.date\nreturn [{ json: { ...input, clientName: input.clientName ?? input.guestName, occupierName: input.occupierName ?? input.guestName, periodFrom: input.periodFrom ?? date, periodTo: input.periodTo ?? date, apiBaseUrl, internalToken: 'dev-internal-token', limit: input.limit ?? 5 } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000102",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBaseUrl + '/reservations' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.bookingCode }}"
+            },
+            {
+              "name": "clientName",
+              "value": "={{ $json.clientName }}"
+            },
+            {
+              "name": "occupierName",
+              "value": "={{ $json.occupierName }}"
+            },
+            {
+              "name": "clientId",
+              "value": "={{ $json.clientId }}"
+            },
+            {
+              "name": "roomId",
+              "value": "={{ $json.roomId }}"
+            },
+            {
+              "name": "leavingType",
+              "value": "={{ $json.leavingType }}"
+            },
+            {
+              "name": "periodFrom",
+              "value": "={{ $json.periodFrom }}"
+            },
+            {
+              "name": "periodTo",
+              "value": "={{ $json.periodTo }}"
+            },
+            {
+              "name": "facilityId",
+              "value": "={{ $json.facilityId }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $json.limit }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000103",
+      "name": "GET Reservations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json\nconst data = Array.isArray(result) ? result : Array.isArray(result.data) ? result.data : Array.isArray(result.items) ? result.items : result.data?.data ?? []\nreturn [{ json: { reservations: Array.isArray(data) ? data : [], sources: [{ type: 'api', name: 'GET /reservations' }] } }]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000104",
+      "name": "Normalize Reservations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Reservations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Reservations": {
+      "main": [
+        [
+          {
+            "node": "Normalize Reservations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-search-reservations-v1"
+}

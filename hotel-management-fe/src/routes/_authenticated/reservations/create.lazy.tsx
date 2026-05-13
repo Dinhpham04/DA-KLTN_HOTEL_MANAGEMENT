@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { createLazyFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import dayjs from 'dayjs'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { type Control, Controller, type FieldValues, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
 import { useDocumentTitle } from 'usehooks-ts'
@@ -14,6 +15,11 @@ import {
   CustomAccordionTrigger,
 } from '@/components/common/CustomAccordion'
 import { CustomCheckbox } from '@/components/common/CustomCheckbox'
+import {
+  CustomCollapsible,
+  CustomCollapsibleContent,
+  CustomCollapsibleTrigger,
+} from '@/components/common/CustomCollapsible'
 import CustomDatePicker from '@/components/common/CustomDatePicker'
 import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
@@ -23,25 +29,25 @@ import CustomSelectClean from '@/components/common/CustomSelectClean'
 import { CustomTextarea } from '@/components/common/CustomTextarea'
 import Loading from '@/components/common/Loading'
 import ReservationInfoCommonSection from '@/components/reservation/ReservationInfoCommonSection'
-import ReservationRequestNormalSection from '@/components/reservation/ReservationRequestNormalSection'
 import { ReservationOccupierTable } from '@/components/reservation/ReservationOccupierTable'
 import ReservationParkingSection from '@/components/reservation/ReservationParkingSection'
+import ReservationRequestNormalSection from '@/components/reservation/ReservationRequestNormalSection'
 import { DialogClose } from '@/components/ui/dialog'
 import { NButton } from '@/components/ui/new-button'
 import { DATA_TYPE_OPTIONS, SEX_OPTIONS, USED_MESSY_LEVEL_OPTIONS } from '@/constants/reservation'
 
+import { clientApi } from '@/api/client.api'
+import { reservationWithParkingApi } from '@/api/reservation-with-parking.api'
 import IdentificationSettingModal from '@/components/dialogs/IdentificationSettingModal'
 import SearchClientModal from '@/components/dialogs/SearchClientModal'
-import { reservationWithParkingApi } from '@/api/reservation-with-parking.api'
-import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
 import { useCreateReserveOccupierBatch } from '@/hooks/mutations/useCreateReserveOccupier'
+import { useCreateSmartLockPin } from '@/hooks/mutations/useCreateSmartLockPin'
 import { useGetCountries } from '@/hooks/queries/useGetCountries'
 import { useGetFacilities } from '@/hooks/queries/useGetFacilities'
 import { useGetRoomTypes } from '@/hooks/queries/useGetRoomTypes'
 import { useGetRooms } from '@/hooks/queries/useGetRooms'
 import { useGetStaffs } from '@/hooks/queries/useGetStaffs'
 import { useGetStayTypes } from '@/hooks/queries/useGetStayTypes'
-import { useCreateReservation } from '@/hooks/queries/useReservations'
 import { useDirectCheckinSmartLock } from '@/hooks/useDirectCheckinSmartLock'
 import { calculateStayTypeId, formatDateValue, mergeDateAndTime } from '@/lib/reservation'
 import {
@@ -55,6 +61,7 @@ import {
   resolveSelfCheckinSmartLockState,
 } from '@/lib/smart-lock-directcheckin'
 import { cn } from '@/lib/utils'
+import type { CreateClientBody } from '@/types/client'
 
 export const Route = createLazyFileRoute('/_authenticated/reservations/create')({
   component: ReservationCreatePage,
@@ -72,6 +79,7 @@ const formSchema = z.object({
 })
 
 type FormValues = z.infer<typeof formSchema>
+type ReservationClientValues = FormValues['client']
 
 const defaultValues: FormValues = {
   client: getReservationClientDefaultValues(),
@@ -84,6 +92,91 @@ const defaultValues: FormValues = {
   },
 }
 
+function normalizeOptionalText(value?: string) {
+  const trimmedValue = value?.trim()
+  return trimmedValue ? trimmedValue : undefined
+}
+
+function getNewClientValidationError(client: ReservationClientValues) {
+  if (client.data_type === '1' && !normalizeOptionalText(client.client_name)) {
+    return 'Vui lòng nhập họ tên khách hàng'
+  }
+
+  if (client.data_type !== '1' && !normalizeOptionalText(client.company_name)) {
+    return 'Vui lòng nhập tên công ty'
+  }
+
+  return null
+}
+
+function buildCreateClientPayload(client: ReservationClientValues): CreateClientBody {
+  const clientName = normalizeOptionalText(client.client_name)
+  const companyName = normalizeOptionalText(client.company_name)
+
+  return {
+    dataType: Number(client.data_type || '1'),
+    clientName: clientName ?? companyName ?? '',
+    contactName: normalizeOptionalText(client.contact_name),
+    companyName,
+    email: normalizeOptionalText(client.email),
+    countryId: client.country_id ? Number(client.country_id) : undefined,
+    sex: client.sex ? Number(client.sex) : undefined,
+    birthday: client.birthday || undefined,
+    stayDurationAutoFlag: client.stay_duration_auto_flag,
+    advertisingType: client.advertising_type ? 1 : 0,
+    ugFlag: client.ug_flag,
+    usedMessyLevel: client.used_messy_level ? Number(client.used_messy_level) : 0,
+    postpaidFlag: client.data_type === '3' ? client.postpaid_flag : false,
+    zipCode: normalizeOptionalText(client.zip_code),
+    companyZipCode: normalizeOptionalText(client.company_zip_code),
+    address1: normalizeOptionalText(client.address1),
+    address2: normalizeOptionalText(client.address2),
+    companyAddress1: normalizeOptionalText(client.company_address1),
+    companyAddress2: normalizeOptionalText(client.company_address2),
+    tel: normalizeOptionalText(client.tel),
+    telPhone: normalizeOptionalText(client.tel_phone),
+    telEmergency: normalizeOptionalText(client.tel_emergency),
+    companyTel: normalizeOptionalText(client.company_tel),
+    emergencyRelation: normalizeOptionalText(client.emergency_relation),
+    fax: normalizeOptionalText(client.fax),
+    memo: normalizeOptionalText(client.memo),
+  }
+}
+
+function extractClientIdFromResponse(data: unknown) {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'clientId' in data &&
+    typeof data.clientId === 'number'
+  ) {
+    return data.clientId
+  }
+
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'data' in data &&
+    typeof data.data === 'object' &&
+    data.data !== null &&
+    'clientId' in data.data &&
+    typeof data.data.clientId === 'number'
+  ) {
+    return data.data.clientId
+  }
+
+  return null
+}
+
+function toIsoDateTime(value?: string | null) {
+  if (!value) return null
+
+  const parsedDate = dayjs(value)
+  if (!parsedDate.isValid()) return null
+
+  return parsedDate.format('YYYY-MM-DDTHH:mm:ss')
+}
+
 // ─── Main Page Component ─────────────────────────────────────────────
 function ReservationCreatePage() {
   useDocumentTitle('Tạo đặt phòng mới')
@@ -92,11 +185,26 @@ function ReservationCreatePage() {
   const [showClientModal, setShowClientModal] = useState(false)
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
 
+  const search = useSearch({ from: '/_authenticated/reservations/create' })
+  const prefillApplied = useRef(false)
+  const pendingRoomId = useRef<string | null>(null)
+
   // Form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   })
+
+  // Phase 1: set facility/roomType/dates on mount; defer room_id to phase 2
+  useEffect(() => {
+    if (prefillApplied.current) return
+    prefillApplied.current = true
+    if (search.facilityId) form.setValue('reserve.facility_id', String(search.facilityId))
+    if (search.roomTypeId) form.setValue('reserve.room_type_id', String(search.roomTypeId))
+    if (search.periodFrom) form.setValue('reserve.period_from', search.periodFrom)
+    if (search.periodTo) form.setValue('reserve.period_to', search.periodTo)
+    if (search.roomId) pendingRoomId.current = String(search.roomId)
+  }, [search, form])
 
   const dataType = form.watch('client.data_type')
   const ugFlag = form.watch('client.ug_flag')
@@ -113,6 +221,9 @@ function ReservationCreatePage() {
   // Cascade state: selected facilityId → fetch room types, selected roomTypeId → fetch rooms
   const selectedFacilityId = form.watch('reserve.facility_id')
   const selectedRoomTypeId = form.watch('reserve.room_type_id')
+  const periodFrom = form.watch('reserve.period_from')
+  const periodTo = form.watch('reserve.period_to')
+  const canSelectRoom = Boolean(selectedFacilityId && selectedRoomTypeId && periodFrom && periodTo)
 
   const { data: roomTypesData } = useGetRoomTypes({
     params: selectedFacilityId
@@ -123,17 +234,23 @@ function ReservationCreatePage() {
       : undefined,
   })
   const { data: roomsData } = useGetRooms({
-    params: {
-      ...(selectedFacilityId ? { facilityId: Number(selectedFacilityId) } : {}),
-      ...(selectedRoomTypeId ? { roomTypeId: Number(selectedRoomTypeId) } : {}),
-      dataStatus: 1,
-    },
+    params: canSelectRoom
+      ? {
+          facilityId: Number(selectedFacilityId),
+          roomTypeId: Number(selectedRoomTypeId),
+          periodFrom,
+          periodTo,
+          limit: 1000,
+          dataStatus: 1,
+        }
+      : undefined,
+    enabled: canSelectRoom,
   })
 
-  const { isPending: isCreating } = useCreateReservation()
   const { mutateAsync: createSmartLockPin } = useCreateSmartLockPin()
   const { mutateAsync: createReserveOccupierBatch } = useCreateReserveOccupierBatch()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   // ─── Options ─────────────────────────────────────────────────────
   const countryOptions: Option[] = (countries ?? []).map((c) => ({
@@ -176,11 +293,11 @@ function ReservationCreatePage() {
 
   const roomOptions: Option[] = useMemo(
     () =>
-      (roomsData?.data ?? []).map((r) => ({
+      (canSelectRoom ? (roomsData?.data ?? []) : []).map((r) => ({
         label: r.roomNumber,
         value: String(r.roomId),
       })),
-    [roomsData]
+    [canSelectRoom, roomsData]
   )
 
   const stayTypeOptions: Option[] = useMemo(
@@ -202,8 +319,6 @@ function ReservationCreatePage() {
   )
 
   // Night count calculation
-  const periodFrom = form.watch('reserve.period_from')
-  const periodTo = form.watch('reserve.period_to')
   const checkinTime = form.watch('reserve.checkin_time')
   const nightCount = useMemo(() => {
     if (!periodFrom || !periodTo) return 0
@@ -224,6 +339,22 @@ function ReservationCreatePage() {
   useEffect(() => {
     if (!periodFrom || !periodTo) return
     form.setValue('reserve.stay_type_id', calculateStayTypeId(periodFrom, periodTo))
+  }, [periodFrom, periodTo, form])
+
+  // Phase 2: set room_id after roomsData loads (avoids race with the clear-on-date-change effect)
+  useEffect(() => {
+    if (!pendingRoomId.current || !roomsData?.data) return
+    const room = roomsData.data.find((r) => String(r.roomId) === pendingRoomId.current)
+    if (room) {
+      form.setValue('reserve.room_id', pendingRoomId.current)
+      form.setValue('reserve.noreserve_count_after', String(room.reservedCleanDay || 1))
+      pendingRoomId.current = null
+    }
+  }, [roomsData, form])
+
+  useEffect(() => {
+    if (pendingRoomId.current) return
+    form.setValue('reserve.room_id', '')
   }, [periodFrom, periodTo, form])
 
   // ─── Client select handler ────────────────────────────────────────
@@ -322,8 +453,17 @@ function ReservationCreatePage() {
         facilityId: values.reserve.facility_id ? Number(values.reserve.facility_id) : undefined,
         roomId: values.reserve.room_id ? Number(values.reserve.room_id) : undefined,
         stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
-        periodFrom: mergeDateAndTime(values.reserve.period_from, values.reserve.checkin_time),
+        periodFrom: mergeDateAndTime(
+          values.reserve.period_from,
+          values.reserve.checkin_time || '14:00'
+        ),
         periodTo: values.reserve.period_to,
+        noreserveCountBefore: values.reserve.noreserve_count_before
+          ? Number(values.reserve.noreserve_count_before)
+          : 0,
+        noreserveCountAfter: values.reserve.noreserve_count_after
+          ? Number(values.reserve.noreserve_count_after)
+          : 0,
         advertisingType: values.reserve.advertising_type
           ? Number(values.reserve.advertising_type)
           : undefined,
@@ -346,24 +486,38 @@ function ReservationCreatePage() {
       }
 
       const parkingPayload = values.reserve.parking_reserve
-        .filter((pr: any) => pr.parking_id)
-        .map((pr: any) => ({
+        .filter(
+          (
+            pr
+          ): pr is typeof pr & {
+            parking_id: number
+          } => Boolean(pr.parking_id && toIsoDateTime(pr.period_from))
+        )
+        .map((pr) => ({
           parkingId: pr.parking_id,
-          periodFrom: pr.period_from,
-          periodTo: pr.period_to || null,
+          periodFrom: toIsoDateTime(pr.period_from) as string,
+          periodTo: toIsoDateTime(pr.period_to),
           stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
+          confirmFlag: values.reserve.confirm_flag === '1',
           carType: pr.car_type,
           licensePlate: pr.license_plate,
           note: pr.note,
         }))
 
       const bicycleParkingPayload = values.reserve.bicycle_parking_reserve
-        .filter((br: any) => br.bicycle_parking_id)
-        .map((br: any) => ({
+        .filter(
+          (
+            br
+          ): br is typeof br & {
+            bicycle_parking_id: number
+          } => Boolean(br.bicycle_parking_id && toIsoDateTime(br.period_from))
+        )
+        .map((br) => ({
           bicycleParkingId: br.bicycle_parking_id,
-          periodFrom: br.period_from,
-          periodTo: br.period_to || null,
+          periodFrom: toIsoDateTime(br.period_from) as string,
+          periodTo: toIsoDateTime(br.period_to),
           stayTypeId: values.reserve.stay_type_id ? Number(values.reserve.stay_type_id) : undefined,
+          confirmFlag: values.reserve.confirm_flag === '1',
           bicycleTypeNote: br.bicycle_type_note,
           note: br.note,
         }))
@@ -371,7 +525,8 @@ function ReservationCreatePage() {
       const reservationResponse = await reservationWithParkingApi.createWithParkings({
         reservation: reservationPayload,
         parkingReserves: parkingPayload.length > 0 ? parkingPayload : undefined,
-        bicycleParkingReserves: bicycleParkingPayload.length > 0 ? bicycleParkingPayload : undefined,
+        bicycleParkingReserves:
+          bicycleParkingPayload.length > 0 ? bicycleParkingPayload : undefined,
       })
 
       const createdReserveId =
@@ -401,9 +556,7 @@ function ReservationCreatePage() {
             })),
           })
         } catch {
-          toast.warning(
-            'Đặt phòng đã tạo nhưng tạo người ở thất bại. Vui lòng kiểm tra lại.'
-          )
+          toast.warning('Đặt phòng đã tạo nhưng tạo người ở thất bại. Vui lòng kiểm tra lại.')
         }
       }
 
@@ -429,9 +582,78 @@ function ReservationCreatePage() {
         }
       }
 
+      toast.success('Tạo đặt phòng thành công')
+      queryClient.invalidateQueries({ queryKey: ['whiteboard'] })
       navigate({ to: '/reservations' })
     } catch {
-      // Error is handled by the mutation hook
+      toast.error('Tạo đặt phòng thất bại')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFormSubmit = async (values: FormValues) => {
+    if (values.client.client_id) {
+      await handleSubmit(values)
+      return
+    }
+
+    if (!values.reserve.period_from || !values.reserve.period_to) {
+      toast.error('Vui lòng chọn thời gian lưu trú')
+      return
+    }
+
+    const { smartLockValidationError } = resolveSelfCheckinSmartLockState({
+      directcheckinFlag: values.reserve.directcheckin_flag,
+      directcheckinType: values.reserve.directcheckin_type,
+      roomId: values.reserve.room_id,
+      smartLockPin: values.reserve.smart_lock_pin,
+      smartLockValidFrom: values.reserve.smart_lock_valid_from,
+      smartLockValidTo: values.reserve.smart_lock_valid_to,
+      periodFrom: values.reserve.period_from,
+      periodTo: values.reserve.period_to,
+      checkinTime: values.reserve.checkin_time,
+    })
+
+    if (smartLockValidationError) {
+      toast.error(smartLockValidationError)
+      return
+    }
+
+    const clientValidationError = getNewClientValidationError(values.client)
+
+    if (clientValidationError) {
+      toast.error(clientValidationError)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const createClientResponse = await clientApi.createClient(
+        buildCreateClientPayload(values.client)
+      )
+      const createdClientId = extractClientIdFromResponse(createClientResponse.data)
+
+      if (!createdClientId) {
+        toast.error('Tạo khách hàng thành công nhưng không lấy được mã khách hàng')
+        return
+      }
+
+      const nextValues: FormValues = {
+        ...values,
+        client: {
+          ...values.client,
+          client_id: String(createdClientId),
+          use_count: '0',
+        },
+      }
+
+      form.setValue('client.client_id', nextValues.client.client_id)
+      form.setValue('client.use_count', nextValues.client.use_count ?? '0')
+
+      await handleSubmit(nextValues)
+    } catch {
+      toast.error('Tạo khách hàng thất bại')
     } finally {
       setIsLoading(false)
     }
@@ -444,12 +666,12 @@ function ReservationCreatePage() {
 
   return (
     <>
-      {(isLoading || isCreating) && <Loading />}
+      {isLoading && <Loading />}
       <div className="common-container">
         <div className="pt-16 pb-52">
           <section>
             <FormProvider {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)}>
+              <form onSubmit={form.handleSubmit(handleFormSubmit)}>
                 <CustomAccordion
                   type="multiple"
                   className="w-full"
@@ -550,7 +772,7 @@ function ReservationCreatePage() {
                         </div>
 
                         {/* Advertising checkbox */}
-                        <div className="flex items-center ml-[15rem]">
+                        {/* <div className="flex items-center ml-[15rem]">
                           <div className="flex items-center">
                             <Controller
                               control={form.control}
@@ -568,7 +790,7 @@ function ReservationCreatePage() {
                               )}
                             />
                           </div>
-                        </div>
+                        </div> */}
 
                         {/* Individual: Name + Sex */}
                         {dataType === '1' && (
@@ -845,173 +1067,175 @@ function ReservationCreatePage() {
                           </div>
                         </div>
 
-                        {/* Emergency contact */}
-                        <div className="flex flex-wrap items-center">
-                          <div className="flex items-center my-4 mr-[3.8rem]">
-                            <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
-                              ☎ (Khẩn cấp)
-                            </p>
-                            <CustomInput
-                              {...form.register('client.tel_emergency')}
-                              className="bg-white w-[26.2rem]"
-                            />
-                          </div>
-
-                          <div className="flex items-center my-4 mr-[4.3rem]">
-                            <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
-                              Quan hệ
-                            </p>
-                            <CustomInput
-                              {...form.register('client.emergency_relation')}
-                              className="bg-white w-[26.2rem]"
-                            />
-                          </div>
-
-                          {(dataType === '2' || dataType === '3') && (
-                            <div className="flex items-center my-4">
-                              <p className="flex items-center min-w-[9.8rem] font-bold text-[1.6rem] leading-7">
-                                FAX
-                              </p>
-                              <CustomInput
-                                {...form.register('client.fax')}
-                                className="bg-white w-[26.2rem]"
-                              />
+                        <CustomCollapsible className="mt-8 w-full">
+                          <CustomCollapsibleTrigger className="justify-start gap-3 py-3 [&>svg]:w-6">
+                            <div className="font-bold text-black text-[1.6rem]">
+                              Thông tin chi tiết
                             </div>
-                          )}
-                        </div>
-
-                        {/* Individual: Company info section */}
-                        {dataType === '1' && (
-                          <>
+                          </CustomCollapsibleTrigger>
+                          <CustomCollapsibleContent className="mt-2">
+                            {/* Emergency contact */}
                             <div className="flex flex-wrap items-center">
-                              <div className="flex items-center my-4 mr-16">
-                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
-                                  Tên công ty
+                              <div className="flex items-center my-4 mr-[3.8rem]">
+                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
+                                  ☎ (Khẩn cấp)
                                 </p>
                                 <CustomInput
-                                  {...form.register('client.company_name')}
-                                  className={cn('bg-white w-[26.2rem]', {
-                                    'border-red-500': form.formState.errors.client?.company_name,
-                                  })}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-[4rem]">
-                              <div className="flex items-center my-4">
-                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
-                                  Mã bưu điện (CT)
-                                </p>
-                                <CustomInput
-                                  {...form.register('client.company_zip_code')}
+                                  {...form.register('client.tel_emergency')}
                                   className="bg-white w-[26.2rem]"
                                 />
                               </div>
-                              <div className="flex flex-wrap items-center gap-[2.6rem]">
-                                <div className="flex items-center my-4 mr-8">
-                                  <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
-                                    Địa chỉ (CT)
+
+                              <div className="flex items-center my-4 mr-[4.3rem]">
+                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
+                                  Quan hệ
+                                </p>
+                                <CustomInput
+                                  {...form.register('client.emergency_relation')}
+                                  className="bg-white w-[26.2rem]"
+                                />
+                              </div>
+
+                              {(dataType === '2' || dataType === '3') && (
+                                <div className="flex items-center my-4">
+                                  <p className="flex items-center min-w-[9.8rem] font-bold text-[1.6rem] leading-7">
+                                    FAX
                                   </p>
                                   <CustomInput
-                                    {...form.register('client.company_address1')}
-                                    placeholder="Tỉnh/Thành phố"
-                                    className={cn('bg-white w-[26.2rem]', {
-                                      'border-red-500':
-                                        form.formState.errors.client?.company_address1,
-                                    })}
+                                    {...form.register('client.fax')}
+                                    className="bg-white w-[26.2rem]"
                                   />
                                 </div>
-                                <div className="flex items-center my-4">
-                                  <CustomInput
-                                    {...form.register('client.company_address2')}
-                                    className={cn('bg-white w-[35.7rem]', {
-                                      'border-red-500':
-                                        form.formState.errors.client?.company_address2,
-                                    })}
-                                    placeholder="Quận/Huyện, Phường/Xã, Số nhà"
-                                  />
-                                </div>
-                              </div>
+                              )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-[4.2rem]">
-                              <div className="flex items-center my-4">
-                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
-                                  ☎ (Công ty)
-                                </p>
-                                <CustomInput
-                                  {...form.register('client.company_tel')}
-                                  className="bg-white w-[26.2rem]"
-                                />
-                              </div>
-                              <div className="flex items-center my-4">
-                                <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
-                                  FAX (CT)
-                                </p>
-                                <CustomInput
-                                  {...form.register('client.fax')}
-                                  className="bg-white w-[26.2rem]"
-                                />
-                              </div>
-                            </div>
-                          </>
-                        )}
 
-                        {/* Flags row + Memo */}
-                        <div className="flex flex-wrap">
-                          <div className="flex-1">
-                            <div className="flex flex-wrap items-center">
-                              <div className="w-96">
-                                <div className="flex items-center !my-[1.6rem]">
-                                  <Controller
-                                    control={form.control}
-                                    name="client.stay_duration_auto_flag"
-                                    render={({ field }) => (
-                                      <CustomCheckbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                      />
-                                    )}
-                                  />
-                                  <label className="flex items-center !mt-0 ml-3 font-bold text-[1.6rem] leading-7 cursor-pointer">
-                                    Tự động gia hạn
-                                  </label>
-                                </div>
-                              </div>
-                              <div className="flex !my-[1.2rem] w-[25rem] mr-[4rem]">
-                                <p className="flex items-center w-[15rem] font-bold text-[1.6rem]">
-                                  Vệ sinh phòng
-                                </p>
-                                <Controller
-                                  control={form.control}
-                                  name="client.used_messy_level"
-                                  render={({ field }) => (
-                                    <CustomSelectClean
-                                      option={USED_MESSY_LEVEL_OPTIONS}
-                                      selected={USED_MESSY_LEVEL_OPTIONS.find(
-                                        (o) => o.value === field.value
-                                      )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-[10.4rem] h-[3.6rem]"
+                            {/* Individual: Company info section */}
+                            {dataType === '1' && (
+                              <>
+                                <div className="flex flex-wrap items-center">
+                                  <div className="flex items-center my-4 mr-16">
+                                    <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
+                                      Tên công ty
+                                    </p>
+                                    <CustomInput
+                                      {...form.register('client.company_name')}
+                                      className={cn('bg-white w-[26.2rem]', {
+                                        'border-red-500':
+                                          form.formState.errors.client?.company_name,
+                                      })}
                                     />
-                                  )}
-                                />
-                              </div>
-                              <div className="flex items-center w-[20.6rem]">
-                                <span className="mr-4 font-bold text-[1.6rem]">Lần sử dụng</span>
-                                <CustomInput
-                                  {...form.register('client.use_count')}
-                                  disabled
-                                  className="bg-white disabled:bg-[#D9D9D9] !opacity-100 w-[5.6rem]"
-                                />
-                                <span className="ml-5 font-bold text-[1.6rem]">lần</span>
-                              </div>
-                            </div>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-[4rem]">
+                                  <div className="flex items-center my-4">
+                                    <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
+                                      Mã bưu điện (CT)
+                                    </p>
+                                    <CustomInput
+                                      {...form.register('client.company_zip_code')}
+                                      className="bg-white w-[26.2rem]"
+                                    />
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-[2.6rem]">
+                                    <div className="flex items-center my-4 mr-8">
+                                      <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem]">
+                                        Địa chỉ (CT)
+                                      </p>
+                                      <CustomInput
+                                        {...form.register('client.company_address1')}
+                                        placeholder="Tỉnh/Thành phố"
+                                        className={cn('bg-white w-[26.2rem]', {
+                                          'border-red-500':
+                                            form.formState.errors.client?.company_address1,
+                                        })}
+                                      />
+                                    </div>
+                                    <div className="flex items-center my-4">
+                                      <CustomInput
+                                        {...form.register('client.company_address2')}
+                                        className={cn('bg-white w-[35.7rem]', {
+                                          'border-red-500':
+                                            form.formState.errors.client?.company_address2,
+                                        })}
+                                        placeholder="Quận/Huyện, Phường/Xã, Số nhà"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-[4.2rem]">
+                                  <div className="flex items-center my-4">
+                                    <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
+                                      ☎ (Công ty)
+                                    </p>
+                                    <CustomInput
+                                      {...form.register('client.company_tel')}
+                                      className="bg-white w-[26.2rem]"
+                                    />
+                                  </div>
+                                  <div className="flex items-center my-4">
+                                    <p className="flex items-center min-w-[15rem] font-bold text-[1.6rem] leading-7">
+                                      FAX (CT)
+                                    </p>
+                                    <CustomInput
+                                      {...form.register('client.fax')}
+                                      className="bg-white w-[26.2rem]"
+                                    />
+                                  </div>
+                                </div>
+                              </>
+                            )}
 
-                            <div className="flex items-start">
-                              <div className="flex flex-col w-[10rem]">
-                                <p className="flex items-center !my-[1.6rem] w-[9.2rem] h-fit font-bold text-[1.6rem]">
-                                  Ghi chú
-                                </p>
-                                <div>
+                            {/* Flags row */}
+                            <div className="flex flex-wrap">
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center">
+                                  <div className="w-96">
+                                    <div className="flex items-center !my-[1.6rem]">
+                                      <Controller
+                                        control={form.control}
+                                        name="client.stay_duration_auto_flag"
+                                        render={({ field }) => (
+                                          <CustomCheckbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                          />
+                                        )}
+                                      />
+                                      <label className="flex items-center !mt-0 ml-3 font-bold text-[1.6rem] leading-7 cursor-pointer">
+                                        Tự động gia hạn
+                                      </label>
+                                    </div>
+                                  </div>
+                                  <div className="flex !my-[1.2rem] w-[25rem] mr-[4rem]">
+                                    <p className="flex items-center w-[15rem] font-bold text-[1.6rem]">
+                                      Vệ sinh phòng
+                                    </p>
+                                    <Controller
+                                      control={form.control}
+                                      name="client.used_messy_level"
+                                      render={({ field }) => (
+                                        <CustomSelectClean
+                                          option={USED_MESSY_LEVEL_OPTIONS}
+                                          selected={USED_MESSY_LEVEL_OPTIONS.find(
+                                            (o) => o.value === field.value
+                                          )}
+                                          change={(o) => field.onChange(o.value)}
+                                          customClassMain="w-[10.4rem] h-[3.6rem]"
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="flex items-center w-[20.6rem]">
+                                    <span className="mr-4 font-bold text-[1.6rem]">
+                                      Lần sử dụng
+                                    </span>
+                                    <CustomInput
+                                      {...form.register('client.use_count')}
+                                      disabled
+                                      className="bg-white disabled:bg-[#D9D9D9] !opacity-100 w-[5.6rem]"
+                                    />
+                                    <span className="ml-5 font-bold text-[1.6rem]">lần</span>
+                                  </div>
                                   {dataType === '3' && (
                                     <div className="flex items-center !my-[1.6rem]">
                                       <Controller
@@ -1029,30 +1253,38 @@ function ReservationCreatePage() {
                                       </label>
                                     </div>
                                   )}
-                                  <div className="flex items-center !my-[0.9rem] w-36 h-fit">
-                                    <Controller
-                                      control={form.control}
-                                      name="client.ug_flag"
-                                      render={({ field }) => (
-                                        <CustomCheckbox
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      )}
-                                    />
-                                    <label className="flex items-center !mt-0 ml-3 font-bold text-[1.6rem] leading-7 cursor-pointer">
-                                      UG
-                                    </label>
-                                  </div>
                                 </div>
                               </div>
-                              <div className="flex flex-1">
-                                <CustomTextarea
-                                  {...form.register('client.memo')}
-                                  className="bg-white py-8 flex-1"
-                                />
-                              </div>
                             </div>
+                          </CustomCollapsibleContent>
+                        </CustomCollapsible>
+
+                        <div className="flex items-start mt-6">
+                          <div className="flex flex-col w-[10rem]">
+                            <p className="flex items-center !my-[1.6rem] w-[9.2rem] h-fit font-bold text-[1.6rem]">
+                              Ghi chú
+                            </p>
+                            <div className="flex items-center !my-[0.9rem] w-36 h-fit">
+                              <Controller
+                                control={form.control}
+                                name="client.ug_flag"
+                                render={({ field }) => (
+                                  <CustomCheckbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                )}
+                              />
+                              <label className="flex items-center !mt-0 ml-3 font-bold text-[1.6rem] leading-7 cursor-pointer">
+                                UG
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex flex-1">
+                            <CustomTextarea
+                              {...form.register('client.memo')}
+                              className="bg-white py-8 flex-1"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1094,6 +1326,7 @@ function ReservationCreatePage() {
                           roomOptions={roomOptions}
                           onRoomChange={handleRoomChange}
                           isFacilitySelected={!!selectedFacilityId}
+                          isRoomSelectEnabled={canSelectRoom}
                           stayTypeOptions={stayTypeOptions}
                           checkinTimeFieldName="reserve.checkin_time"
                           disableRentalKeysSelect
@@ -1111,6 +1344,9 @@ function ReservationCreatePage() {
                           periodFrom={periodFrom}
                           periodTo={periodTo}
                           staffOptions={staffOptions}
+                          roomTypeId={selectedRoomTypeId}
+                          stayTypeId={form.watch('reserve.stay_type_id')}
+                          facilityId={selectedFacilityId}
                         />
 
                         <ReservationOccupierTable

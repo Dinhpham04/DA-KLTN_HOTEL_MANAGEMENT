@@ -27,6 +27,11 @@ import {
   ReservationCancelledEvent,
 } from './events/reservation.events';
 
+type ParkingOverlapClient = Pick<
+  Prisma.TransactionClient,
+  'parkingReserve' | 'bicycleParkingReserve'
+>;
+
 @Injectable()
 export class ReservationService {
   constructor(
@@ -91,6 +96,8 @@ export class ReservationService {
       reserveStatus: initialStatus,
       periodFrom,
       periodTo,
+      noreserveCountBefore: dto.noreserveCountBefore ?? 0,
+      noreserveCountAfter: dto.noreserveCountAfter ?? 0,
       reserveType: dto.reserveType,
       bookingUnitPrice: dto.bookingUnitPrice,
       adjustmentUnitPrice: dto.adjustmentUnitPrice,
@@ -183,6 +190,19 @@ export class ReservationService {
       await this.ensureNoOverlap(dto.reservation.roomId, periodFrom, periodTo);
     }
 
+    this.ensureNoDuplicateParkingPeriods(
+      dto.parkingReserves,
+      (parkingReserve) => parkingReserve.parkingId,
+      (parkingReserve) => parkingReserve.periodFrom,
+      (parkingReserve) => parkingReserve.periodTo,
+    );
+    this.ensureNoDuplicateParkingPeriods(
+      dto.bicycleParkingReserves,
+      (bicycleParkingReserve) => bicycleParkingReserve.bicycleParkingId,
+      (bicycleParkingReserve) => bicycleParkingReserve.periodFrom,
+      (bicycleParkingReserve) => bicycleParkingReserve.periodTo,
+    );
+
     return this.prisma.$transaction(async (tx) => {
       // Build reservation data
       const reserveData = this.buildReserveCreateInput(dto.reservation, currentStaffId);
@@ -195,6 +215,19 @@ export class ReservationService {
 
       // Batch create parking reserves if provided
       if (dto.parkingReserves && dto.parkingReserves.length > 0) {
+        for (const parkingReserve of dto.parkingReserves) {
+          const { periodFrom, periodTo } = this.parseParkingPeriod(
+            parkingReserve.periodFrom,
+            parkingReserve.periodTo,
+          );
+          await this.ensureNoParkingReserveOverlap(
+            tx,
+            parkingReserve.parkingId,
+            periodFrom,
+            periodTo,
+          );
+        }
+
         const parkingData = dto.parkingReserves.map((pr) => ({
           parkingId: pr.parkingId,
           reserveId: reserve.reserveId,
@@ -202,7 +235,7 @@ export class ReservationService {
           periodFrom: new Date(pr.periodFrom),
           periodTo: pr.periodTo ? new Date(pr.periodTo) : null,
           stayTypeId: pr.stayTypeId || reserve.stayTypeId,
-          confirmFlag: pr.confirmFlag ?? false,
+          confirmFlag: pr.confirmFlag ?? reserve.confirmFlag,
           carType: pr.carType,
           licensePlate: pr.licensePlate,
           note: pr.note,
@@ -215,6 +248,19 @@ export class ReservationService {
 
       // Batch create bicycle parking reserves if provided
       if (dto.bicycleParkingReserves && dto.bicycleParkingReserves.length > 0) {
+        for (const bicycleParkingReserve of dto.bicycleParkingReserves) {
+          const { periodFrom, periodTo } = this.parseParkingPeriod(
+            bicycleParkingReserve.periodFrom,
+            bicycleParkingReserve.periodTo,
+          );
+          await this.ensureNoBicycleParkingReserveOverlap(
+            tx,
+            bicycleParkingReserve.bicycleParkingId,
+            periodFrom,
+            periodTo,
+          );
+        }
+
         const bicycleData = dto.bicycleParkingReserves.map((br) => ({
           bicycleParkingId: br.bicycleParkingId,
           reserveId: reserve.reserveId,
@@ -222,7 +268,7 @@ export class ReservationService {
           periodFrom: new Date(br.periodFrom),
           periodTo: br.periodTo ? new Date(br.periodTo) : null,
           stayTypeId: br.stayTypeId || reserve.stayTypeId,
-          confirmFlag: br.confirmFlag ?? false,
+          confirmFlag: br.confirmFlag ?? reserve.confirmFlag,
           bicycleTypeNote: br.bicycleTypeNote,
           note: br.note,
           saleDate: br.saleDate ? new Date(br.saleDate) : null,
@@ -290,6 +336,12 @@ export class ReservationService {
       ...(dto.reserveType !== undefined && { reserveType: dto.reserveType }),
       ...(dto.periodFrom !== undefined && { periodFrom: new Date(dto.periodFrom) }),
       ...(dto.periodTo !== undefined && { periodTo: new Date(dto.periodTo) }),
+      ...(dto.noreserveCountBefore !== undefined && {
+        noreserveCountBefore: dto.noreserveCountBefore,
+      }),
+      ...(dto.noreserveCountAfter !== undefined && {
+        noreserveCountAfter: dto.noreserveCountAfter,
+      }),
       ...(dto.bookingUnitPrice !== undefined && { bookingUnitPrice: dto.bookingUnitPrice }),
       ...(dto.adjustmentUnitPrice !== undefined && { adjustmentUnitPrice: dto.adjustmentUnitPrice }),
       ...(dto.deposit !== undefined && { deposit: dto.deposit }),
@@ -508,6 +560,107 @@ export class ReservationService {
     }
   }
 
+  private parseParkingPeriod(
+    periodFromValue: string,
+    periodToValue?: string,
+  ): { periodFrom: Date; periodTo: Date | null } {
+    const periodFrom = new Date(periodFromValue);
+    const periodTo = periodToValue ? new Date(periodToValue) : null;
+
+    if (Number.isNaN(periodFrom.getTime()) || (periodTo && Number.isNaN(periodTo.getTime()))) {
+      throw new BadRequestException('Parking period must be a valid date');
+    }
+
+    if (periodTo && periodTo < periodFrom) {
+      throw new BadRequestException('Parking period to must be after or equal to period from');
+    }
+
+    return { periodFrom, periodTo };
+  }
+
+  private periodsOverlap(
+    firstFrom: Date,
+    firstTo: Date | null,
+    secondFrom: Date,
+    secondTo: Date | null,
+  ): boolean {
+    return (!secondTo || firstFrom <= secondTo) && (!firstTo || secondFrom <= firstTo);
+  }
+
+  private ensureNoDuplicateParkingPeriods<T>(
+    items: T[] | undefined,
+    getSlotId: (item: T) => number,
+    getPeriodFrom: (item: T) => string,
+    getPeriodTo: (item: T) => string | undefined,
+  ): void {
+    if (!items?.length) return;
+
+    const parsedItems = items.map((item) => ({
+      slotId: getSlotId(item),
+      ...this.parseParkingPeriod(getPeriodFrom(item), getPeriodTo(item)),
+    }));
+
+    for (let i = 0; i < parsedItems.length; i++) {
+      for (let j = i + 1; j < parsedItems.length; j++) {
+        if (
+          parsedItems[i].slotId === parsedItems[j].slotId &&
+          this.periodsOverlap(
+            parsedItems[i].periodFrom,
+            parsedItems[i].periodTo,
+            parsedItems[j].periodFrom,
+            parsedItems[j].periodTo,
+          )
+        ) {
+          throw new ConflictException('Parking reserve overlaps another selected period');
+        }
+      }
+    }
+  }
+
+  private async ensureNoParkingReserveOverlap(
+    client: ParkingOverlapClient,
+    parkingId: number,
+    periodFrom: Date,
+    periodTo: Date | null,
+  ): Promise<void> {
+    const overlap = await client.parkingReserve.findFirst({
+      where: {
+        parkingId,
+        deletedAt: null,
+        dataStatus: 1,
+        ...(periodTo && { periodFrom: { lte: periodTo } }),
+        OR: [{ periodTo: null }, { periodTo: { gte: periodFrom } }],
+      },
+      select: { parkingReserveId: true },
+    });
+
+    if (overlap) {
+      throw new ConflictException('Parking reserve overlaps existing reservation');
+    }
+  }
+
+  private async ensureNoBicycleParkingReserveOverlap(
+    client: ParkingOverlapClient,
+    bicycleParkingId: number,
+    periodFrom: Date,
+    periodTo: Date | null,
+  ): Promise<void> {
+    const overlap = await client.bicycleParkingReserve.findFirst({
+      where: {
+        bicycleParkingId,
+        deletedAt: null,
+        dataStatus: 1,
+        ...(periodTo && { periodFrom: { lte: periodTo } }),
+        OR: [{ periodTo: null }, { periodTo: { gte: periodFrom } }],
+      },
+      select: { bicycleParkingReserveId: true },
+    });
+
+    if (overlap) {
+      throw new ConflictException('Bicycle parking reserve overlaps existing reservation');
+    }
+  }
+
   private buildReserveCreateInput(
     dto: CreateReservationDto,
     staffId: number,
@@ -518,6 +671,8 @@ export class ReservationService {
       reserveStatus: initialStatus,
       periodFrom: new Date(dto.periodFrom),
       periodTo: new Date(dto.periodTo),
+      noreserveCountBefore: dto.noreserveCountBefore ?? 0,
+      noreserveCountAfter: dto.noreserveCountAfter ?? 0,
       reserveType: dto.reserveType,
       bookingUnitPrice: dto.bookingUnitPrice,
       adjustmentUnitPrice: dto.adjustmentUnitPrice,

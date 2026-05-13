@@ -10,7 +10,7 @@ export class ReservationRepository {
   private readonly includeRelations = {
     client: { include: { country: true } },
     facility: true,
-    room: { include: { roomType: { include: { roomClass: true } } } },
+    room: { include: { facility: true, roomType: { include: { roomClass: true } } } },
     stayType: true,
     chargeStaff: true,
     chargeStaff2: true,

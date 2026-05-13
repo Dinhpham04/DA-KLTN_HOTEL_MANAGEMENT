@@ -1,6 +1,6 @@
-import { useMutation } from '@tanstack/react-query'
 import { occupierApi } from '@/api/occupier.api'
 import type { UpdateReserveOccupierBody } from '@/types/occupier'
+import { useMutation } from '@tanstack/react-query'
 
 interface UseUpdateReserveOccupierParams {
   onSuccess?: () => void

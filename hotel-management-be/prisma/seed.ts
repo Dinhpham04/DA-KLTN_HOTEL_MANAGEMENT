@@ -2236,6 +2236,21 @@ async function main(): Promise<void> {
   }
   console.log(`  BicycleParkingReserves created: ${bprCount}`);
 
+  // ─── PaymentMethods ────────────────────────────────
+  const pmCount = await prisma.paymentMethod.count()
+  if (pmCount === 0) {
+    const pmData: Prisma.PaymentMethodCreateManyInput[] = [
+      { paymentTypeId: 1, category: 'cash',     displayName: 'Tiền mặt',                   accountCode: 1111, createdStaffId: admin.staffId, dataStatus: 1 },
+      { paymentTypeId: 2, category: 'transfer',  displayName: 'Chuyển khoản ngân hàng',     accountCode: 1121, createdStaffId: admin.staffId, dataStatus: 1 },
+      { paymentTypeId: 3, category: 'card',      displayName: 'Thẻ tín dụng / ghi nợ',     accountCode: 1131, createdStaffId: admin.staffId, dataStatus: 1 },
+      { paymentTypeId: 4, category: 'ewallet',   displayName: 'Ví điện tử (MoMo / ZaloPay)',accountCode: 1141, createdStaffId: admin.staffId, dataStatus: 1 },
+    ]
+    await prisma.paymentMethod.createMany({ data: pmData })
+    console.log(`  PaymentMethods created: ${pmData.length}`)
+  } else {
+    console.log(`  PaymentMethods already seeded (${pmCount} records), skipping`)
+  }
+
   await prisma.$disconnect();
 
   console.log('\n══════════════════════════════════════════');
@@ -2264,6 +2279,7 @@ async function main(): Promise<void> {
   console.log('  CleaningDetails:    9 (4 rooms, 3 common areas, 2 key-safety rows)');
   console.log('  SmartLockPins:      2 (linked to cleaning key-safety rows)');
   console.log('  Occupiers:          3 (co-guests)');
+  console.log('  PaymentMethods:     4 (Tiền mặt, Chuyển khoản, Thẻ, Ví điện tử)');
 }
 
 main().catch((e: unknown) => {

@@ -46,6 +46,8 @@ export class ReservationResponseDto {
   // Period
   @ApiPropertyOptional() readonly periodFrom!: Date | null;
   @ApiPropertyOptional() readonly periodTo!: Date | null;
+  @ApiPropertyOptional() readonly noreserveCountBefore!: number | null;
+  @ApiPropertyOptional() readonly noreserveCountAfter!: number | null;
 
   // Dates
   @ApiPropertyOptional() readonly checkedInAt!: Date | null;
@@ -147,6 +149,8 @@ export class ReservationResponseDto {
 
       periodFrom: reserve.periodFrom,
       periodTo: reserve.periodTo,
+      noreserveCountBefore: reserve.noreserveCountBefore,
+      noreserveCountAfter: reserve.noreserveCountAfter,
 
       checkedInAt: reserve.checkedInAt,
       checkoutAt: reserve.checkoutAt,

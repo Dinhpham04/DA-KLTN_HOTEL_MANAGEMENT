@@ -88,6 +88,8 @@ export interface RoomFilterParams {
   roomClassId?: number
   roomStatus?: number
   dataStatus?: number
+  periodFrom?: string
+  periodTo?: string
 }
 
 // Error response structure
