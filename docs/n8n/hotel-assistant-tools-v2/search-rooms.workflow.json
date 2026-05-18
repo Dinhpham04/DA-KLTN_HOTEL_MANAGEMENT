@@ -1,0 +1,116 @@
+{
+  "name": "Hotel Assistant Tool V2 - Search Rooms",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "a1bf08e1-360f-4abd-97dc-dc0f1eb25da2",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseQueryString(value) {\n  if (value === undefined || value === null || value === '') return {}\n  if (typeof value === 'object' && !Array.isArray(value)) return value\n  const text = String(value).trim()\n  if (!text) return {}\n  if (text.startsWith('{')) {\n    try {\n      const parsed = JSON.parse(text)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}\n    } catch {}\n  }\n  const source = text.startsWith('?') ? text.slice(1) : text\n  const result = {}\n  for (const pair of source.split('&')) {\n    if (!pair) continue\n    const separatorIndex = pair.indexOf('=')\n    const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n    const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n    const key = decodeURIComponent(rawKey.replace(/\\+/g, ' ')).trim()\n    const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' ')).trim()\n    if (!key || paramValue === '') continue\n    if (result[key] === undefined) result[key] = paramValue\n    else if (Array.isArray(result[key])) result[key].push(paramValue)\n    else result[key] = [result[key], paramValue]\n  }\n  return result\n}\n\nfunction parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : parseQueryString(value)\n    } catch {\n      return parseQueryString(value)\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}\n}\n\nfunction readInput() {\n  const raw = parseObject($json)\n  const input = { ...raw }\n  for (const key of ['json', 'body', 'data', 'input', 'workflowInputs', 'parameters', 'args']) {\n    Object.assign(input, parseObject(raw[key]))\n  }\n  Object.assign(input, parseQueryString(raw.query))\n  Object.assign(input, parseQueryString(raw.queryString))\n  return input\n}\n\nfunction present(value) {\n  if (Array.isArray(value)) return value.length > 0 ? value : undefined\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\n\nfunction toInteger(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) ? parsed : undefined\n}\n\nfunction toBooleanString(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  if (normalized === true || normalized === 1 || normalized === '1' || String(normalized).toLowerCase() === 'true') return 'true'\n  if (normalized === false || normalized === 0 || normalized === '0' || String(normalized).toLowerCase() === 'false') return 'false'\n  return undefined\n}\n\nfunction assign(params, key, value, type = 'string') {\n  const normalized = present(value)\n  if (normalized === undefined) return\n  if (type === 'number') {\n    const numberValue = toInteger(normalized)\n    if (numberValue !== undefined) params[key] = String(numberValue)\n    return\n  }\n  if (type === 'boolean') {\n    const booleanValue = toBooleanString(normalized)\n    if (booleanValue !== undefined) params[key] = booleanValue\n    return\n  }\n  if (Array.isArray(normalized)) params[key] = normalized.map(String).filter(Boolean)\n  else params[key] = String(normalized).trim()\n}\n\nfunction encodeQuery(params) {\n  const parts = []\n  for (const [key, value] of Object.entries(params)) {\n    if (value === undefined || value === null || value === '') continue\n    const values = Array.isArray(value) ? value : [value]\n    for (const item of values) parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)))\n  }\n  return parts.join('&')\n}\n\nfunction buildUrl(baseUrl, endpoint, params) {\n  const query = encodeQuery(params)\n  return query ? baseUrl + endpoint + '?' + query : baseUrl + endpoint\n}\n\nconst config = {\n  \"endpoint\": \"/rooms\",\n  \"allowedParams\": [\n    {\n      \"name\": \"search\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"facilityId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"roomTypeId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"roomClassId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"roomStatus\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"dataStatus\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"periodFrom\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"periodTo\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"page\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"limit\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"orderBy\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"order\",\n      \"type\": \"string\"\n    }\n  ],\n  \"aliases\": [\n    {\n      \"from\": \"roomNo\",\n      \"to\": \"search\"\n    }\n  ],\n  \"defaults\": {\n    \"dataStatus\": 1,\n    \"limit\": 50\n  },\n  \"keepFields\": [\n    \"roomType\"\n  ]\n}\nconst input = readInput()\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst params = {}\n\nfor (const alias of config.aliases ?? []) {\n  const sourceValue = present(input[alias.from])\n  if (sourceValue !== undefined && present(input[alias.to]) === undefined) input[alias.to] = sourceValue\n}\n\nfor (const field of config.allowedParams ?? []) {\n  assign(params, field.name, input[field.name], field.type ?? 'string')\n}\n\nfor (const [key, value] of Object.entries(config.defaults ?? {})) {\n  if (params[key] === undefined) params[key] = String(value)\n}\n\nfor (const rule of config.copyRules ?? []) {\n  const sourceValue = present(input[rule.from])\n  if (sourceValue !== undefined && params[rule.to] === undefined) assign(params, rule.to, sourceValue, rule.type ?? 'string')\n}\n\nconst missing = []\nfor (const key of config.requiredParams ?? []) {\n  if (present(params[key]) === undefined) missing.push(key)\n}\n\nconst endpoint = config.pathParam\n  ? config.endpointPrefix + '/' + encodeURIComponent(String(params[config.pathParam] ?? ''))\n  : config.endpoint\nconst cleanParams = config.pathParam ? Object.fromEntries(Object.entries(params).filter(([key]) => key !== config.pathParam)) : params\nconst apiUrl = missing.length === 0 ? buildUrl(apiBaseUrl, endpoint, cleanParams) : null\nconst warnings = missing.map((key) => 'Missing required query param: ' + key)\nconst kept = {}\nfor (const key of config.keepFields ?? []) kept[key] = input[key]\nreturn [{ json: { rawInput: input, params, queryString: encodeQuery(params), apiUrl, canCallApi: missing.length === 0, warnings, apiBaseUrl, internalToken: 'dev-internal-token', ...kept } }]\n"
+      },
+      "id": "543ac315-8624-426d-ac6a-b47af4e219b8",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b8a88f30-3831-4257-b3b6-5e5bc63f730f",
+      "name": "GET Rooms",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeText(value) {\n  return String(value ?? '').trim().toLowerCase()\n}\n\nfunction matchesRoomType(room, roomType) {\n  const expected = normalizeText(roomType)\n  if (!expected) return true\n  return normalizeText(room.roomTypeName).includes(expected) || normalizeText(room.roomClassName).includes(expected)\n}\n\nfunction extractRows(result) {\n  return Array.isArray(result)\n    ? result\n    : Array.isArray(result.availableRooms)\n      ? result.availableRooms\n      : Array.isArray(result.rooms)\n        ? result.rooms\n        : Array.isArray(result.data)\n          ? result.data\n          : Array.isArray(result.items)\n            ? result.items\n            : []\n}\n\nconst input = $('Prepare Input').first().json\nconst rows = extractRows($json)\nconst rooms = rows.filter((room) => matchesRoomType(room, input.roomType))\nreturn [{ json: { rooms, sources: [{ type: 'api', name: 'GET /rooms' }] } }]"
+      },
+      "id": "167556cd-269f-41b2-9fab-dcbe7fb62d46",
+      "name": "Normalize Rooms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Rooms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Rooms": {
+      "main": [
+        [
+          {
+            "node": "Normalize Rooms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-search-rooms-v1-v2"
+}

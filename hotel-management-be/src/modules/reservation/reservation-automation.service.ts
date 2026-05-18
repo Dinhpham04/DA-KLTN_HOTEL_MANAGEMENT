@@ -84,6 +84,35 @@ type ReservationCheckedInAutomationPayload = {
   };
 };
 
+type DebtReminderItem = {
+  reservationId: number;
+  reservationCode: string;
+  paymentDueDate: string;
+  requestTotal: number;
+  paidTotal: number;
+  remainingAmount: number;
+  customer: {
+    id: number | null;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    language: 'vi';
+  };
+  booking: {
+    checkInAt: string | null;
+    checkOutAt: string | null;
+    roomType: string | null;
+    roomNumber: string | null;
+  };
+  hotel: {
+    facilityId: number | null;
+    name: string | null;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+};
+
 @Injectable()
 export class ReservationAutomationService {
   private readonly logger = new Logger(ReservationAutomationService.name);
@@ -147,8 +176,8 @@ export class ReservationAutomationService {
 
     const checkInAt = reserve.checkinDate ?? reserve.periodFrom;
     const isCancelled =
-      reserve.reserveStatus === ReserveStatus.CANCELLED ||
-      reserve.deleteStatus === DeleteStatus.CANCELLED ||
+      Number(reserve.reserveStatus) === Number(ReserveStatus.CANCELLED) ||
+      Number(reserve.deleteStatus) === Number(DeleteStatus.CANCELLED) ||
       reserve.cancelledAt !== null ||
       reserve.deletedAt !== null;
 
@@ -162,6 +191,110 @@ export class ReservationAutomationService {
       checkInAt: checkInAt?.toISOString() ?? null,
       shouldSendCheckinReminder:
         !isCancelled && !reserve.checkinFlag && !reserve.disableReservation,
+    };
+  }
+
+  async getDebtRemindersDue(
+    dueDate: string,
+  ): Promise<{ dueDate: string; reminders: DebtReminderItem[] }> {
+    const targetDate = new Date(dueDate);
+    if (Number.isNaN(targetDate.getTime())) {
+      throw new BadRequestException('dueDate must be a valid ISO date');
+    }
+
+    const dayStart = new Date(targetDate);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const nextDayStart = new Date(dayStart);
+    nextDayStart.setUTCDate(nextDayStart.getUTCDate() + 1);
+
+    const reserves = await this.prisma.reserve.findMany({
+      where: {
+        deletedAt: null,
+        cancelledAt: null,
+        deleteStatus: null,
+        paymentDueDate: {
+          gte: dayStart,
+          lt: nextDayStart,
+        },
+      },
+      include: {
+        client: true,
+        facility: true,
+        room: {
+          include: {
+            facility: true,
+            roomType: {
+              include: {
+                roomClass: true,
+              },
+            },
+          },
+        },
+        requestDetails: {
+          where: {
+            deletedAt: null,
+          },
+        },
+        saleDetails: {
+          where: {
+            deletedAt: null,
+          },
+        },
+      },
+      orderBy: [{ paymentDueDate: 'asc' }, { reserveId: 'asc' }],
+    });
+
+    const reminders = reserves.flatMap((reserve) => {
+      const requestTotal = reserve.requestDetails.reduce(
+        (sum, detail) => sum + Number(detail.totalPriceChange ?? detail.totalPrice ?? 0),
+        0,
+      );
+      const paidTotal = reserve.saleDetails.reduce(
+        (sum, detail) => sum + Number(detail.totalPrice ?? 0),
+        0,
+      );
+      const remainingAmount = requestTotal - paidTotal;
+      if (remainingAmount <= 0 || !reserve.paymentDueDate) return [];
+
+      const facility = reserve.facility ?? reserve.room?.facility;
+      const roomType = reserve.room?.roomType;
+      const client = reserve.client;
+
+      return [
+        {
+          reservationId: reserve.reserveId,
+          reservationCode: this.formatReservationCode(reserve.reserveId),
+          paymentDueDate: reserve.paymentDueDate.toISOString().split('T')[0] ?? dueDate,
+          requestTotal,
+          paidTotal,
+          remainingAmount,
+          customer: {
+            id: reserve.clientId,
+            name: client?.clientName ?? client?.clientNameEn ?? 'Quý khách',
+            email: client?.email ?? null,
+            phone: client?.tel ?? client?.telPhone ?? client?.companyTel ?? null,
+            language: 'vi',
+          },
+          booking: {
+            checkInAt: (reserve.checkinDate ?? reserve.periodFrom)?.toISOString() ?? null,
+            checkOutAt: reserve.periodTo?.toISOString() ?? null,
+            roomType: roomType?.roomTypeName ?? roomType?.roomClass?.roomClassName ?? null,
+            roomNumber: reserve.room?.roomNumber ?? null,
+          },
+          hotel: {
+            facilityId: facility?.facilityId ?? null,
+            name: facility?.facilityName ?? null,
+            address: facility?.address ?? null,
+            phone: null,
+            email: null,
+          },
+        } satisfies DebtReminderItem,
+      ];
+    });
+
+    return {
+      dueDate: dayStart.toISOString().split('T')[0] ?? dueDate,
+      reminders,
     };
   }
 
@@ -401,8 +534,8 @@ export class ReservationAutomationService {
     reserve: NonNullable<Awaited<ReturnType<ReservationRepository['findById']>>>,
   ): boolean {
     return (
-      reserve.reserveStatus === ReserveStatus.CANCELLED ||
-      reserve.deleteStatus === DeleteStatus.CANCELLED ||
+      Number(reserve.reserveStatus) === Number(ReserveStatus.CANCELLED) ||
+      Number(reserve.deleteStatus) === Number(DeleteStatus.CANCELLED) ||
       reserve.cancelledAt !== null ||
       reserve.deletedAt !== null
     );

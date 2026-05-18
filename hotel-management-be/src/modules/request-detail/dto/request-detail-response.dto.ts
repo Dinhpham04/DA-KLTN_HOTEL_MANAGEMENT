@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { RequestDetail } from '@prisma/client';
+import type { RequestDetail, SaleDetail } from '@prisma/client';
+
+type RequestDetailWithSaleDetails = RequestDetail & {
+  saleDetails?: SaleDetail[];
+};
+
+type PaymentStatus = 'unpaid' | 'paid';
 
 export class RequestDetailResponseDto {
   @ApiProperty() requestDetailId!: number;
@@ -21,10 +27,14 @@ export class RequestDetailResponseDto {
   @ApiProperty() count!: number;
   @ApiProperty() countUnit!: number;
   @ApiPropertyOptional() chargeStaffId!: number | null;
+  @ApiProperty({ type: [Number] }) saleDetailIds!: number[];
+  @ApiProperty() paidAmount!: number;
+  @ApiProperty({ enum: ['unpaid', 'paid'] }) paymentStatus!: PaymentStatus;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 
-  static fromEntity(entity: RequestDetail): RequestDetailResponseDto {
+  static fromEntity(entity: RequestDetailWithSaleDetails): RequestDetailResponseDto {
+    const saleDetails = entity.saleDetails ?? [];
     const dto = new RequestDetailResponseDto();
     dto.requestDetailId = entity.requestDetailId;
     dto.reserveId = entity.reserveId;
@@ -45,6 +55,12 @@ export class RequestDetailResponseDto {
     dto.count = entity.count;
     dto.countUnit = entity.countUnit;
     dto.chargeStaffId = entity.chargeStaffId;
+    dto.saleDetailIds = saleDetails.map((saleDetail) => saleDetail.saleDetailId);
+    dto.paidAmount = saleDetails.reduce(
+      (sum, saleDetail) => sum + Number(saleDetail.totalPrice ?? 0),
+      0,
+    );
+    dto.paymentStatus = saleDetails.length > 0 ? 'paid' : 'unpaid';
     dto.createdAt = entity.createdAt;
     dto.updatedAt = entity.updatedAt;
     return dto;

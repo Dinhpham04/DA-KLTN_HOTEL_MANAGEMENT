@@ -45,6 +45,7 @@ import { PricingModule } from '@modules/pricing/pricing.module';
 import { PaymentMethodModule } from '@modules/payment-method/payment-method.module';
 import { RequestDetailModule } from '@modules/request-detail/request-detail.module';
 import { SaleDetailModule } from '@modules/sale-detail/sale-detail.module';
+import { ChatbotMasterDataModule } from '@modules/chatbot-master-data/chatbot-master-data.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -127,6 +128,7 @@ import { AppService } from './app.service';
     PaymentMethodModule,
     RequestDetailModule,
     SaleDetailModule,
+    ChatbotMasterDataModule,
   ],
   controllers: [AppController],
   providers: [

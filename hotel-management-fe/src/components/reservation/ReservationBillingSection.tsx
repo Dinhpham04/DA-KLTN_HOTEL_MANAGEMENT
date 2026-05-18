@@ -14,6 +14,7 @@ import { useCreateSaleDetail, useUpdateSaleDetail } from '@/hooks/mutations/useS
 import { useGetPaymentMethods } from '@/hooks/queries/useGetPaymentMethods'
 import { useGetSaleDetails } from '@/hooks/queries/useGetSaleDetails'
 import { cn, formatCurrency } from '@/lib/utils'
+import type { SaleDetail } from '@/types/billing'
 import type { RequestType } from '@/types/pricing'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +31,9 @@ type RowPayment = {
 
 type RequestNormalRow = {
   request_detail_id?: number
+  sale_detail_ids?: number[]
+  paid_amount?: number
+  payment_status?: 'unpaid' | 'paid'
   source_key?: string
   request_type_id?: string
   request_from?: string
@@ -42,6 +46,38 @@ type RequestNormalRow = {
 
 const COUNT_UNIT_LABEL: Record<string, string> = { '1': 'Tháng', '2': 'Ngày', '3': 'Lần' }
 const EMPTY_OPT: Option = { value: '', label: '---' }
+
+const toDateKey = (value?: string | null) => (value ? value.split('T')[0] : null)
+
+const findLinkedSaleDetail = (
+  row: RequestNormalRow,
+  saleDetails: SaleDetail[]
+): SaleDetail | undefined => {
+  if (row.request_detail_id) {
+    return saleDetails.find((saleDetail) => saleDetail.requestDetailId === row.request_detail_id)
+  }
+
+  // Legacy repair path: older data may contain auto-generated fee rows whose
+  // sale detail was saved without request_detail_id. Only auto-synced rows are
+  // eligible for this fallback so newly-added manual rows are never guessed as paid.
+  if (!row.source_key) return undefined
+
+  const requestTypeId = Number(row.request_type_id ?? 0)
+  const count = Number(row.count ?? 1)
+  const countUnit = Number(row.count_unit ?? 2)
+  const totalPrice = Number(row.unit_price ?? 0) * count
+
+  return saleDetails.find(
+    (saleDetail) =>
+      saleDetail.requestDetailId === null &&
+      saleDetail.requestTypeId === requestTypeId &&
+      toDateKey(saleDetail.requestFrom) === (row.request_from ?? null) &&
+      toDateKey(saleDetail.requestTo) === (row.request_to ?? null) &&
+      saleDetail.count === count &&
+      saleDetail.countUnit === countUnit &&
+      Number(saleDetail.totalPrice ?? 0) === totalPrice
+  )
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -79,16 +115,7 @@ export default function ReservationBillingSection({
           next.set(idx, existing)
           return
         }
-        const linked = row.request_detail_id
-          ? saleDetails.find((s) => s.requestDetailId === row.request_detail_id)
-          : saleDetails.find(
-              (s) =>
-                s.requestDetailId === null &&
-                s.requestTypeId === Number(row.request_type_id) &&
-                (s.requestFrom ? s.requestFrom.split('T')[0] : null) ===
-                  (row.request_from ?? null) &&
-                (s.requestTo ? s.requestTo.split('T')[0] : null) === (row.request_to ?? null)
-            )
+        const linked = findLinkedSaleDetail(row, saleDetails)
         const defaultSaleDate = linked
           ? (linked.saleDate ?? '')
           : (existing?.saleDate ?? dayjs().format('YYYY-MM-DD'))
@@ -122,17 +149,30 @@ export default function ReservationBillingSection({
 
   const toggleRow = (idx: number) =>
     setSelectedRows((prev) => {
+      const row = rows[idx]
+      if (!row?.request_detail_id) return prev
       const next = new Set(prev)
       if (next.has(idx)) next.delete(idx)
       else next.add(idx)
       return next
     })
 
-  const allSelected = rows.length > 0 && selectedRows.size === rows.length
+  const payableRowIndexes = useMemo(
+    () =>
+      rows.flatMap((row, idx) => {
+        const linkedSaleDetail = findLinkedSaleDetail(row, saleDetails)
+        const hasSaleDetail = row.payment_status === 'paid' || !!linkedSaleDetail
+        return row.request_detail_id && !hasSaleDetail ? [idx] : []
+      }),
+    [rows, saleDetails]
+  )
+
+  const allSelected =
+    payableRowIndexes.length > 0 && payableRowIndexes.every((idx) => selectedRows.has(idx))
   const someSelected = selectedRows.size > 0 && !allSelected
 
   const toggleAll = () =>
-    setSelectedRows(allSelected || someSelected ? new Set() : new Set(rows.map((_, i) => i)))
+    setSelectedRows(allSelected || someSelected ? new Set() : new Set(payableRowIndexes))
 
   // ── Validation: button phụ thuộc vào checkbox + 3 field bắt buộc ──────────
   const selectedValidation = useMemo(() => {
@@ -140,6 +180,11 @@ export default function ReservationBillingSection({
       return { canSave: false, hint: 'Chọn ít nhất 1 khoản để thanh toán' }
     const missing: string[] = []
     for (const idx of selectedRows) {
+      const row = rows[idx]
+      if (!row?.request_detail_id) {
+        missing.push('Lưu đặt phòng trước khi thanh toán')
+        break
+      }
       const p = paymentMap.get(idx)
       if (!p?.paymentMethodId) {
         missing.push('Phương thức TT')
@@ -156,7 +201,7 @@ export default function ReservationBillingSection({
     }
     if (missing.length > 0) return { canSave: false, hint: `Còn thiếu: ${missing.join(', ')}` }
     return { canSave: true, hint: '' }
-  }, [selectedRows, paymentMap])
+  }, [selectedRows, paymentMap, rows])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const { mutateAsync: createSd } = useCreateSaleDetail({
@@ -177,7 +222,7 @@ export default function ReservationBillingSection({
     for (const idx of selectedRows) {
       const p = paymentMap.get(idx)
       const row = rows[idx]
-      if (!p || !row) continue
+      if (!p || !row?.request_detail_id) continue
       const unitPrice = Number(row.unit_price ?? 0)
       const count = Number(row.count ?? 1)
       const countUnit = Number(row.count_unit ?? 2)
@@ -353,7 +398,9 @@ export default function ReservationBillingSection({
               rows.map((row, idx) => {
                 const p = paymentMap.get(idx)
                 const rowTotal = Number(row.unit_price ?? 0) * Number(row.count ?? 1)
-                const hasSaleDetail = !!p?.saleDetailId
+                const linkedSaleDetail = findLinkedSaleDetail(row, saleDetails)
+                const hasSaleDetail = row.payment_status === 'paid' || !!linkedSaleDetail
+                const isPersisted = !!row.request_detail_id
                 const isSelected = selectedRows.has(idx)
                 const countUnitLabel = COUNT_UNIT_LABEL[row.count_unit ?? '2'] ?? ''
                 const rowKey =
@@ -387,8 +434,8 @@ export default function ReservationBillingSection({
                       >
                         <CustomCheckbox
                           checked={isSelected}
-                          disabled={hasSaleDetail}
-                          onCheckedChange={() => !hasSaleDetail && toggleRow(idx)}
+                          disabled={!isPersisted || hasSaleDetail}
+                          onCheckedChange={() => isPersisted && !hasSaleDetail && toggleRow(idx)}
                         />
                       </TableCell>
 
@@ -401,6 +448,11 @@ export default function ReservationBillingSection({
                         {hasSaleDetail && (
                           <span className="inline-block mt-1 px-2 py-0.5 rounded text-[1.1rem] bg-green-100 text-green-700 font-bold border border-green-300">
                             Đã TT
+                          </span>
+                        )}
+                        {!isPersisted && !hasSaleDetail && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[1.1rem] bg-amber-100 text-amber-700 font-bold border border-amber-300">
+                            Chưa lưu
                           </span>
                         )}
                       </TableCell>

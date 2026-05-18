@@ -49,6 +49,30 @@ const DEFAULT_CLEANING_REASONS = [
   CleaningReason.STAYOVER_ROOM,
 ];
 
+const CLEANING_SHEET_REASON_LABEL: Record<CleaningReason, string> = {
+  [CleaningReason.COMMON_AREA_DAILY]: 'Vệ sinh khu vực chung',
+  [CleaningReason.CHECKOUT_ROOM]: 'Dọn phòng sau checkout',
+  [CleaningReason.PRE_CHECKIN_ROOM]: 'Dọn phòng trước check-in',
+  [CleaningReason.STAYOVER_ROOM]: 'Dọn phòng hằng ngày',
+};
+
+const CLEANING_SHEET_DEADLINE_LABEL: Record<CleaningReason, string> = {
+  [CleaningReason.COMMON_AREA_DAILY]: 'Trong ngày',
+  [CleaningReason.CHECKOUT_ROOM]: 'Sau checkout 12:00',
+  [CleaningReason.PRE_CHECKIN_ROOM]: 'Trước check-in 14:00',
+  [CleaningReason.STAYOVER_ROOM]: 'Trong ngày',
+};
+
+const CLEANING_SHEET_STATUS_LABEL: Record<CleaningStatus, string> = {
+  [CleaningStatus.NOT_STARTED]: 'Chưa bắt đầu',
+  [CleaningStatus.IN_PROGRESS]: 'Đang dọn',
+  [CleaningStatus.PAUSED]: 'Tạm dừng',
+  [CleaningStatus.FINISHED]: 'Đã xong',
+  [CleaningStatus.CHECKED]: 'Đã kiểm tra',
+  [CleaningStatus.REOPENED]: 'Mở lại',
+  [CleaningStatus.CANCELLED]: 'Đã hủy',
+};
+
 @Injectable()
 export class CleaningShiftService {
   private readonly logger = new Logger(CleaningShiftService.name);
@@ -179,6 +203,28 @@ export class CleaningShiftService {
         preCheckinRoom: reasonCounts[CleaningReason.PRE_CHECKIN_ROOM] ?? 0,
         stayoverRoom: reasonCounts[CleaningReason.STAYOVER_ROOM] ?? 0,
       },
+    };
+  }
+
+  async getDailySheetData(filter: CleaningAutomationFilterDto) {
+    const cleaningDate = this.parseDateOnly(filter.cleaningDate);
+    const details = this.filterDetailsByReasons(
+      await this.repository.findAutomationDetails(cleaningDate, filter.facilityIds),
+      filter.cleaningReasons,
+    );
+    const staff = await this.repository.findActiveStaffCatalog();
+
+    return {
+      success: true,
+      cleaningDate,
+      taskCount: details.length,
+      staffCount: staff.length,
+      taskRows: details.map((detail) => this.toDailySheetTaskRow(detail, cleaningDate)),
+      staffRows: staff.map((item) => ({
+        staff_id: item.staffId,
+        'nhân viên': `${item.staffId} - ${item.staffName}`,
+        'tên ngắn': item.staffNameShort ?? '',
+      })),
     };
   }
 
@@ -873,6 +919,69 @@ export class CleaningShiftService {
 
   private getPrimaryCleaningReason(detail: DetailWithIncludes): CleaningReason {
     return this.getCleaningReasons(detail)[0] ?? CleaningReason.CHECKOUT_ROOM;
+  }
+
+  private toDailySheetTaskRow(detail: DetailWithIncludes, cleaningDate: Date) {
+    const reason = this.getPrimaryCleaningReason(detail);
+    const status = detail.cleanStatus as CleaningStatus;
+    const facility = [detail.facility?.facilityNo, detail.facility?.facilityName]
+      .filter(Boolean)
+      .join(' - ');
+    const target = detail.room?.roomNumber ?? detail.areaName ?? '-';
+    const inspectionResult =
+      status === CleaningStatus.CHECKED
+        ? 'Đạt'
+        : status === CleaningStatus.REOPENED
+          ? 'Cần làm lại'
+          : '';
+
+    return {
+      task_id: detail.cleaningDetailId,
+      'ngày vệ sinh': this.formatDate(detail.scheduledDate ?? cleaningDate),
+      'cơ sở': facility,
+      'phòng / khu vực': target,
+      'loại phòng': detail.room?.roomType?.roomTypeName ?? '',
+      'loại công việc': CLEANING_SHEET_REASON_LABEL[reason],
+      'mốc cần xong': CLEANING_SHEET_DEADLINE_LABEL[reason],
+      'nhân viên chính': this.formatStaffSheetLabel(
+        detail.mainStaffId,
+        detail.mainStaff?.staffName ?? null,
+      ),
+      'nhân viên hỗ trợ': this.formatStaffSheetLabel(
+        detail.subStaffId,
+        detail.subStaff?.staffName ?? null,
+      ),
+      'trạng thái': CLEANING_SHEET_STATUS_LABEL[status] ?? String(detail.cleanStatus),
+      'giờ bắt đầu': this.formatTime(detail.startDatetime),
+      'giờ kết thúc': this.formatTime(detail.endDatetime),
+      'người giám sát': this.formatStaffSheetLabel(
+        detail.checkStaffId,
+        detail.checkStaff?.staffName ?? null,
+      ),
+      'kết quả kiểm tra': inspectionResult,
+      'ghi chú hiện trường': '',
+      'ghi chú hệ thống': detail.comment ?? '',
+    };
+  }
+
+  private formatDate(value: Date | null) {
+    if (!value) return '';
+    return value.toISOString().slice(0, 10);
+  }
+
+  private formatTime(value: Date | null) {
+    if (!value) return '';
+    return new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(value);
+  }
+
+  private formatStaffSheetLabel(staffId: number | null, staffName: string | null) {
+    if (!staffId || !staffName) return '';
+    return `${staffId} - ${staffName}`;
   }
 
   private toAutomationTask(detail: DetailWithIncludes) {

@@ -22,11 +22,10 @@ export class CreateSaleDetailDto {
   @Type(() => Number)
   readonly requestTypeId!: number;
 
-  @ApiPropertyOptional({ description: 'Linked request detail ID' })
-  @IsOptional()
+  @ApiProperty({ description: 'Linked request detail ID' })
   @IsInt()
   @Type(() => Number)
-  readonly requestDetailId?: number;
+  readonly requestDetailId!: number;
 
   @ApiPropertyOptional({ description: 'Payment type ID' })
   @IsOptional()

@@ -1,0 +1,992 @@
+{
+  "name": "Hotel Assistant - Single AI Agent V2 (Query String Tools)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hotel-assistant/chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cade06f6-d4c3-4380-bf74-5b02d8b62179",
+      "name": "Webhook - Chatbot",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "hotel-assistant-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json\n\nconst message = String(body.message ?? '').trim()\nif (!message) {\n  return [\n    {\n      json: {\n        error: 'EMPTY_MESSAGE',\n        answer: 'Vui long nhap noi dung can tra cuu.',\n        cards: [],\n        actions: [],\n        meta: { intent: 'invalid', confidence: 1, calledTools: [], sources: [] },\n      },\n    },\n  ]\n}\n\nconst staffId = body.staffId ?? 'anonymous'\nconst parsedFacilityId = Number(body.facilityId)\nconst facilityId = Number.isInteger(parsedFacilityId) ? parsedFacilityId : undefined\nconst sessionId = body.sessionId ?? `${staffId}-${Date.now()}`\nconst sessionFacilityKey = facilityId ?? 'all'\nconst sessionKey = `hotel-assistant:${sessionFacilityKey}:${staffId}:${sessionId}`\n\nconst today = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Asia/Ho_Chi_Minh',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n}).format(new Date())\n\nreturn [\n  {\n    json: {\n      message,\n      sessionId,\n      sessionKey,\n      staffId,\n      facilityId,\n      today,\n      timezone: 'Asia/Ho_Chi_Minh',\n      pageContext: body.pageContext ?? {},\n      guardrails: {\n        mode: 'read_only',\n        allowedMethods: ['GET'],\n        deniedMethods: ['POST', 'PUT', 'PATCH', 'DELETE'],\n      },\n    },\n  },\n]"
+      },
+      "id": "8bb390d5-8dc1-41f7-a1e3-d7b2b95b610f",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.error}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "00a6ac47-f6bf-4ace-a486-32c9f3e05daf",
+      "name": "Has Validation Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tin nh?n c?a nh?n vi?n:\n{{ $json.message }}\n\nPage context:\n{{ JSON.stringify($json.pageContext) }}",
+        "options": {
+          "systemMessage": "=Ban la chatbot AI noi bo cho nhan vien khach san. Ban chi ho tro TRA CUU va TOM TAT thong tin nghiep vu.\n\nSystem context hien tai:\n- today: {{ $('Normalize Input').item.json.today }}\n- timezone: {{ $('Normalize Input').item.json.timezone }}\n- facilityId: {{ $('Normalize Input').item.json.facilityId ?? 'khong gioi han' }}\n- pageContext: {{ JSON.stringify($('Normalize Input').item.json.pageContext) }}\n\nBAT BUOC\n- Chi dung tool read-only da noi vao agent. Khong thuc hien, khong noi da thuc hien, khong gia lap POST/PUT/PATCH/DELETE.\n- Moi luot hoi la mot lan tra cuu moi. KHONG dung loi tool hoac du lieu nghiep vu cu trong memory de ket luan. Neu cau hoi hien tai can du lieu he thong, hay goi tool lai.\n- Memory chi dung de hieu tham chieu hoi thoai gan day nhu \"booking do\", \"khach nay\". Khong dung memory lam nguon su that cho booking/phong/thanh toan.\n- Khong tu bia so tien, ngay, trang thai, phong, khach, chinh sach. Neu tool khong tra du lieu, noi ro khong tim thay hoac can them thong tin.\n- Neu user yeu cau thao tac ghi du lieu nhu check-in, check-out, huy booking, cap nhat thanh toan, sua phong, doi trang thai phong: tra loi rang ban chi co quyen tra cuu va huong dan nhan vien thao tac truc tiep tren he thong.\n\nQUY TAC THIEU THONG TIN\n- Neu tool can required params ma user chua cung cap va khong suy ra duoc tu today/pageContext/memory gan nhat, KHONG goi tool. Hay hoi lai dung 1 cau ngan de lay thong tin thieu.\n- Khong duoc tu doan reserveId, clientId, roomId, roomTypeId, roomStatus.\n- Co the suy ra date=today khi user noi hom nay/today. Co the suy ra from=to khi user dua mot ngay duy nhat cho phong trong.\n- Neu user hoi \"don nay\", \"booking nay\", \"khach nay\" va pageContext.reserveId ton tai, duoc dung reserveId do.\n- Neu user hoi thanh toan nhung chi co ten khach/ma booking, goi search_reservations truoc. Neu co nhieu ket qua, hoi user chon booking truoc khi goi get_payment_status.\n\nTOOL MAP VA REQUIRED PARAMS\n1. get_reservation_detail\n- Required: reserveId, hoac pageContext.reserveId khi user noi ve booking hien tai.\n- Dung de lay chi tiet mot dat phong. Tool nay da co reservationSummary va paymentSummary ngan gon, hay tan dung truoc khi goi them tool khac. Khong dung de tim kiem free text.\n- Missing info: neu khong co reserveId/booking hien tai, hoi ma booking/ten khach hoac goi search_reservations neu user da dua thong tin tim kiem.\n\n2. search_reservations\n- Required: it nhat mot trong bookingCode, clientName, occupierName, clientId, roomId, roomNo/facilityOrRoom, date/periodFrom/periodTo, leavingType.\n- Dung de tim booking, tim khach dang o, tim booking theo phong/ngay, tim booking theo ten khach/ma booking.\n- Khong suy luan thua filter: moi param gui vao API la dieu kien AND. Chi dien field user noi ro.\n- Neu user noi \"khach hang/client/nguoi dat\" thi dung clientName, KHONG dien occupierName. Neu user noi \"nguoi o/khach luu tru\" thi dung occupierName, KHONG dien clientName.\n- Neu user hoi phong X co ai dang o khong, goi search_reservations voi facilityOrRoom/roomNo=X, facilityId neu user noi co so, leavingType=staying, dataStatus=1.\n- leavingType chi duoc la before, staying, left.\n\n3. get_payment_status\n- Required: reserveId.\n- Dung cho tien da thu, con lai, cong no, trang thai thanh toan cua mot booking. Tool nay da tra ve tong hop va cac dong thanh toan chi tiet cho booking do.\n- Missing info: neu chua co reserveId thi tim booking truoc; neu van khong ro mot booking duy nhat thi hoi user chon booking.\n\n4. get_today_checkin_checkout\n- Required: date va mode. Neu user noi hom nay thi date=today. Neu khong co date thi hoi lai ngay.\n- mode: checkin, checkout, both.\n- Dung cho danh sach check-in/check-out, arrivals/departures theo ngay.\n\n5. search_rooms\n- Required: roomNo/search/roomTypeId/roomType/roomStatus, hoac user hoi danh sach phong tong quan.\n- Dung cho thong tin phong hien tai, so phong, loai phong, trang thai master/cleaning hien tai.\n- KHONG dung de tim phong trong theo ngay. Tim phong trong theo ngay phai dung search_available_rooms.\n- Neu user hoi phong dang co khach/dang luu tru, dung search_reservations voi facilityOrRoom/roomNo neu co va leavingType=staying.\n\n6. search_available_rooms\n- Required: from va to. Neu user dua mot ngay duy nhat thi from=to=ngay do. Neu khong co ngay/khoang ngay thi hoi lai ngay truoc khi goi tool.\n- Optional: roomType, roomTypeId, facilityId.\n- Dung cho phong trong, con phong, available room theo ngay/khoang ngay.\n\n7. get_guest_history\n- Required: guestName hoac clientId.\n- Dung cho lich su luu tru, khach quay lai, so lan o, thong tin lich su cua khach. Tool nay da co guestHistorySummary va recentStays de tra loi nhanh.\n- Missing info: hoi ten khach hoac clientId.\n\n8. search_internal_docs\n- Required: query noi ve quy trinh/chinh sach/so noi bo/tinh huong bat thuong.\n- Dung cho tai lieu noi bo, quy trinh nghiep vu, chinh sach khach san, so noi bo, xu ly su co.\n\nDECISION EXAMPLES\n- User: \"xin chao\" -> no tool, answer greeting.\n- User: \"check-in hom nay\" -> get_today_checkin_checkout(date=today, mode=checkin).\n- User: \"check-out ngay 20/5\" -> get_today_checkin_checkout(date=2026-05-20, mode=checkout).\n- User: \"hom nay co bao nhieu khach den va di\" -> get_today_checkin_checkout(date=today, mode=both).\n- User: \"tim booking cua Nguyen Van A\" -> search_reservations(clientName=\"Nguyen Van A\") neu user khong noi la nguoi o.\n- User: \"khach hang Pham Duc Nhat da dat nhung phong nao\" -> search_reservations(clientName=\"Pham Duc Nhat\") only, KHONG dien occupierName.\n- User: \"nguoi o Pham Duc Nhat dang o phong nao\" -> search_reservations(occupierName=\"Pham Duc Nhat\") only, KHONG dien clientName.\n- User: \"booking BK-123 thanh toan chua\" -> search_reservations(bookingCode=\"BK-123\"), then if exactly one reservation use get_payment_status(reserveId).\n- User: \"tinh trang cong no dat phong id 29\" -> get_payment_status(reserveId=29), KHONG goi search_reservations truoc.\n- User: \"thanh toan don nay\" with pageContext.reserveId -> get_payment_status(reserveId=pageContext.reserveId).\n- User: \"tom tat don nay\" with pageContext.reserveId -> get_reservation_detail(reserveId=pageContext.reserveId).\n- User: \"phong trong tu 20/5 den 30/5\" -> search_available_rooms(from=2026-05-20, to=2026-05-30).\n- User: \"phong Deluxe con trong ngay 20/5 khong\" -> search_available_rooms(roomType=\"Deluxe\", from=2026-05-20, to=2026-05-20).\n- User: \"phong trong khong\" without date -> ask: \"Ban muon kiem tra phong trong ngay nao hoac khoang ngay nao?\"\n- User: \"phong 502 trang thai gi\" -> search_rooms(roomNo=\"502\").\n- User: \"phong nao dang co khach\" -> search_reservations(leavingType=staying, dataStatus=1).\n- User: \"phong 101 co so 1 co ai dang o khong\" -> search_reservations(facilityOrRoom=\"101\", roomNo=\"101\", facilityId=1, leavingType=staying, dataStatus=1).\n- User: \"lich su luu tru cua Nguyen Van A\" -> get_guest_history(guestName=\"Nguyen Van A\").\n- User: \"quy trinh khach den som\" -> search_internal_docs(query=\"quy trinh khach den som\").\n\nANSWER RULES\n- Tra loi bang tieng Viet co dau, ngan gon, ro cho le tan/van hanh.\n- Cau tra loi chinh dung Markdown, khong dung HTML.\n- Neu can hoi lai param thieu, output JSON voi answer la cau hoi can bo sung, cards/actions rong, meta.intent=\"need_more_info\".\n- Luon phan anh dung du lieu tool tra ve; khong che giau loi tool. Neu tool loi, noi ro chua tra cuu duoc va goi y kiem tra workflow/API.\n\nOUTPUT FORMAT\nChi tra ve JSON hop le, khong boc markdown, khong them giai thich ngoai JSON:\n{\n  \"answer\": \"cau tra loi markdown bang tieng Viet co dau\",\n  \"cards\": [\n    {\n      \"type\": \"reservation|room|payment|guest|document|summary\",\n      \"title\": \"string\",\n      \"subtitle\": \"string\",\n      \"description\": \"string\",\n      \"fields\": [\n        { \"label\": \"string\", \"value\": \"string\", \"tone\": \"default|success|warning|danger\" }\n      ]\n    }\n  ],\n  \"actions\": [\n    { \"type\": \"link\", \"label\": \"string\", \"href\": \"string\" }\n  ],\n  \"meta\": {\n    \"intent\": \"string\",\n    \"confidence\": 0.0,\n    \"calledTools\": [\"string\"],\n    \"sources\": [\n      { \"type\": \"api|drive|memory\", \"name\": \"string\" }\n    ]\n  }\n}\n\nV2 QUERY STRING TOOL RULES\n- V2 tools receive queryString. Build it with exact backend API query param names only.\n- Never invent params. Do not use facility/status when backend expects facilityId/roomStatus/dataStatus.\n- Extra params are AND filters. Send only params explicitly implied by the user.\n- Room availability requires search_available_rooms queryString with periodFrom and periodTo. dataStatus=1 is active master room, not availability. roomStatus=1 is not bookable availability.\n- Reservation customer search: clientName only for khach hang/client/nguoi dat; occupierName only for nguoi o/khach luu tru. Do not send both from one name.\nExamples:\n- khach hang Pham Duc Nhat da dat nhung phong nao -> search_reservations queryString=clientName=Pham%20Duc%20Nhat&dataStatus=1&limit=10\n- nguoi o Pham Duc Nhat dang o phong nao -> search_reservations queryString=occupierName=Pham%20Duc%20Nhat&leavingType=staying&dataStatus=1\n- phong 101 co so 1 co ai dang o khong -> search_reservations queryString=facilityOrRoom=101&facilityId=1&leavingType=staying&dataStatus=1\n- phong Deluxe trong tu 2026-05-20 den 2026-05-30 -> search_available_rooms queryString=periodFrom=2026-05-20&periodTo=2026-05-30&dataStatus=1\n\n\nV2 MASTER DATA TOOLS\n- Master-data tools are summary-first to save context tokens. By default, ask for compact summaries only.\n- Use search_facilities for facility/building lookup, parking counts, and facility room-type summary. Add includeRooms=true only when the user asks for the actual room list; add includePricing=true only when the user asks for facility-specific service prices.\n- Use search_room_types for room type names and class/facility summary. Add includeRooms=true only when the user asks which rooms belong to the type; add includePricing=true only when the user asks rent details.\n- Use search_room_classes for room class/category questions.\n- Use get_pricing_request_types for fee/service category questions. Add includePrices=true only when the user asks the actual configured prices.\n- Use get_rents_list for rent/price by room type/stay type when the user asks rent values.\n- Use get_master_data only when one answer truly needs several master-data groups at once; otherwise prefer the narrower tool. Keep includeRooms/includePricing/includePrices absent unless the question needs those details.\n"
+        }
+      },
+      "id": "98436979-43ec-45c8-a1b5-fceb653a2174",
+      "name": "AI Agent - Hotel Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        940,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5"
+        },
+        "options": {
+          "maxTokensToSample": 2048,
+          "temperature": 0.3
+        }
+      },
+      "id": "a800e3c2-4153-4fb5-bef1-f15ef10c43a0",
+      "name": "Claude Sonnet - Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        780,
+        620
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-credential",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Normalize Input').item.json.sessionKey }}",
+        "contextWindowLength": 10
+      },
+      "id": "b5bc2d1a-0257-4e2f-a373-2f1159150214",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        940,
+        620
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "9t685Y4KZeHqIWz5",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_reservation_detail",
+        "description": "V2 read-only rich detail lookup. GET /api/v1/reservations/:reserveId plus compact payment summary from related billing data. Use for one known booking, especially questions like tom tat don nay, don nay o phong nao, ngay nao, trang thai gi. Preferred input: direct reserveId when known; queryString may also contain reserveId. Example direct reserveId=47 or queryString=reserveId=47",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Reservation Detail"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}",
+            "reserveId": "={{ $fromAI('reserveId', 'Reservation ID if known. Use pageContext reserveId when user says this booking/order.', 'number') || $('Normalize Input').item.json.pageContext?.reserveId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reserveId",
+              "displayName": "reserveId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "9100ca01-36c0-4d75-97ff-6843a593970a",
+      "name": "Tool - Get Reservation Detail",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        620,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_payment_status",
+        "description": "V2 read-only rich payment detail lookup. GET /api/v1/request-details?reserveId=... and /sale-details?reserveId=..., then returns totals, remaining amount, paid/unpaid line counts, billing lines, and payment records. Use when user asks payment status or debt details for one known booking. Preferred input: direct reserveId when known; queryString may also contain reserveId. Example direct reserveId=47 or queryString=reserveId=47",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Payment Status"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}",
+            "reserveId": "={{ $fromAI('reserveId', 'Reservation ID if known. Use pageContext reserveId when user says this booking/order.', 'number') || $('Normalize Input').item.json.pageContext?.reserveId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reserveId",
+              "displayName": "reserveId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "649f8eb7-759e-47da-9283-72a34f697050",
+      "name": "Tool - Get Payment Status",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        780,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_reservations",
+        "description": "V2 read-only. GET /api/v1/reservations. Input queryString only. Exact params: search, clientName, occupierName, chargeStaffName, facilityOrRoom, telPhone, roomTypeId, leavingType(before|staying|left), reserveStatus, clientId, facilityId, roomId, stayTypeId, dataStatus, deleteStatus, checkinFlag, confirmFlag, draftFlag, chargeStaffId, periodFrom, periodTo, page, limit, orderBy, order. Do not send extra params. Do not send both clientName and occupierName unless explicitly asked.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Reservations"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "83fe8b7c-6bd3-44ff-a54e-bbfc2b493d19",
+      "name": "Tool - Search Reservations",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        940,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_today_checkin_checkout",
+        "description": "V2 read-only. GET /api/v1/daily-reserve. Input queryString exact params: date or time in YYYY-MM-DD/YYYY/MM/DD, dashboardFlag/dashboard_flag. Example: date=2026-05-13",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Today Checkin Checkout"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "a6663141-6b2a-4294-81e9-7ad2c9bc3427",
+      "name": "Tool - Today Checkin Checkout",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_rooms",
+        "description": "V2 read-only. GET /api/v1/rooms for room master/current room data. Input queryString only. Exact params: search, facilityId, roomTypeId, roomClassId, roomStatus, dataStatus, periodFrom, periodTo, page, limit, orderBy, order. dataStatus=1 is active room record, not bookable availability.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Rooms"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "cc036ce1-e133-4f6c-9375-681e223e02c9",
+      "name": "Tool - Search Rooms",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_available_rooms",
+        "description": "V2 read-only. GET /api/v1/rooms with periodFrom and periodTo to find rooms with no overlapping reservations. Input queryString only. Required: periodFrom, periodTo. Optional: facilityId, roomTypeId, roomClassId, dataStatus, page, limit, orderBy, order. Do not use roomStatus=1 as availability.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Available Rooms"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "a9c2508c-ade7-496c-9861-50d7a34dc28b",
+      "name": "Tool - Search Available Rooms",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_guest_history",
+        "description": "V2 read-only guest history lookup. GET /api/v1/clients then /reservations for history context. Returns matching clients, stay history, and summary fields such as stay count, active/upcoming/completed counts, recent stays, and facilities visited. Input queryString exact client params: search, clientName, contactName, email, tel, telPhone, telEmergency, dataType, dataStatus, countryId, page, limit. Example: clientName=Pham%20Duc%20Nhat&dataStatus=1",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Guest History"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "95a942a0-13a5-4d23-bd41-731716a14053",
+      "name": "Tool - Get Guest History",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_internal_docs",
+          "description": "V2 read-only. Search the Google Docs handbook for internal procedures, policies, phone extensions, escalation rules, and abnormal situation handling. Input queryString exact params: query, limit. Use only for operational documents, not live booking/room/payment data. Example: query=quy%20trinh%20khach%20den%20som&limit=3",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Internal Docs"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "98a3bf8b-f47f-4b4b-ad65-9c47cd30479e",
+      "name": "Tool - Search Internal Docs",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractText(value) {\n  if (typeof value === 'string') return value\n  if (!value || typeof value !== 'object') return String(value ?? '')\n  const direct = value.output ?? value.text ?? value.result\n  if (typeof direct === 'string') return direct\n  const generations = value.response?.generations ?? value.generations\n  const firstGeneration = Array.isArray(generations) ? generations[0]?.[0] ?? generations[0] : undefined\n  if (typeof firstGeneration?.text === 'string') return firstGeneration.text\n  if (typeof firstGeneration?.message?.content === 'string') return firstGeneration.message.content\n  return JSON.stringify(value)\n}\n\nfunction tryParseJson(value) {\n  if (value && typeof value === 'object' && 'answer' in value) return value\n  const text = extractText(value).trim()\n  const fenced = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i)\n  const candidate = fenced?.[1] ?? text\n  const jsonMatch = candidate.match(/\\{[\\s\\S]*\\}/)\n  if (!jsonMatch) return null\n  try {\n    return JSON.parse(jsonMatch[0])\n  } catch {\n    return null\n  }\n}\n\nconst response = tryParseJson($json) ?? {\n  answer: extractText($json) || 'T?i ch?a th? t?o c?u tr? l?i t? d? li?u hi?n c?.',\n  cards: [],\n  actions: [],\n  meta: { intent: 'unknown', confidence: 0, calledTools: [], sources: [] },\n}\n\nreturn [\n  {\n    json: {\n      answer: response.answer ?? 'Kh?ng c? c?u tr? l?i.',\n      cards: Array.isArray(response.cards) ? response.cards : [],\n      actions: Array.isArray(response.actions) ? response.actions : [],\n      meta: {\n        intent: response.meta?.intent ?? 'unknown',\n        confidence: response.meta?.confidence ?? 0,\n        calledTools: response.meta?.calledTools ?? [],\n        sources: response.meta?.sources ?? [],\n      },\n    },\n  },\n]"
+      },
+      "id": "3413dbf3-2984-47f2-af4b-f214e5a80830",
+      "name": "Normalize Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "9af5c869-f98c-4c20-999a-7aff407d9846",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_master_data",
+        "description": "Read-only compact aggregate hotel master data. Use only when one answer truly needs several groups such as facilities + room classes + room types + pricing request types + rents. Input queryString exact params: search, facilityId, roomTypeId, roomClassId, dataStatus, category, depositFlag, includeRooms, includePricing, includePrices, limit. Default response is summary-first. Keep includeRooms/includePricing/includePrices absent unless the user explicitly needs expanded details; otherwise prefer the narrower tool.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Master Data"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "a7ceb0db-601e-4522-8a8f-e438c6bf78ef",
+      "name": "Tool - Get Master Data",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_facilities",
+        "description": "Read-only compact facility lookup. Calls GET /api/v1/internal/chatbot/facilities or /facilities/:facilityId. Input queryString exact params: facilityId, search, dataStatus, includeRooms, includePricing, limit. Default response contains facility summary, room type/class summary, and parking counts. Set includeRooms=true only when the user asks for the actual room list. Set includePricing=true only when the user asks facility-specific service prices.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Facilities"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "7e16169c-7d15-4f43-9df5-a1fba51940fa",
+      "name": "Tool - Search Facilities",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2060,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_room_types",
+        "description": "Read-only compact room type lookup. Calls GET /api/v1/internal/chatbot/room-types or /room-types/:roomTypeId. Input queryString exact params: roomTypeId, roomClassId, facilityId, search, dataStatus, includeRooms, includePricing, limit. Default response contains room type, room class, room count, and facility summary. Set includeRooms=true only when the user asks which rooms belong to the type. Set includePricing=true only when the user asks rent details.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Room Types"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "92ae29f2-0cf2-4486-842f-e186e7b6046f",
+      "name": "Tool - Search Room Types",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "search_room_classes",
+        "description": "Read-only room class lookup. Calls GET /api/v1/internal/chatbot/room-classes or /room-classes/:roomClassId. Input queryString exact params: roomClassId, facilityId, search, dataStatus, limit. Returns room type and room count summaries.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Search Room Classes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "49e8021b-7db7-4fb7-bd1e-03385b59247f",
+      "name": "Tool - Search Room Classes",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2380,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_pricing_request_types",
+        "description": "Read-only compact pricing request type lookup. Calls GET /api/v1/internal/chatbot/pricing/request-types. Input queryString exact params: search, category, facilityId, dataStatus, includePrices, limit. Use for fee/service category questions. Default response excludes service price rows; set includePrices=true only when the user asks the configured prices.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Pricing Request Types"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "8c573f42-da4f-415f-ae76-e1ce4015802b",
+      "name": "Tool - Get Pricing Request Types",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2540,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_rents_list",
+        "description": "Read-only rent lookup. Calls GET /api/v1/internal/chatbot/rents/list. Input queryString exact params: roomTypeId, roomClassId, stayTypeId, depositFlag, dataStatus, limit. Use for room rent/pricing by room type and stay type.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AFTER_IMPORT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REPLACE_AFTER_IMPORT",
+          "cachedResultName": "Hotel Assistant Tool V2 - Get Rents List"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "queryString": "={{ $fromAI('queryString', 'URL query string using exact backend API params only. Do not include leading ?. Do not invent params.', 'string') || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "queryString",
+              "displayName": "queryString",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "dee62897-770a-4e90-b6e6-72a226a8d7bd",
+      "name": "Tool - Get Rents List",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2700,
+        780
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Chatbot": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Has Validation Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Validation Error?": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Sonnet - Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Reservation Detail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Payment Status": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Reservations": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Today Checkin Checkout": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Rooms": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Available Rooms": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Guest History": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Internal Docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Hotel Assistant": {
+      "main": [
+        [
+          {
+            "node": "Normalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Master Data": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Facilities": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Room Types": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Search Room Classes": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Pricing Request Types": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Get Rents List": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Hotel Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "active": false,
+  "tags": [],
+  "versionId": "hotel-chatbot-single-agent-v2"
+}

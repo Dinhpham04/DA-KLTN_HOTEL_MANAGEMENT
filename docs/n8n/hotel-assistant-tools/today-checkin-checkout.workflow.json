@@ -2,11 +2,13 @@
   "name": "Hotel Assistant Tool - Today Checkin Checkout",
   "nodes": [
     {
-      "parameters": {},
-      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000301",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "add740f5-079f-4e20-8461-f612e32a64b0",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         -720,
         0
@@ -14,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nreturn [{ json: { ...$json, date: $json.date || today, mode: $json.mode || 'both', apiBaseUrl, internalToken: 'dev-internal-token' } }]"
+        "jsCode": "function parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined\n    } catch {\n      const trimmed = value.trim()\n      if (!trimmed.includes('=')) return undefined\n\n      const source = trimmed.startsWith('?') ? trimmed.slice(1) : trimmed\n      const result = {}\n      for (const pair of source.split('&')) {\n        if (!pair) continue\n        const separatorIndex = pair.indexOf('=')\n        const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n        const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n        const key = decodeURIComponent(rawKey.replace(/\\+/g, ' '))\n        const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' '))\n        if (!key) continue\n\n        if (result[key] === undefined) {\n          result[key] = paramValue\n        } else if (Array.isArray(result[key])) {\n          result[key].push(paramValue)\n        } else {\n          result[key] = [result[key], paramValue]\n        }\n      }\n\n      return Object.keys(result).length > 0 ? result : undefined\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined\n}\n\nfunction readInput() {\n  const raw = parseObject($json) ?? {}\n  const directKeys = Object.keys(raw).filter((key) => !['json', 'body', 'query', 'data', 'input', 'workflowInputs', 'parameters', 'args'].includes(key))\n  if (directKeys.length > 0) return raw\n\n  for (const key of ['json', 'body', 'query', 'data', 'input', 'workflowInputs', 'parameters', 'args']) {\n    const nested = parseObject(raw[key])\n    if (nested && Object.keys(nested).length > 0) return nested\n  }\n\n  return raw\n}\n\nfunction present(value) {\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\n\nfunction numberOrUndefined(value) {\n  const normalized = present(value)\n  if (normalized === undefined) return undefined\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) ? parsed : undefined\n}\nconst input = readInput()\nconst today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nreturn [{ json: { ...input, date: present(input.date) ?? today, mode: present(input.mode) ?? 'both', facilityId: numberOrUndefined(input.facilityId), apiBaseUrl, internalToken: 'dev-internal-token' } }]"
       },
       "id": "2c19d1a7-6f7e-4bb8-9f01-000000000302",
       "name": "Prepare Input",

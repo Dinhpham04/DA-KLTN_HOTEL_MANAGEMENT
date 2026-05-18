@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@database/prisma.service';
-import type { Prisma, SaleDetail } from '@prisma/client';
+import type { Prisma, RequestDetail, SaleDetail } from '@prisma/client';
 
 @Injectable()
 export class SaleDetailRepository {
@@ -16,6 +16,12 @@ export class SaleDetailRepository {
   findById(id: number): Promise<SaleDetail | null> {
     return this.prisma.saleDetail.findFirst({
       where: { saleDetailId: id, deletedAt: null },
+    });
+  }
+
+  findRequestDetailById(id: number): Promise<RequestDetail | null> {
+    return this.prisma.requestDetail.findFirst({
+      where: { requestDetailId: id, deletedAt: null },
     });
   }
 

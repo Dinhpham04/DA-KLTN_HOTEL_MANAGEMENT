@@ -31,6 +31,15 @@ function readTabFromUrl() {
   return raw === 'exit-management' || raw === 'cleaning-shift' ? raw : 'daily-reserve'
 }
 
+function readReserveIdFromUrl() {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  const raw = params.get('reserveId')
+  if (!raw) return null
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 function syncTextUrlParam(key: string, value: string) {
   if (typeof window === 'undefined') return
   const url = new URL(window.location.href)
@@ -42,6 +51,7 @@ function DashboardPage() {
   const [headerDate, setHeaderDate] = useState<Date>(() => readDateFromUrl('date1'))
   const [taskDate, setTaskDate] = useState<Date>(() => readDateFromUrl('date2'))
   const [selectedTab, setSelectedTab] = useState<string>(() => readTabFromUrl())
+  const [focusedReserveId] = useState<number | null>(() => readReserveIdFromUrl())
 
   const handleHeaderDateChange = (date: Date) => {
     setHeaderDate(date)
@@ -63,13 +73,13 @@ function DashboardPage() {
       <DashboardHeader
         date={headerDate}
         onDateChange={handleHeaderDateChange}
-        taskDate={taskDate}
       />
       <DashboardManagementTabs
         date={taskDate}
         onDateChange={handleTaskDateChange}
         selectedTab={selectedTab}
         onTabChange={handleTabChange}
+        focusedReserveId={focusedReserveId}
       />
     </div>
   )

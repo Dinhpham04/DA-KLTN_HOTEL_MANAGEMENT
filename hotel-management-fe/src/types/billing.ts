@@ -18,6 +18,9 @@ export interface RequestDetail {
   count: number
   countUnit: number
   chargeStaffId: number | null
+  saleDetailIds: number[]
+  paidAmount: number
+  paymentStatus: 'unpaid' | 'paid'
   createdAt: string
   updatedAt: string
 }
@@ -84,7 +87,7 @@ export interface CreateSaleDetailBody {
   reserveId: number
   requestTypeId: number
   countUnit: number
-  requestDetailId?: number
+  requestDetailId: number
   paymentTypeId?: number
   paymentMethodId?: number
   stayTypeId?: number

@@ -1,0 +1,213 @@
+{
+  "name": "Hotel - Payment Due 24h Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d1f43e26-c09d-4afb-b5b4-f1351de1a7bf",
+      "name": "Every Day at 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatDateInTimeZone(date, timeZone) { const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date); const values = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${values.year}-${values.month}-${values.day}`; } const now = new Date(); const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000); return [{ json: { dueDate: formatDateInTimeZone(tomorrow, 'Asia/Ho_Chi_Minh'), reminderHoursBefore: 24 } }];"
+      },
+      "id": "3a2aa8e4-3f17-47b5-a4c7-6b6a30d698e4",
+      "name": "Build Target Due Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{'http://host.docker.internal:3000/api/v1/internal/reservations/debt-reminders/due?dueDate=' + $json.dueDate}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-internal-token"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "96b85a92-9a09-4a28-bc9f-2cb38d6336b4",
+      "name": "Get Due Debt Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -620,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json; const reminders = response.reminders ?? []; return reminders.map((reminder) => ({ json: { ...reminder, workflowDueDate: response.dueDate } }));"
+      },
+      "id": "20da9ef8-c578-417e-a95c-6a42edeb2a7f",
+      "name": "Split Reminder Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{Boolean($json.customer.email)}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "e55f1d2b-2d1c-4f1e-9e8a-e2ff9e52fe7b",
+      "name": "Has Guest Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json; function esc(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); } function safe(value, fallback = '-') { return value === undefined || value === null || value === '' ? fallback : value; } function formatDate(value) { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeZone: 'Asia/Ho_Chi_Minh' }).format(date); } function formatMoney(value) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value ?? 0)); } function row(label, value) { return `<tr><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#475569;width:220px'>${esc(label)}</td><td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#0f172a'><strong>${esc(value)}</strong></td></tr>`; } const facts = { reservationCode: item.reservationCode, customerName: safe(item.customer?.name, 'Quý khách'), paymentDueDate: formatDate(item.paymentDueDate), requestTotal: formatMoney(item.requestTotal), paidTotal: formatMoney(item.paidTotal), remainingAmount: formatMoney(item.remainingAmount), checkInAt: formatDate(item.booking?.checkInAt), checkOutAt: formatDate(item.booking?.checkOutAt), roomType: safe(item.booking?.roomType), roomNumber: safe(item.booking?.roomNumber), hotelName: safe(item.hotel?.name, 'Khách sạn'), hotelAddress: safe(item.hotel?.address) }; const subject = `Nhắc thanh toán công nợ trước hạn - ${facts.reservationCode}`; const html = `<div style='font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a'><p>Xin chào ${esc(facts.customerName)},</p><p>Khách sạn xin nhắc quí khách về khoản công nợ còn lại của đặt phòng dưới đây. Hạn thanh toán sẽ đến vào ngày mai.</p><h3 style='margin:20px 0 8px;color:#0f172a'>Thông tin công nợ</h3><table style='border-collapse:collapse;width:100%;max-width:760px;border:1px solid #e5e7eb'>${row('Mã đặt phòng', facts.reservationCode)}${row('Hạn thanh toán', facts.paymentDueDate)}${row('Tổng hóa đơn', facts.requestTotal)}${row('Đã thanh toán', facts.paidTotal)}${row('Còn cần thanh toán', facts.remainingAmount)}</table><h3 style='margin:20px 0 8px;color:#0f172a'>Thông tin lưu trú</h3><table style='border-collapse:collapse;width:100%;max-width:760px;border:1px solid #e5e7eb'>${row('Ngày check-in', facts.checkInAt)}${row('Ngày check-out', facts.checkOutAt)}${row('Loại phòng', facts.roomType)}${row('Số phòng', facts.roomNumber)}${row('Cơ sở', facts.hotelName)}${row('Địa chỉ', facts.hotelAddress)}</table><p>Quí khách vui lòng hoàn tất thanh toán trước hạn để quá trình phục vụ được thuận lợi. Nếu quí khách đã thanh toán gần đây, vui lòng bỏ qua email này hoặc liên hệ khách sạn để được hỗ trợ kiểm tra.</p><p>Trân trọng,<br>${esc(facts.hotelName)}</p></div>`; return [{ json: { ...item, emails: { debtReminder: { subject, html } } } }];"
+      },
+      "id": "52ee1a68-0955-40c9-bbb5-137098423dd1",
+      "name": "Build Debt Reminder Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{$json.customer.email}}",
+        "subject": "={{$json.emails.debtReminder.subject}}",
+        "emailType": "html",
+        "message": "={{$json.emails.debtReminder.html}}",
+        "options": {}
+      },
+      "id": "d540f390-0d9f-49f7-b2ad-8c2cc688c659",
+      "name": "Send Debt Reminder Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        340,
+        -120
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3",
+          "name": "Hotel Gmail"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Day at 08:00": {
+      "main": [
+        [
+          {
+            "node": "Build Target Due Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Target Due Date": {
+      "main": [
+        [
+          {
+            "node": "Get Due Debt Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Due Debt Reminders": {
+      "main": [
+        [
+          {
+            "node": "Split Reminder Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Reminder Items": {
+      "main": [
+        [
+          {
+            "node": "Has Guest Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Guest Email?": {
+      "main": [
+        [
+          {
+            "node": "Build Debt Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Build Debt Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Send Debt Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-17T00:00:00.000Z",
+  "versionId": "9730bf57-8711-41fb-ac12-d23765f64777"
+}

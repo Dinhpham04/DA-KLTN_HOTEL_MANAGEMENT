@@ -51,6 +51,7 @@ interface DashboardManagementTabsProps {
   onDateChange: (date: Date) => void
   selectedTab: string
   onTabChange: (tab: string) => void
+  focusedReserveId: number | null
 }
 
 interface DailyReserveDraft {
@@ -201,12 +202,13 @@ export default function DashboardManagementTabs({
   onDateChange,
   selectedTab,
   onTabChange,
+  focusedReserveId,
 }: DashboardManagementTabsProps) {
   const [activeTab, setActiveTab] = useState<ManagementTab>(() =>
     normalizeManagementTab(selectedTab)
   )
 
-  const exitDate = dayjs(date).subtract(1, 'day').toDate()
+  const exitDate = date
   const exitRange = dayRange(exitDate)
   const dailyReserveParams = useMemo(() => ({ time: dayjs(date).format('YYYY/MM/DD') }), [date])
 
@@ -357,6 +359,7 @@ export default function DashboardManagementTabs({
               <DailyReserveTab
                 date={date}
                 reserves={dailyReserves}
+                focusedReserveId={focusedReserveId}
                 staffOptions={staffOptions}
                 carRows={dailyVehicles.carRows}
                 bicycleRows={dailyVehicles.bicycleRows}
@@ -376,6 +379,7 @@ export default function DashboardManagementTabs({
               <ExitManagementTab
                 exitDate={exitDate}
                 reservations={exitReservations}
+                focusedReserveId={focusedReserveId}
                 staffOptions={staffOptions}
                 carRows={exitVehicles.carRows}
                 bicycleRows={exitVehicles.bicycleRows}
@@ -599,6 +603,7 @@ function DashboardCleaningShiftTab({ date, staffs, facilities }: DashboardCleani
 interface DailyReserveTabProps {
   date: Date
   reserves: DailyReserve[]
+  focusedReserveId: number | null
   staffOptions: Option[]
   carRows: VehicleRow[]
   bicycleRows: VehicleRow[]
@@ -610,6 +615,7 @@ interface DailyReserveTabProps {
 function DailyReserveTab({
   date,
   reserves,
+  focusedReserveId,
   staffOptions,
   carRows,
   bicycleRows,
@@ -628,6 +634,18 @@ function DailyReserveTab({
       return next
     })
   }, [reserves])
+
+  useEffect(() => {
+    if (!focusedReserveId || !reserves.some((reserve) => reserve.reserveId === focusedReserveId)) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`daily-reserve-${focusedReserveId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [focusedReserveId, reserves])
 
   const updateDraft = (reserveId: number, patch: Partial<DailyReserveDraft>) => {
     setDrafts((current) => ({
@@ -725,6 +743,7 @@ function DailyReserveTab({
                       index={index}
                       date={date}
                       reserve={reserve}
+                      isFocused={reserve.reserveId === focusedReserveId}
                       draft={draft}
                       staffOptions={staffOptions}
                       onDraftChange={(patch) => updateDraft(reserve.reserveId, patch)}
@@ -758,6 +777,7 @@ function DailyReserveRow({
   index,
   date,
   reserve,
+  isFocused,
   draft,
   staffOptions,
   onDraftChange,
@@ -766,6 +786,7 @@ function DailyReserveRow({
   index: number
   date: Date
   reserve: DailyReserve
+  isFocused: boolean
   draft: DailyReserveDraft
   staffOptions: Option[]
   onDraftChange: (patch: Partial<DailyReserveDraft>) => void
@@ -776,12 +797,13 @@ function DailyReserveRow({
       reserve.canCheckIn &&
       (reserve.smartLock.maskedPin || (reserve.smartLock.cardCount ?? 0) > 0) &&
       'bg-[#f7dede] hover:bg-[#f7dede]',
-    reserve.checkinFlag && 'bg-neutral-400 hover:bg-neutral-400'
+    reserve.checkinFlag && 'bg-neutral-400 hover:bg-neutral-400',
+    isFocused && 'bg-[#DBEAFE] hover:bg-[#DBEAFE]'
   )
 
   return (
     <>
-      <tr className={rowClass}>
+      <tr id={`daily-reserve-${reserve.reserveId}`} className={rowClass}>
         <DailyCell rowSpan={2}>{index + 1}</DailyCell>
         <DailyCell rowSpan={2}>
           <Link
@@ -982,6 +1004,7 @@ function DailyCell({
 interface ExitManagementTabProps {
   exitDate: Date
   reservations: Reservation[]
+  focusedReserveId: number | null
   staffOptions: Option[]
   carRows: VehicleRow[]
   bicycleRows: VehicleRow[]
@@ -993,6 +1016,7 @@ interface ExitManagementTabProps {
 function ExitManagementTab({
   exitDate,
   reservations,
+  focusedReserveId,
   staffOptions,
   carRows,
   bicycleRows,
@@ -1011,6 +1035,21 @@ function ExitManagementTab({
       return next
     })
   }, [reservations])
+
+  useEffect(() => {
+    if (
+      !focusedReserveId ||
+      !reservations.some((reserve) => reserve.reserveId === focusedReserveId)
+    ) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`exit-reserve-${focusedReserveId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [focusedReserveId, reservations])
 
   const updateDraft = (reserveId: number, patch: Partial<ExitManagementDraft>) => {
     setDrafts((current) => ({
@@ -1050,6 +1089,7 @@ function ExitManagementTab({
 
       <ReservationCheckoutTable
         reservations={reservations}
+        focusedReserveId={focusedReserveId}
         drafts={drafts}
         staffOptions={staffOptions}
         onDraftChange={updateDraft}
@@ -1142,12 +1182,14 @@ function formatStayDuration(reserve: Reservation) {
 
 function ReservationCheckoutTable({
   reservations,
+  focusedReserveId,
   drafts,
   staffOptions,
   onDraftChange,
   onCheckOut,
 }: {
   reservations: Reservation[]
+  focusedReserveId: number | null
   drafts: Record<number, ExitManagementDraft>
   staffOptions: Option[]
   onDraftChange: (reserveId: number, patch: Partial<ExitManagementDraft>) => void
@@ -1179,9 +1221,11 @@ function ReservationCheckoutTable({
           return (
             <tr
               key={reserve.reserveId}
+              id={`exit-reserve-${reserve.reserveId}`}
               className={cn(
                 disabled && 'bg-neutral-300 hover:bg-neutral-300',
-                !disabled && 'hover:bg-[#f7fbff]'
+                !disabled && 'hover:bg-[#f7fbff]',
+                reserve.reserveId === focusedReserveId && 'bg-[#DBEAFE] hover:bg-[#DBEAFE]'
               )}
             >
               <Cell center className="w-[4rem] px-1">

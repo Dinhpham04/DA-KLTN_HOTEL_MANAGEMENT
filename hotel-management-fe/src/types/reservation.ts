@@ -31,6 +31,7 @@ export interface Reservation {
   periodTo: string | null
   noreserveCountBefore: number | null
   noreserveCountAfter: number | null
+  extensionTime: number | null
 
   // Dates
   checkedInAt: string | null
@@ -205,6 +206,7 @@ export interface CreateReservationBody {
 export interface UpdateReservationBody extends Partial<CreateReservationBody> {
   reserveId: number
   dataStatus?: number
+  deleteStatus?: number | null
   rentalKeys?: number
   returnKeys?: number | null
   keyReturnContactType?: number | null
@@ -215,6 +217,7 @@ export interface UpdateReservationBody extends Partial<CreateReservationBody> {
   disableReservation?: boolean
   roomDirtyLevel?: number | null
   earlyExitDatetime?: string
+  extensionTime?: number
   paymentDueDate?: string
 }
 

@@ -21,6 +21,8 @@ export type AssistantResultCard = {
 }
 
 export type AssistantSuggestion = {
+  id: string
+  group: 'Lịch trong ngày' | 'Đặt phòng' | 'Phòng' | 'Thanh toán' | 'Khách' | 'Quy trình'
   label: string
   prompt: string
 }
@@ -33,28 +35,118 @@ export type AssistantAction = {
 
 export const assistantSuggestions: AssistantSuggestion[] = [
   {
+    id: 'today-checkin',
+    group: 'Lịch trong ngày',
     label: 'Check-in hôm nay',
     prompt: 'Cho tôi xem danh sách khách check-in hôm nay',
   },
   {
+    id: 'today-checkout',
+    group: 'Lịch trong ngày',
     label: 'Check-out hôm nay',
     prompt: 'Cho tôi xem danh sách khách check-out hôm nay',
   },
   {
-    label: 'Tìm booking',
-    prompt: 'Tìm booking theo mã BK-240518',
+    id: 'today-arrivals-departures',
+    group: 'Lịch trong ngày',
+    label: 'Khách đến và đi hôm nay',
+    prompt: 'Hôm nay có bao nhiêu khách đến và đi?',
   },
   {
-    label: 'Phòng trống',
-    prompt: 'Phòng trống loại Deluxe ngày 18/05',
+    id: 'today-arrival-summary',
+    group: 'Đặt phòng',
+    label: 'Tóm tắt khách đến hôm nay',
+    prompt: 'Tóm tắt tình hình khách đến hôm nay',
   },
   {
-    label: 'Thanh toán',
-    prompt: 'Kiểm tra trạng thái thanh toán booking BK-240518',
+    id: 'today-departure-summary',
+    group: 'Đặt phòng',
+    label: 'Tóm tắt khách đi hôm nay',
+    prompt: 'Tóm tắt tình hình khách đi hôm nay',
   },
   {
-    label: 'Quy trình',
+    id: 'today-staying-guests',
+    group: 'Khách',
+    label: 'Khách đang lưu trú',
+    prompt: 'Hiện có những khách nào đang lưu trú?',
+  },
+  {
+    id: 'available-today',
+    group: 'Phòng',
+    label: 'Phòng trống hôm nay',
+    prompt: 'Hôm nay còn những phòng nào có thể đặt?',
+  },
+  {
+    id: 'available-deluxe-today',
+    group: 'Phòng',
+    label: 'Phòng Deluxe trống hôm nay',
+    prompt: 'Hôm nay còn phòng Deluxe nào có thể đặt?',
+  },
+  {
+    id: 'occupied-rooms',
+    group: 'Phòng',
+    label: 'Danh sách phòng có khách',
+    prompt: 'Cho tôi xem danh sách phòng đang có khách',
+  },
+  {
+    id: 'room-overview',
+    group: 'Phòng',
+    label: 'Tổng quan phòng',
+    prompt: 'Cho tôi xem tổng quan danh sách phòng hiện tại',
+  },
+  {
+    id: 'payment-guidance',
+    group: 'Thanh toán',
+    label: 'Quy trình đối soát thanh toán',
+    prompt: 'Quy trình kiểm tra và đối soát thanh toán đặt phòng là gì?',
+  },
+  {
+    id: 'late-payment-guidance',
+    group: 'Thanh toán',
+    label: 'Xử lý công nợ chưa thanh toán',
+    prompt: 'Quy trình xử lý đặt phòng còn công nợ chưa thanh toán là gì?',
+  },
+  {
+    id: 'early-checkin-policy',
+    group: 'Quy trình',
     prompt: 'Tóm tắt quy trình xử lý khách đến sớm',
+    label: 'Khách đến sớm',
+  },
+  {
+    id: 'late-checkout-policy',
+    group: 'Quy trình',
+    label: 'Check-out muộn',
+    prompt: 'Chính sách xử lý khách check-out muộn là gì?',
+  },
+  {
+    id: 'internal-phones',
+    group: 'Quy trình',
+    label: 'Số nội bộ',
+    prompt: 'Cho tôi số nội bộ của lễ tân, buồng phòng và kế toán',
+  },
+  {
+    id: 'lost-found',
+    group: 'Quy trình',
+    label: 'Mất đồ',
+    prompt: 'Quy trình xử lý khách báo mất đồ như thế nào?',
+  },
+  {
+    id: 'cancellation-policy',
+    group: 'Quy trình',
+    label: 'Hủy phòng và no-show',
+    prompt: 'Chính sách hủy phòng, no-show và hoàn tiền là gì?',
+  },
+  {
+    id: 'pet-policy',
+    group: 'Quy trình',
+    label: 'Chính sách thú cưng',
+    prompt: 'Chính sách thú cưng của khách sạn là gì?',
+  },
+  {
+    id: 'noise-complaint',
+    group: 'Quy trình',
+    label: 'Khách phàn nàn tiếng ồn',
+    prompt: 'Quy trình xử lý khách phàn nàn tiếng ồn như thế nào?',
   },
 ]
 

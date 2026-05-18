@@ -16,7 +16,9 @@ import { CarSvg } from '@/components/svgs/CarSvg'
 import { DogSvg } from '@/components/svgs/DogSvg'
 import { TrashSVG } from '@/components/svgs/TrashSVG'
 import { BookingActionPopover } from '@/components/whiteboard/BookingActionPopover'
+import { ReservationActionDialog } from '@/components/whiteboard/ReservationActionDialog'
 import { cn } from '@/lib/utils'
+import { ReserveStatus } from '@/types/reservation'
 import type {
   WhiteboardFacility,
   WhiteboardReserveItem,
@@ -47,6 +49,8 @@ type TimelineCell =
   | { type: 'reserve'; reserve: WhiteboardReserveItem }
   | { type: 'booking'; from: Dayjs; to: Dayjs | null }
   | { type: 'padding'; from: Dayjs; to: Dayjs; position: 'before' | 'after'; days: number }
+
+type ReservationTimelineStatus = 'draft' | 'pending' | 'confirmed' | 'checkedIn' | 'checkedOut'
 
 export function WhiteboardIndicator({
   facilities,
@@ -309,21 +313,23 @@ function ReserveTimelineCells({ reserve }: { reserve: WhiteboardReserveItem }) {
   const displayName =
     reserve.occupierName || reserve.clientName || (reserve.rakutenFlag ? 'Rakuten' : '---')
   const endLabel = formatReserveEndLabel(reserve)
-  const isDraft = reserve.draftFlag
+  const timelineStatus = getReservationTimelineStatus(reserve)
   const plateClasses = cn(
     'table-columns flex justify-center items-center border-black border-l first:border-l-0 w-[23.5rem] min-w-[23.5rem] h-16 sm:h-[5.6rem] snap-start usage-station-item-inner',
     {
-      'bg-[#FCFF61] text-black': hasExplicitEnd && reserve.confirmFlag && !isDraft,
-      'bg-[#8BD08E] text-black': (!hasExplicitEnd || !reserve.confirmFlag) && !isDraft,
-      'bg-[#F86F6F] text-black':
-        (!hasExplicitEnd || !reserve.confirmFlag) && reserve.clientDataType === 3 && !isDraft,
-      'bg-[#4ADEDE] text-black':
-        (reserve.clientAdvertisingType === 1 || reserve.advertisingType === 5) && !isDraft,
-      'bg-black text-white': isDraft,
+      'bg-black text-white': timelineStatus === 'draft',
+      'bg-[#8BD08E] text-black': timelineStatus === 'pending',
+      'bg-[#FCFF61] text-black': timelineStatus === 'confirmed',
+      'bg-[#F86F6F] text-black': timelineStatus === 'checkedIn',
+      'bg-[#D1D5DB] text-black': timelineStatus === 'checkedOut',
     }
   )
 
-  const indicatorText = reserve.directcheckinFlag ? 'D/I' : reserve.confirmFlag ? '◯' : ''
+  const indicatorText = reserve.directcheckinFlag
+    ? 'D/I'
+    : timelineStatus === 'confirmed'
+      ? '◯'
+      : ''
   return (
     <>
       <div className={plateClasses} title={reserve.memo ?? undefined}>
@@ -340,15 +346,23 @@ function ReserveTimelineCells({ reserve }: { reserve: WhiteboardReserveItem }) {
                   <CustomTooltip text={displayName} />
                 </Link>
               </span>
-              <span className="font-bold text-[#DF2727]">{indicatorText}</span>
+              <div className="flex items-center gap-1">
+                {indicatorText ? (
+                  <span className="font-bold text-[#DF2727]">{indicatorText}</span>
+                ) : null}
+                <ReservationActionDialog
+                  reserve={reserve}
+                  canCheckIn={timelineStatus === 'confirmed'}
+                  canCheckOut={timelineStatus === 'checkedIn'}
+                />
+              </div>
             </div>
             <div className="flex justify-between mt-1 w-full">
               <span>{formatDateOrDash(reserve.periodFrom)}</span>
               <span>~</span>
               <span
                 className={cn('font-bold', {
-                  'bg-[#FCFF61] px-1': hasExplicitEnd && reserve.confirmFlag && !isDraft,
-                  'text-red': reserve.confirmFlag && !isDraft,
+                  'bg-[#FCFF61] px-1': timelineStatus === 'confirmed',
                   'font-medium': !hasExplicitEnd,
                 })}
               >
@@ -562,12 +576,14 @@ function buildTimelineCells(
   searchTo?: Date | null
 ): TimelineCell[] {
   const cells: TimelineCell[] = []
-  const sortedReservations = [...room.usageStatus].sort((a, b) => {
-    const aTime = getReserveStartDate(a)?.valueOf() ?? Number.MAX_SAFE_INTEGER
-    const bTime = getReserveStartDate(b)?.valueOf() ?? Number.MAX_SAFE_INTEGER
-    if (aTime === bTime) return a.reserveId - b.reserveId
-    return aTime - bTime
-  })
+  const sortedReservations = room.usageStatus
+    .filter((reserve) => reserve.reserveStatus !== ReserveStatus.CANCELLED)
+    .sort((a, b) => {
+      const aTime = getReserveStartDate(a)?.valueOf() ?? Number.MAX_SAFE_INTEGER
+      const bTime = getReserveStartDate(b)?.valueOf() ?? Number.MAX_SAFE_INTEGER
+      if (aTime === bTime) return a.reserveId - b.reserveId
+      return aTime - bTime
+    })
 
   const today = dayjs().startOf('day')
   const upperBound = searchTo ? dayjs(searchTo).startOf('day') : null
@@ -652,7 +668,7 @@ function getEffectiveReservePeriod(reserve: WhiteboardReserveItem): {
   const endSource = reserve.earlyExitDatetime ?? reserve.periodTo
   const rawEndCandidate = endSource ? dayjs(endSource) : null
   const rawEnd = rawEndCandidate?.isValid() ? rawEndCandidate.startOf('day') : null
-  const isOpenEnded = !reserve.confirmFlag || !rawEnd
+  const isOpenEnded = !rawEnd
   if (isOpenEnded) {
     return { start: paddedStart, end: null, rawStart, rawEnd: null, beforeDays, afterDays }
   }
@@ -670,11 +686,29 @@ function getReserveStartDate(reserve: WhiteboardReserveItem): Dayjs | null {
 function isRoomOccupiedNow(room: WhiteboardRoom) {
   return room.usageStatus.some((status) => {
     if (!status.checkinFlag || !status.periodFrom) return false
+    if (
+      status.reserveStatus === ReserveStatus.CHECKED_OUT ||
+      status.reserveStatus === ReserveStatus.CANCELLED
+    ) {
+      return false
+    }
     const from = dayjs(status.periodFrom)
     if (!from.isValid()) return false
     const today = dayjs()
     return today.isAfter(from, 'day') || today.isSame(from, 'day')
   })
+}
+
+function getReservationTimelineStatus(reserve: WhiteboardReserveItem): ReservationTimelineStatus {
+  if (reserve.draftFlag) return 'draft'
+  if (reserve.reserveStatus === ReserveStatus.CHECKED_OUT) return 'checkedOut'
+  if (reserve.reserveStatus === ReserveStatus.CHECKED_IN || reserve.checkinFlag) {
+    return 'checkedIn'
+  }
+  if (reserve.reserveStatus === ReserveStatus.CONFIRMED || reserve.confirmFlag) {
+    return 'confirmed'
+  }
+  return 'pending'
 }
 
 function hasPetService(rooms: WhiteboardRoom[]) {

@@ -2,13 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@database/prisma.service';
 import type { Prisma, RequestDetail } from '@prisma/client';
 
+export type RequestDetailWithSaleDetails = Prisma.RequestDetailGetPayload<{
+  include: {
+    saleDetails: true;
+  };
+}>;
+
 @Injectable()
 export class RequestDetailRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(reserveId: number): Promise<RequestDetail[]> {
+  findAll(reserveId: number): Promise<RequestDetailWithSaleDetails[]> {
     return this.prisma.requestDetail.findMany({
       where: { reserveId, deletedAt: null },
+      include: {
+        saleDetails: {
+          where: { deletedAt: null },
+        },
+      },
       orderBy: [{ requestDetailId: 'asc' }],
     });
   }

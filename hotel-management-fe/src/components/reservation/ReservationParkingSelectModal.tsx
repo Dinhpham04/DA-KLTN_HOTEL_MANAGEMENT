@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type Control,
   Controller,
@@ -171,6 +171,7 @@ interface ReservationParkingSelectModalProps {
   periodFrom?: string
   periodTo?: string
   reserveId?: number
+  openOnReady?: boolean
   trigger: React.ReactNode
 }
 
@@ -182,9 +183,12 @@ export default function ReservationParkingSelectModal({
   periodFrom: propPeriodFrom,
   periodTo: propPeriodTo,
   reserveId,
+  openOnReady = false,
   trigger,
 }: ReservationParkingSelectModalProps) {
   const methods = useFormContext()
+  const [open, setOpen] = useState(false)
+  const hasAutoOpenedRef = useRef(false)
   const selectedFacilityId = facilityId
   const selectedRoomId = methods.watch('reserve.room_id')
   const reservationConfirmFlag = methods.watch('reserve.confirm_flag') === '1'
@@ -276,63 +280,32 @@ export default function ReservationParkingSelectModal({
   const roomPeriodFrom = propPeriodFrom ?? methods.watch('reserve.period_from') ?? ''
   const roomPeriodTo = propPeriodTo ?? methods.watch('reserve.period_to') ?? ''
 
-  function buildSavedParkingRows(statusList = parkingStatusList): ParkingReserveRow[] {
-    if (!reserveId) return []
-
-    return (
-      statusList
-        .find((facility) => facility.facilityId === selectedFacilityId)
-        ?.parkings.flatMap((parking) =>
-          parking.parkingReserves
-            .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
-            .map((reserve) => ({
-              parking_reserve_id: reserve.parkingReserveId,
-              parking_id: reserve.parkingId,
-              facility_name: parking.facilityName,
-              facility_no: parking.number,
-              period_from: formatModalDate(reserve.periodFrom),
-              period_to: formatModalDate(reserve.periodTo),
-              confirm_flag: reserve.confirmFlag,
-              car_type: reserve.carType ?? '',
-              license_plate: reserve.licensePlate ?? '',
-              note: reserve.note ?? '',
-            }))
-        ) ?? []
-    )
-  }
-
-  function buildSavedBicycleRows(statusList = parkingStatusList): BicycleParkingReserveRow[] {
-    if (!reserveId) return []
-
-    return (
-      statusList
-        .find((facility) => facility.facilityId === selectedFacilityId)
-        ?.bicycleParkings.flatMap((parking) =>
-          parking.bicycleParkingReserves
-            .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
-            .map((reserve) => ({
-              bicycle_parking_reserve_id: reserve.bicycleParkingReserveId,
-              bicycle_parking_id: reserve.bicycleParkingId,
-              facility_name: parking.facilityName,
-              facility_no: parking.number,
-              period_from: formatModalDate(reserve.periodFrom),
-              period_to: formatModalDate(reserve.periodTo),
-              confirm_flag: reserve.confirmFlag,
-              bicycle_type_note: reserve.bicycleTypeNote ?? '',
-              note: reserve.note ?? '',
-            }))
-        ) ?? []
-    )
-  }
-
   // ── Open modal: restore from parent form values
-  async function handleOpen() {
+  const handleOpen = useCallback(async () => {
     const statusResult = selectedFacilityId ? await refetchStatus() : undefined
     const statusList = statusResult?.data ?? parkingStatusList
 
     if (isBicycle) {
       const existing = methods.getValues('reserve.bicycle_parking_reserve') ?? []
-      const savedRows = buildSavedBicycleRows(statusList)
+      const savedRows: BicycleParkingReserveRow[] = reserveId
+        ? (statusList
+            .find((facility) => facility.facilityId === selectedFacilityId)
+            ?.bicycleParkings.flatMap((parking) =>
+              parking.bicycleParkingReserves
+                .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
+                .map((reserve) => ({
+                  bicycle_parking_reserve_id: reserve.bicycleParkingReserveId,
+                  bicycle_parking_id: reserve.bicycleParkingId,
+                  facility_name: parking.facilityName,
+                  facility_no: parking.number,
+                  period_from: formatModalDate(reserve.periodFrom),
+                  period_to: formatModalDate(reserve.periodTo),
+                  confirm_flag: reserve.confirmFlag,
+                  bicycle_type_note: reserve.bicycleTypeNote ?? '',
+                  note: reserve.note ?? '',
+                }))
+            ) ?? [])
+        : []
       const nextRows = existing.length > 0 ? existing : savedRows
       replaceBicycle(nextRows)
       if (existing.length === 0 && savedRows.length > 0) {
@@ -340,20 +313,64 @@ export default function ReservationParkingSelectModal({
       }
     } else {
       const existing = methods.getValues('reserve.parking_reserve') ?? []
-      const savedRows = buildSavedParkingRows(statusList)
+      const savedRows: ParkingReserveRow[] = reserveId
+        ? (statusList
+            .find((facility) => facility.facilityId === selectedFacilityId)
+            ?.parkings.flatMap((parking) =>
+              parking.parkingReserves
+                .filter((reserve) => reserve.reserveId === reserveId && reserve.dataStatus === 1)
+                .map((reserve) => ({
+                  parking_reserve_id: reserve.parkingReserveId,
+                  parking_id: reserve.parkingId,
+                  facility_name: parking.facilityName,
+                  facility_no: parking.number,
+                  period_from: formatModalDate(reserve.periodFrom),
+                  period_to: formatModalDate(reserve.periodTo),
+                  confirm_flag: reserve.confirmFlag,
+                  car_type: reserve.carType ?? '',
+                  license_plate: reserve.licensePlate ?? '',
+                  note: reserve.note ?? '',
+                }))
+            ) ?? [])
+        : []
       const nextRows = existing.length > 0 ? existing : savedRows
       replaceParking(nextRows)
       if (existing.length === 0 && savedRows.length > 0) {
         methods.setValue('reserve.parking_reserve', savedRows, { shouldDirty: false })
       }
     }
-  }
+  }, [
+    isBicycle,
+    methods,
+    parkingStatusList,
+    refetchStatus,
+    replaceBicycle,
+    replaceParking,
+    reserveId,
+    selectedFacilityId,
+  ])
 
   // ── Close modal: reset local form
   function handleClose() {
     replaceParking([])
     replaceBicycle([])
   }
+
+  useEffect(() => {
+    if (
+      !openOnReady ||
+      hasAutoOpenedRef.current ||
+      !selectedFacilityId ||
+      !selectedRoomId ||
+      !roomPeriodFrom
+    ) {
+      return
+    }
+
+    hasAutoOpenedRef.current = true
+    void handleOpen()
+    setOpen(true)
+  }, [handleOpen, openOnReady, roomPeriodFrom, selectedFacilityId, selectedRoomId])
 
   // ── Check if a slot is already selected or out of room period
   function isSlotDisabled(
@@ -524,9 +541,14 @@ export default function ReservationParkingSelectModal({
   return (
     <CustomDialog
       size="medium"
+      opened={open}
       changeOnOpened={(open) => {
-        if (open) void handleOpen()
-        else handleClose()
+        setOpen(open)
+        if (open) {
+          void handleOpen()
+          return
+        }
+        handleClose()
       }}
       trigger={trigger}
       title={isBicycle ? 'Thiết lập bãi xe đạp' : 'Thiết lập bãi đỗ xe'}

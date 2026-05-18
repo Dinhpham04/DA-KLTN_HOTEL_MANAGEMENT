@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InternalAutomationGuard } from '@common/guards/internal-automation.guard';
 import { ReservationAutomationService } from './reservation-automation.service';
@@ -14,6 +14,12 @@ export class ReservationAutomationController {
   @ApiOperation({ summary: 'Get reservation status for n8n reminder workflows' })
   getAutomationStatus(@Param('id', ParseIntPipe) id: number) {
     return this.reservationAutomationService.getAutomationStatus(id);
+  }
+
+  @Get('debt-reminders/due')
+  @ApiOperation({ summary: 'List reservations with outstanding debt due on a target date' })
+  getDebtRemindersDue(@Query('dueDate') dueDate: string) {
+    return this.reservationAutomationService.getDebtRemindersDue(dueDate);
   }
 
   @Get(':id/self-checkin-status')

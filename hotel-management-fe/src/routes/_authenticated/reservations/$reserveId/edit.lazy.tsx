@@ -1,4 +1,4 @@
-import { zodResolver } from '@hookform/resolvers/zod'
+﻿import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { createLazyFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import dayjs from 'dayjs'
@@ -88,15 +88,25 @@ export const Route = createLazyFileRoute('/_authenticated/reservations/$reserveI
 })
 
 // ─── Schema ──────────────────────────────────────────────────────────
-const formSchema = z.object({
-  client: reservationClientSchema,
-  reserve: reservationEditReserveSchema.extend({
-    directcheckin_note: z.string().max(256).optional(),
-    smart_lock_pin: z.string().optional(),
-    smart_lock_valid_from: z.string().optional(),
-    smart_lock_valid_to: z.string().optional(),
-  }),
-})
+const formSchema = z
+  .object({
+    client: reservationClientSchema,
+    reserve: reservationEditReserveSchema.extend({
+      directcheckin_note: z.string().max(256).optional(),
+      smart_lock_pin: z.string().optional(),
+      smart_lock_valid_from: z.string().optional(),
+      smart_lock_valid_to: z.string().optional(),
+    }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reserve.checked_delete && !data.reserve.delete_status) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reserve', 'delete_status'],
+        message: 'Vui lòng chọn lý do thay đổi trạng thái',
+      })
+    }
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -160,12 +170,18 @@ function ReservationEditPage() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalConfirmSubmit, setModalConfirmSubmit] = useState(false)
+  const [modalConfirmDelete, setModalConfirmDelete] = useState(false)
   const [isRedirect, setIsRedirect] = useState<'list' | 'stay'>('stay')
   const [isIdentificationOpen, setIsIdentificationOpen] = useState(false)
+  const parkingHash = typeof window !== 'undefined' ? window.location.hash : ''
+  const autoOpenParkingType =
+    parkingHash === '#parking-car' ? 'car' : parkingHash === '#parking-bicycle' ? 'bicycle' : null
+  const shouldOpenParking = parkingHash === '#parking' || autoOpenParkingType !== null
 
   // Refs for scroll
   const refInvoice = useRef<HTMLDivElement>(null)
   const refOccupier = useRef<HTMLDivElement>(null)
+  const refParking = useRef<HTMLDivElement>(null)
   const formPopulateKeyRef = useRef('')
   const submittingRef = useRef(false)
   const queryClient = useQueryClient()
@@ -200,6 +216,14 @@ function ReservationEditPage() {
     clientId: reserve?.clientId ?? 0,
     enabled: !!reserve?.clientId,
   })
+
+  useEffect(() => {
+    if (!shouldOpenParking) return
+
+    requestAnimationFrame(() => {
+      refParking.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [shouldOpenParking])
 
   const { data: facilitiesData } = useGetFacilities()
   const { data: roomTypesData } = useGetRoomTypes({
@@ -402,6 +426,8 @@ function ReservationEditPage() {
   useEffect(() => {
     if (!reserve) return
     if (!occupiersData) return
+    if (!requestDetailsData) return
+    if (requestTypes.length === 0) return
     if (submittingRef.current) return
 
     const client = clientDetail ?? reserve.client
@@ -410,7 +436,8 @@ function ReservationEditPage() {
       reserve.updatedAt ?? 'no-reserve-updated-at',
       clientDetail?.updatedAt ?? 'no-client-detail',
       latestSmartLockCredential?.updatedAt ?? 'no-smart-lock-pin',
-      requestDetailsData ? 'rd-loaded' : 'rd-pending',
+      requestDetailsData.data.length,
+      requestTypes.length,
     ].join('-')
     if (formPopulateKeyRef.current === populateKey) return
 
@@ -492,7 +519,7 @@ function ReservationEditPage() {
           ? String(reserve.keyReturnContactType)
           : '',
         key_return_datetime: '',
-        extension_time: '',
+        extension_time: reserve.extensionTime ? String(reserve.extensionTime) : '',
         checked_delete: !!reserve.deleteStatus,
         delete_status: reserve.deleteStatus ? String(reserve.deleteStatus) : '',
         amendment: reserve.amendment ?? '',
@@ -541,6 +568,9 @@ function ReservationEditPage() {
 
           return {
             request_detail_id: rd.requestDetailId,
+            sale_detail_ids: rd.saleDetailIds,
+            paid_amount: rd.paidAmount,
+            payment_status: rd.paymentStatus,
             is_checked: true,
             request_type_id: String(rd.requestTypeId),
             request_from: rdFrom,
@@ -567,7 +597,15 @@ function ReservationEditPage() {
         bicycle_parking_reserve: [],
       },
     })
-  }, [reserve, clientDetail, form, latestSmartLockCredential, occupiersData, requestDetailsData])
+  }, [
+    reserve,
+    clientDetail,
+    form,
+    latestSmartLockCredential,
+    occupiersData,
+    requestDetailsData,
+    requestTypes,
+  ])
 
   // ─── Submit handler ───────────────────────────────────────────────
   const handleSubmit = async (values: FormValues) => {
@@ -659,6 +697,8 @@ function ReservationEditPage() {
         disableReservation: values.reserve.disable_reservation,
         paymentDueDate: values.reserve.payment_due_date || undefined,
         earlyExitDatetime: undefined,
+        extensionTime: values.reserve.extension_time ? Number(values.reserve.extension_time) : 0,
+        deleteStatus: values.reserve.checked_delete ? Number(values.reserve.delete_status) : null,
       }
 
       await updateReservation(body)
@@ -774,6 +814,24 @@ function ReservationEditPage() {
     }
   }
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const values = form.getValues()
+
+    if (values.reserve.checked_delete) {
+      setModalConfirmDelete(true)
+      return
+    }
+
+    if ((values.reserve.request_normal ?? []).length === 0) {
+      setModalConfirmSubmit(true)
+      return
+    }
+
+    form.handleSubmit(handleSubmit)()
+  }
+
   if (isLoadingReserve) {
     return <Loading />
   }
@@ -826,11 +884,11 @@ function ReservationEditPage() {
           )}
           <section>
             <FormProvider {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)}>
+              <form onSubmit={handleFormSubmit}>
                 <CustomAccordion
                   type="multiple"
                   className="w-full"
-                  defaultValue={['reservation-0']}
+                  defaultValue={['reservation-0', 'billing-0']}
                 >
                   {/* ═══════════════════════════════════════════════════════════
                       ACCORDION 1: THÔNG TIN KHÁCH HÀNG (GREEN #8BD08E)
@@ -1546,6 +1604,7 @@ function ReservationEditPage() {
                             roomTypeId={roomTypeId}
                             stayTypeId={form.watch('reserve.stay_type_id')}
                             facilityId={facilityId}
+                            autoSyncEnabled={!!requestDetailsData && requestTypes.length > 0}
                           />
                         </div>
 
@@ -1567,7 +1626,7 @@ function ReservationEditPage() {
                         </div>
 
                         {/* ── Collapsible: Time Extension / Delete ──── */}
-                        <CustomCollapsible className="my-8">
+                        <CustomCollapsible className="my-8" defaultOpen={!!reserve.deleteStatus}>
                           <CustomCollapsibleTrigger>
                             <h5 className="font-bold text-[2.3rem] leading-none">
                               Gia hạn, Xóa đặt phòng (Đăng ký nhầm / Hủy / No-Show)
@@ -1600,7 +1659,12 @@ function ReservationEditPage() {
                                   render={({ field }) => (
                                     <CustomCheckbox
                                       checked={field.value}
-                                      onCheckedChange={field.onChange}
+                                      onCheckedChange={(checked) => {
+                                        field.onChange(checked)
+                                        form.setValue('reserve.delete_status', checked ? '1' : '', {
+                                          shouldValidate: true,
+                                        })
+                                      }}
                                     />
                                   )}
                                 />
@@ -1613,14 +1677,21 @@ function ReservationEditPage() {
                                   control={form.control}
                                   name="reserve.delete_status"
                                   render={({ field }) => (
-                                    <CustomSelectClean
-                                      option={DELETE_STATUS_OPTIONS}
-                                      selected={DELETE_STATUS_OPTIONS.find(
-                                        (o) => o.value === field.value
+                                    <div className="flex flex-col gap-2">
+                                      <CustomSelectClean
+                                        option={DELETE_STATUS_OPTIONS}
+                                        selected={DELETE_STATUS_OPTIONS.find(
+                                          (o) => o.value === field.value
+                                        )}
+                                        change={(o) => field.onChange(o.value)}
+                                        customClassMain="w-[14rem]"
+                                      />
+                                      {form.formState.errors.reserve?.delete_status && (
+                                        <p className="text-red-500 text-[1.3rem]">
+                                          {form.formState.errors.reserve.delete_status.message}
+                                        </p>
                                       )}
-                                      change={(o) => field.onChange(o.value)}
-                                      customClassMain="w-[14rem]"
-                                    />
+                                    </div>
                                   )}
                                 />
                               )}
@@ -1629,23 +1700,26 @@ function ReservationEditPage() {
                         </CustomCollapsible>
 
                         {/* ── Collapsible: Parking / Bicycle / Trunk / Pet ── */}
-                        <CustomCollapsible className="my-8">
-                          <CustomCollapsibleTrigger>
-                            <h5 className="font-bold text-[2.3rem] leading-none">Bãi đỗ xe</h5>
-                          </CustomCollapsibleTrigger>
-                          <CustomCollapsibleContent className="mt-4">
-                            <div className="md:flex md:flex-wrap md:items-center grid grid-cols-1 w-full md:max-w-[92.4rem]">
-                              <div className="mb-6 w-full md:max-w-none">
-                                <ReservationParkingSection
-                                  facilityId={facilityId}
-                                  periodFrom={periodFrom}
-                                  periodTo={periodTo}
-                                  reserveId={reserveIdNum}
-                                />
+                        <div id="parking" ref={refParking} className="scroll-mt-[10rem]">
+                          <CustomCollapsible className="my-8" defaultOpen={shouldOpenParking}>
+                            <CustomCollapsibleTrigger>
+                              <h5 className="font-bold text-[2.3rem] leading-none">Bãi đỗ xe</h5>
+                            </CustomCollapsibleTrigger>
+                            <CustomCollapsibleContent className="mt-4">
+                              <div className="md:flex md:flex-wrap md:items-center grid grid-cols-1 w-full md:max-w-[92.4rem]">
+                                <div className="mb-6 w-full md:max-w-none">
+                                  <ReservationParkingSection
+                                    facilityId={facilityId}
+                                    periodFrom={periodFrom}
+                                    periodTo={periodTo}
+                                    reserveId={reserveIdNum}
+                                    autoOpenType={autoOpenParkingType}
+                                  />
+                                </div>
                               </div>
-                            </div>
-                          </CustomCollapsibleContent>
-                        </CustomCollapsible>
+                            </CustomCollapsibleContent>
+                          </CustomCollapsible>
+                        </div>
                       </div>
                     </CustomAccordionContent>
                   </CustomAccordionItem>
@@ -1655,7 +1729,7 @@ function ReservationEditPage() {
                   ═══════════════════════════════════════════════════════════ */}
                   <div ref={refInvoice} className="mt-[2rem] scroll-mt-[10rem]">
                     <CustomAccordionItem
-                      value="billing"
+                      value="billing-0"
                       className="bg-white first:mt-0 mb-20 border !border-black rounded-[0.8rem]"
                     >
                       <CustomAccordionTrigger className="bg-[#D0E0E3] py-3 border-none rounded-[0.8rem] [&[data-state=open]]:rounded-[0.8rem_0.8rem_0_0]">
@@ -1731,6 +1805,37 @@ function ReservationEditPage() {
       {/* ═══════════════════════════════════════════════════════════
           CONFIRMATION MODAL
       ═══════════════════════════════════════════════════════════ */}
+      <CustomDialog
+        opened={modalConfirmDelete}
+        changeOnOpened={(open) => !open && setModalConfirmDelete(false)}
+        title="Thao tác này sẽ thay đổi trạng thái đặt phòng, bạn có chắc không?"
+        size="medium"
+        trigger={<span />}
+        content={
+          <div className="flex justify-center gap-4 py-4">
+            <NButton
+              type="button"
+              className="bg-red-600 mx-4 w-[12.4rem] text-white"
+              onClick={() => {
+                setModalConfirmDelete(false)
+                form.handleSubmit(handleSubmit)()
+              }}
+            >
+              Thực hiện
+            </NButton>
+            <DialogClose asChild>
+              <NButton
+                type="button"
+                className="bg-[#eee] mx-4 w-[12.4rem]"
+                onClick={() => setModalConfirmDelete(false)}
+              >
+                Hủy
+              </NButton>
+            </DialogClose>
+          </div>
+        }
+      />
+
       <CustomDialog
         opened={modalConfirmSubmit}
         changeOnOpened={(open) => !open && setModalConfirmSubmit(false)}

@@ -1,11 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ERROR_MESSAGES } from '@common/index';
 import { SaleDetailRepository } from './sale-detail.repository';
-import {
-  CreateSaleDetailDto,
-  SaleDetailResponseDto,
-  UpdateSaleDetailDto,
-} from './dto';
+import { CreateSaleDetailDto, SaleDetailResponseDto, UpdateSaleDetailDto } from './dto';
 
 @Injectable()
 export class SaleDetailService {
@@ -13,17 +9,20 @@ export class SaleDetailService {
 
   async findByReserveId(reserveId: number): Promise<{ data: SaleDetailResponseDto[] }> {
     const items = await this.repo.findAll(reserveId);
-    return { data: items.map(SaleDetailResponseDto.fromEntity) };
+    return { data: items.map((item) => SaleDetailResponseDto.fromEntity(item)) };
   }
 
   async create(dto: CreateSaleDetailDto, staffId: number): Promise<SaleDetailResponseDto> {
+    const requestDetail = await this.repo.findRequestDetailById(dto.requestDetailId);
+    if (!requestDetail || requestDetail.reserveId !== dto.reserveId) {
+      throw new BadRequestException('Linked request detail must belong to the same reservation');
+    }
+
     const entity = await this.repo.create({
       reserve: { connect: { reserveId: dto.reserveId } },
       requestTypeId: dto.requestTypeId,
       countUnit: dto.countUnit,
-      ...(dto.requestDetailId !== undefined && {
-        requestDetail: { connect: { requestDetailId: dto.requestDetailId } },
-      }),
+      requestDetail: { connect: { requestDetailId: dto.requestDetailId } },
       ...(dto.paymentTypeId !== undefined && { paymentTypeId: dto.paymentTypeId }),
       ...(dto.paymentMethodId !== undefined && {
         paymentMethod: { connect: { paymentMethodId: dto.paymentMethodId } },
@@ -63,6 +62,13 @@ export class SaleDetailService {
   ): Promise<SaleDetailResponseDto> {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundException(ERROR_MESSAGES.NOT_FOUND);
+
+    if (dto.requestDetailId !== undefined) {
+      const requestDetail = await this.repo.findRequestDetailById(dto.requestDetailId);
+      if (!requestDetail || requestDetail.reserveId !== existing.reserveId) {
+        throw new BadRequestException('Linked request detail must belong to the same reservation');
+      }
+    }
 
     const entity = await this.repo.update(id, {
       ...(dto.requestTypeId !== undefined && { requestTypeId: dto.requestTypeId }),

@@ -33,11 +33,15 @@ interface ReservationRequestNormalSectionProps {
   roomTypeId?: string
   stayTypeId?: string
   facilityId?: string
+  autoSyncEnabled?: boolean
 }
 
 type RequestNormalRow = {
   request_detail_id?: number
   sale_detail_id?: number
+  sale_detail_ids?: number[]
+  paid_amount?: number
+  payment_status?: 'unpaid' | 'paid'
   payment_method_id?: string
   sale_date?: string
   is_confirmed?: boolean
@@ -128,6 +132,10 @@ const createSourceKey = (
 
 const normalizeRows = (rows: RequestNormalRow[]) =>
   rows.map((row) => ({
+    request_detail_id: row.request_detail_id,
+    sale_detail_ids: row.sale_detail_ids ?? [],
+    paid_amount: row.paid_amount ?? 0,
+    payment_status: row.payment_status ?? 'unpaid',
     is_checked: !!row.is_checked,
     request_type_id: row.request_type_id ?? '',
     request_from: row.request_from ?? '',
@@ -149,6 +157,9 @@ const createDefaultRow = (
   periodTo?: string,
   defaultRequestTypeId?: string
 ): RequestNormalRow => ({
+  sale_detail_ids: [],
+  paid_amount: 0,
+  payment_status: 'unpaid',
   is_checked: false,
   request_type_id: defaultRequestTypeId ?? '1',
   request_from: periodFrom ?? '',
@@ -159,6 +170,21 @@ const createDefaultRow = (
   charge_staff_id: '',
 })
 
+const getPreservedRowFields = (row?: RequestNormalRow) =>
+  row
+    ? {
+        request_detail_id: row.request_detail_id,
+        sale_detail_id: row.sale_detail_id,
+        sale_detail_ids: row.sale_detail_ids,
+        paid_amount: row.paid_amount,
+        payment_status: row.payment_status,
+        payment_method_id: row.payment_method_id,
+        sale_date: row.sale_date,
+        is_confirmed: row.is_confirmed,
+        summary: row.summary,
+      }
+    : {}
+
 function ReservationRequestNormalSection({
   control,
   periodFrom,
@@ -167,6 +193,7 @@ function ReservationRequestNormalSection({
   roomTypeId,
   stayTypeId,
   facilityId,
+  autoSyncEnabled = true,
 }: ReservationRequestNormalSectionProps) {
   const { fields, append, remove, update, replace } = useFieldArray({
     control,
@@ -291,17 +318,7 @@ function ReservationRequestNormalSection({
             const existingRow = existingAutoRowsByKey.get(sourceKey)
 
             return {
-              // Preserve payment fields from existing row if present
-              ...(existingRow
-                ? {
-                    request_detail_id: existingRow.request_detail_id,
-                    sale_detail_id: existingRow.sale_detail_id,
-                    payment_method_id: existingRow.payment_method_id,
-                    sale_date: existingRow.sale_date,
-                    is_confirmed: existingRow.is_confirmed,
-                    summary: existingRow.summary,
-                  }
-                : {}),
+              ...getPreservedRowFields(existingRow),
               is_checked: true,
               request_type_id: String(fee.requestTypeId),
               request_from: row.request_from,
@@ -425,13 +442,14 @@ function ReservationRequestNormalSection({
   )
 
   useEffect(() => {
+    if (!autoSyncEnabled) return
+
     let cancelled = false
 
     async function syncAutoFees() {
       const existingAutoRowsByKey = new Map(
         rows.filter(isSyncedFeeRow).map((row) => [row.source_key, row])
       )
-      const manualRows = rows.filter((row) => !isSyncedFeeRow(row))
       const nextAutoRows: RequestNormalRow[] = []
 
       if (roomTypeId && stayTypeId && periodFrom && periodTo) {
@@ -444,6 +462,7 @@ function ReservationRequestNormalSection({
         )
         const existingRow = existingAutoRowsByKey.get(sourceKey)
         const baseRow: RequestNormalRow = {
+          ...getPreservedRowFields(existingRow),
           is_checked: true,
           request_type_id: RENT_REQUEST_TYPE_ID,
           request_from: periodFrom,
@@ -478,6 +497,7 @@ function ReservationRequestNormalSection({
         )
         const existingRow = existingAutoRowsByKey.get(sourceKey)
         const baseRow: RequestNormalRow = {
+          ...getPreservedRowFields(existingRow),
           is_checked: true,
           request_type_id: parkingRequestTypeId,
           request_from: parkingReserve.period_from,
@@ -514,6 +534,7 @@ function ReservationRequestNormalSection({
         )
         const existingRow = existingAutoRowsByKey.get(sourceKey)
         const baseRow: RequestNormalRow = {
+          ...getPreservedRowFields(existingRow),
           is_checked: true,
           request_type_id: bicycleParkingRequestTypeId,
           request_from: bicycleReserve.period_from,
@@ -532,7 +553,25 @@ function ReservationRequestNormalSection({
         nextAutoRows.push(await calculateServiceRow(baseRow, Number(bicycleParkingRequestTypeId)))
       }
 
-      const nextRows = [...manualRows, ...nextAutoRows]
+      const nextAutoRowsByKey = new Map(nextAutoRows.map((row) => [row.source_key, row]))
+      const consumedAutoRowKeys = new Set<string | undefined>()
+
+      const nextRows = rows.flatMap((row) => {
+        if (!isSyncedFeeRow(row)) return [row]
+
+        const syncedRow = nextAutoRowsByKey.get(row.source_key)
+        if (!syncedRow) return []
+
+        consumedAutoRowKeys.add(row.source_key)
+        return [syncedRow]
+      })
+
+      for (const autoRow of nextAutoRows) {
+        if (!consumedAutoRowKeys.has(autoRow.source_key)) {
+          nextRows.push(autoRow)
+        }
+      }
+
       if (!cancelled && !areRowsEqual(rows, nextRows)) {
         replace(nextRows as never[])
       }
@@ -551,6 +590,7 @@ function ReservationRequestNormalSection({
     stayTypeId,
     parkingReserveRows,
     bicycleParkingReserveRows,
+    autoSyncEnabled,
     parkingRequestTypeId,
     bicycleParkingRequestTypeId,
     calculateRentRows,

@@ -2,33 +2,52 @@ import {
   type HotelAssistantPageContext,
   sendHotelAssistantMessage,
 } from '@/api/hotel-assistant.api'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
   Bot,
   ExternalLink,
   Loader2,
   MessageCircle,
+  MessageSquarePlus,
   Send,
   ShieldCheck,
   UserRound,
   X,
 } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   type AssistantMessage,
   type AssistantResultCard,
   assistantSuggestions,
 } from './mockHotelAssistant'
 
-const initialMessages: AssistantMessage[] = [
-  {
-    id: 'assistant-welcome',
-    role: 'assistant',
-    content:
-      'Xin chào, tôi là trợ lý tra cứu nghiệp vụ khách sạn. Bạn có thể hỏi về booking, phòng, thanh toán, lưu trú hoặc tài liệu nội bộ.',
-    createdAt: new Date().toISOString(),
-  },
-]
+const assistantSessionStorageKey = 'hotel_assistant_session_id'
+const assistantSuggestionGroups = Array.from(
+  new Set(assistantSuggestions.map((suggestion) => suggestion.group))
+)
+
+function createInitialMessages(): AssistantMessage[] {
+  return [
+    {
+      id: 'assistant-welcome',
+      role: 'assistant',
+      content:
+        'Xin chào, tôi là trợ lý tra cứu nghiệp vụ khách sạn. Bạn có thể hỏi về booking, phòng, thanh toán, lưu trú hoặc tài liệu nội bộ.',
+      createdAt: new Date().toISOString(),
+    },
+  ]
+}
 
 const toneClassName: Record<
   NonNullable<AssistantResultCard['metadata'][number]['tone']>,
@@ -48,13 +67,16 @@ function formatTime(value: string) {
 }
 
 function getSessionId() {
-  const storageKey = 'hotel_assistant_session_id'
-  const currentSessionId = localStorage.getItem(storageKey)
+  const currentSessionId = localStorage.getItem(assistantSessionStorageKey)
   if (currentSessionId) return currentSessionId
 
-  const nextSessionId = `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  localStorage.setItem(storageKey, nextSessionId)
+  const nextSessionId = createSessionId()
+  localStorage.setItem(assistantSessionStorageKey, nextSessionId)
   return nextSessionId
+}
+
+function createSessionId() {
+  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function getCurrentStaffId() {
@@ -107,6 +129,61 @@ function ResultCard({ card }: { card: AssistantResultCard }) {
   )
 }
 
+function AssistantMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ children, ...props }) => (
+          <a
+            {...props}
+            className="font-medium text-[#204172] underline underline-offset-2"
+            rel="noreferrer"
+            target="_blank"
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="my-3 border-slate-300 border-l-2 pl-4 text-slate-600">
+            {children}
+          </blockquote>
+        ),
+        code: ({ children }) => (
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[1.25rem] text-slate-800">
+            {children}
+          </code>
+        ),
+        li: ({ children }) => <li className="pl-1">{children}</li>,
+        ol: ({ children }) => <ol className="my-3 list-decimal space-y-2 pl-6">{children}</ol>,
+        p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
+        pre: ({ children }) => (
+          <pre className="my-3 overflow-x-auto rounded-md bg-slate-100 p-3 text-[1.25rem]">
+            {children}
+          </pre>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-slate-950">{children}</strong>
+        ),
+        table: ({ children }) => (
+          <div className="my-3 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-[1.25rem]">{children}</table>
+          </div>
+        ),
+        td: ({ children }) => <td className="border border-slate-200 px-3 py-2">{children}</td>,
+        th: ({ children }) => (
+          <th className="border border-slate-200 bg-slate-50 px-3 py-2 font-semibold">
+            {children}
+          </th>
+        ),
+        ul: ({ children }) => <ul className="my-3 list-disc space-y-2 pl-6">{children}</ul>,
+      }}
+      remarkPlugins={[remarkGfm]}
+    >
+      {content}
+    </ReactMarkdown>
+  )
+}
+
 function ChatMessage({ message }: { message: AssistantMessage }) {
   const isUser = message.role === 'user'
 
@@ -126,7 +203,7 @@ function ChatMessage({ message }: { message: AssistantMessage }) {
             message.error && 'border border-stone-200 bg-stone-50 text-stone-800'
           )}
         >
-          {message.content}
+          {isUser ? message.content : <AssistantMarkdown content={message.content} />}
         </div>
         {message.cards && message.cards.length > 0 && (
           <div className="mt-2 grid gap-2">
@@ -164,8 +241,9 @@ function ChatMessage({ message }: { message: AssistantMessage }) {
 
 export function HotelAssistantWidget() {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<AssistantMessage[]>(initialMessages)
+  const [messages, setMessages] = useState<AssistantMessage[]>(createInitialMessages)
   const [inputValue, setInputValue] = useState('')
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string>()
   const [isThinking, setIsThinking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string>(getSessionId())
@@ -218,6 +296,25 @@ export function HotelAssistantWidget() {
     void sendPrompt(inputValue)
   }
 
+  const handleSuggestionChange = (suggestionId: string) => {
+    const suggestion = assistantSuggestions.find((item) => item.id === suggestionId)
+    if (!suggestion) return
+
+    setSelectedSuggestionId(suggestionId)
+    void sendPrompt(suggestion.prompt)
+    setSelectedSuggestionId(undefined)
+  }
+
+  const startNewConversation = () => {
+    if (isThinking) return
+
+    const nextSessionId = createSessionId()
+    localStorage.setItem(assistantSessionStorageKey, nextSessionId)
+    sessionIdRef.current = nextSessionId
+    setMessages(createInitialMessages())
+    setInputValue('')
+  }
+
   return (
     <div className="fixed right-6 bottom-6 z-[10040] flex items-end gap-4 text-[1.4rem]">
       {open && (
@@ -240,28 +337,58 @@ export function HotelAssistantWidget() {
                 </div>
               </div>
             </div>
-            <button
-              aria-label="Đóng chatbot"
-              className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-              onClick={() => setOpen(false)}
-              type="button"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </header>
-
-          <div className="flex flex-wrap gap-2.5 border-slate-200 border-b bg-white px-6 py-5">
-            {assistantSuggestions.map((suggestion) => (
+            <div className="flex items-center gap-2">
               <button
-                className="rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-[1.25rem] text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Tạo cuộc trò chuyện mới"
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isThinking}
-                key={suggestion.label}
-                onClick={() => void sendPrompt(suggestion.prompt)}
+                onClick={startNewConversation}
+                title="Tạo cuộc trò chuyện mới"
                 type="button"
               >
-                {suggestion.label}
+                <MessageSquarePlus className="h-4 w-4" />
               </button>
-            ))}
+              <button
+                aria-label="Đóng chatbot"
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </header>
+
+          <div className="border-slate-200 border-b bg-white px-6 py-5">
+            <Select
+              disabled={isThinking}
+              onValueChange={handleSuggestionChange}
+              value={selectedSuggestionId}
+            >
+              <SelectTrigger className="h-12 rounded-md border-slate-200 pr-0 pl-4 text-slate-700 hover:bg-slate-50">
+                <SelectValue placeholder="Chọn câu hỏi thường dùng" />
+              </SelectTrigger>
+              <SelectContent className="z-[10060] max-h-[34rem] border-slate-200">
+                {assistantSuggestionGroups.map((group) => (
+                  <SelectGroup key={group}>
+                    <SelectLabel className="px-3 py-2 text-[1.15rem] text-slate-500">
+                      {group}
+                    </SelectLabel>
+                    {assistantSuggestions
+                      .filter((suggestion) => suggestion.group === group)
+                      .map((suggestion) => (
+                        <SelectItem
+                          className="py-2.5 pr-4 pl-8 text-[1.3rem]"
+                          key={suggestion.id}
+                          value={suggestion.id}
+                        >
+                          {suggestion.label}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-6" ref={scrollRef}>

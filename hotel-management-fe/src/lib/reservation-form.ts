@@ -130,6 +130,9 @@ function getReservationCommonReserveDefaultValues(): ReservationCommonReserveFor
 
 const reservationRequestNormalRowSchema = z.object({
   request_detail_id: z.number().optional(),
+  sale_detail_ids: z.array(z.number()).default([]),
+  paid_amount: z.number().default(0),
+  payment_status: z.enum(['unpaid', 'paid']).default('unpaid'),
   is_checked: z.boolean().default(false),
   request_type_id: z.string().optional(),
   request_from: z.string().optional(),

@@ -3,8 +3,6 @@ import CustomDialog from '@/components/common/CustomDialog'
 import { CustomInput } from '@/components/common/CustomInput'
 import NotificationModal from '@/components/common/NotificationModal'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { DialogClose } from '@/components/ui/dialog'
-import { NButton } from '@/components/ui/new-button'
 import {
   Table,
   TableBody,
@@ -18,12 +16,9 @@ import {
   getAnnouncementDetailClassName,
   getAnnouncementTitleMeta,
 } from '@/constants/announcement'
-import { useUpdateSaleDate } from '@/hooks/mutations/useUpdateSaleDate'
 import { useUpsertResidualRoom } from '@/hooks/mutations/useUpsertResidualRoom'
 import { useGetAnnouncement } from '@/hooks/queries/useGetAnnouncement'
 import { useGetDailyBusiness } from '@/hooks/queries/useGetDailyBusiness'
-import { useGetSaleSetting } from '@/hooks/queries/useGetSaleSetting'
-import { cn } from '@/lib/utils'
 import type { DailyBusinessRoomCounts, RoomClassCounts } from '@/types/dashboard-header'
 import dayjs from 'dayjs'
 import { ChevronDown } from 'lucide-react'
@@ -34,7 +29,6 @@ import { toast } from 'react-toastify'
 interface DashboardHeaderProps {
   date: Date
   onDateChange: (date: Date) => void
-  taskDate: Date
 }
 
 // Round to 1 decimal place AFTER all arithmetic to avoid float precision artifacts.
@@ -54,13 +48,12 @@ const EMPTY_ROOM_COUNTS: DailyBusinessRoomCounts = {
   formattedCurrentTime: '',
 }
 
-export default function DashboardHeader({ date, onDateChange, taskDate }: DashboardHeaderProps) {
+export default function DashboardHeader({ date, onDateChange }: DashboardHeaderProps) {
   const { t } = useTranslation()
   const [openNotification, setOpenNotification] = useState(false)
   const [targetRoom, setTargetRoom] = useState(0)
 
   const formattedDate = dayjs(date).format('YYYY/MM/DD')
-  const formattedTaskDate = dayjs(taskDate).format('YYYY/MM/DD')
 
   const { data: dailyBusinessData } = useGetDailyBusiness({ date: formattedDate })
   const { data: announcementData } = useGetAnnouncement({
@@ -68,14 +61,8 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
     page: 1,
     perPage: 20,
   })
-  const { data: saleSettingData } = useGetSaleSetting()
 
   const { mutate: updateResidualRoom, isPending: isPendingResidual } = useUpsertResidualRoom({
-    onSuccess: () => toast.success(t('dashboard.header.saveSuccess')),
-    onError: () => toast.error(t('common.error')),
-  })
-
-  const { mutate: updateSaleDate } = useUpdateSaleDate({
     onSuccess: () => toast.success(t('dashboard.header.saveSuccess')),
     onError: () => toast.error(t('common.error')),
   })
@@ -116,21 +103,11 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
     >
   ) => classRows.reduce((acc, row) => acc + row[key], 0)
 
-  // Sale date logic: 1 = move to tomorrow, 2 = revert to today
-  const saleDate = saleSettingData?.setting.defaultSaleDate
-  const today = dayjs(taskDate).startOf('day')
-  const saleDateParsed = saleDate ? dayjs(saleDate) : null
-  const typeSaleDate: 1 | 2 = saleDateParsed && saleDateParsed.isAfter(today, 'day') ? 2 : 1
-
   const handleResidualBlur = () => {
     updateResidualRoom({
       date: formattedDate,
       number: Number.isNaN(targetRoom) ? 0 : targetRoom,
     })
-  }
-
-  const handleSaleDateChange = (type: 1 | 2) => {
-    updateSaleDate({ type })
   }
 
   return (
@@ -140,7 +117,7 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
           <span className="ml-[1.5rem]">{t('dashboard.header.pageTitle')}</span>
         </div>
 
-        <div className="mt-[2.4rem] flex h-auto flex-wrap gap-[1.6rem]">
+        <div className="mt-[2.4rem] flex h-auto flex-wrap items-stretch gap-[1.6rem]">
           {/* Card 1: Announcement */}
           <Card className="w-full min-w-full flex-1 rounded-[0.8rem] border-2 border-primary bg-white px-[2.4rem] pt-[2rem] pb-[.8rem] md:min-w-[45rem]">
             <CardHeader className="p-0 text-[1.8rem] font-bold after:h-[.1rem] after:w-full after:bg-gray-200">
@@ -203,7 +180,7 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
           </Card>
 
           {/* Card 2: Date picker + summary */}
-          <div className="min-w-full flex-1 md:min-w-[36rem]">
+          <div className="flex min-w-full flex-1 flex-col md:min-w-[36rem]">
             <CustomDatePickerNextDay
               change={(value) => onDateChange(value || new Date())}
               value={date}
@@ -213,7 +190,10 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
               classNameWrapper="h-[5.7rem]"
               hiddenNextMoth
             />
-            <Table className="mt-[1.3rem] w-full table-fixed flex-grow text-center text-[1.4rem] font-bold">
+            <Table
+              wrapperClassname="mt-[1.3rem] flex-1"
+              className="h-full w-full table-fixed text-center text-[1.4rem] font-bold"
+            >
               <TableBody>
                 <TableRow className="bg-gray-100 hover:bg-gray-100 data-[state=selected]:bg-gray-100">
                   <TableCell
@@ -347,86 +327,6 @@ export default function DashboardHeader({ date, onDateChange, taskDate }: Dashbo
           </div>
         </div>
 
-        {/* Sale date toggle */}
-        <div className="mt-6 flex justify-end">
-          {typeSaleDate === 1 ? (
-            <CustomDialog
-              size="large"
-              customClass="text-center [&_svg]:hidden"
-              customClassContent="max-w-[50rem]"
-              title={t('dashboard.header.saleDateConfirmAdd', {
-                from: dayjs(taskDate).format('YYYY/MM/DD'),
-                to: dayjs(taskDate).add(1, 'day').format('YYYY/MM/DD'),
-              })}
-              trigger={
-                <NButton className="min-w-[10rem] bg-white px-4" type="button">
-                  {t('dashboard.header.saleDateChange')} (
-                  {t('dashboard.header.saleDateNow', {
-                    date: dayjs().format('DD/MM'),
-                  })}
-                  )
-                </NButton>
-              }
-              content={
-                <div className="flex justify-center">
-                  <DialogClose>
-                    <NButton
-                      onClick={() => handleSaleDateChange(1)}
-                      className="mx-4 w-[12.4rem] bg-red-600 text-white"
-                    >
-                      {t('dashboard.header.execute')}
-                    </NButton>
-                  </DialogClose>
-                  <DialogClose>
-                    <div className="mx-4 w-[12.4rem] bg-[#eee] text-center">
-                      {t('dashboard.header.cancel')}
-                    </div>
-                  </DialogClose>
-                </div>
-              }
-            />
-          ) : (
-            <CustomDialog
-              size="large"
-              customClass="text-center [&_svg]:hidden"
-              customClassContent="max-w-[50rem]"
-              title={t('dashboard.header.saleDateConfirmSub', {
-                from: dayjs(taskDate).add(1, 'day').format('YYYY/MM/DD'),
-                to: dayjs(taskDate).format('YYYY/MM/DD'),
-              })}
-              trigger={
-                <NButton
-                  className={cn('min-w-[10rem] !bg-red-300 px-4 hover:!text-black')}
-                  type="button"
-                >
-                  {t('dashboard.header.saleDateChanged')} (
-                  {t('dashboard.header.saleDateNow', {
-                    date: dayjs().add(1, 'day').format('DD/MM'),
-                  })}
-                  )
-                </NButton>
-              }
-              content={
-                <div className="flex justify-center">
-                  <DialogClose>
-                    <NButton
-                      onClick={() => handleSaleDateChange(2)}
-                      className="mx-4 w-[12.4rem] bg-red-600 text-white"
-                    >
-                      {t('dashboard.header.execute')}
-                    </NButton>
-                  </DialogClose>
-                  <DialogClose>
-                    <div className="mx-4 w-[12.4rem] bg-[#eee] text-center">
-                      {t('dashboard.header.cancel')}
-                    </div>
-                  </DialogClose>
-                </div>
-              }
-            />
-          )}
-        </div>
-        <input type="hidden" value={formattedTaskDate} readOnly />
       </div>
     </div>
   )

@@ -1,0 +1,116 @@
+{
+  "name": "Hotel Assistant Tool V2 - Get Master Data",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "a6f8d9c8-6ddd-4b13-9feb-670c2173f418",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseQueryString(value) {\n  if (value === undefined || value === null || value === '') return {}\n  if (typeof value === 'object' && !Array.isArray(value)) return value\n  const text = String(value).trim()\n  if (!text) return {}\n  if (text.startsWith('{')) {\n    try {\n      const parsed = JSON.parse(text)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}\n    } catch {}\n  }\n  const source = text.startsWith('?') ? text.slice(1) : text\n  const result = {}\n  for (const pair of source.split('&')) {\n    if (!pair) continue\n    const separatorIndex = pair.indexOf('=')\n    const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n    const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n    const key = decodeURIComponent(rawKey.replace(/\\+/g, ' ')).trim()\n    const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' ')).trim()\n    if (!key || paramValue === '') continue\n    if (result[key] === undefined) result[key] = paramValue\n    else if (Array.isArray(result[key])) result[key].push(paramValue)\n    else result[key] = [result[key], paramValue]\n  }\n  return result\n}\nfunction parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : parseQueryString(value)\n    } catch {\n      return parseQueryString(value)\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}\n}\nfunction readInput() {\n  const raw = parseObject($json)\n  const input = { ...raw }\n  for (const key of ['json', 'body', 'data', 'input', 'workflowInputs', 'parameters', 'args']) Object.assign(input, parseObject(raw[key]))\n  Object.assign(input, parseQueryString(raw.query))\n  Object.assign(input, parseQueryString(raw.queryString))\n  return input\n}\nfunction present(value) {\n  if (Array.isArray(value)) return value.length > 0 ? value : undefined\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\nfunction toInteger(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) ? parsed : undefined\n}\nfunction toBooleanString(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  if (normalized === true || normalized === 1 || normalized === '1' || String(normalized).toLowerCase() === 'true') return 'true'\n  if (normalized === false || normalized === 0 || normalized === '0' || String(normalized).toLowerCase() === 'false') return 'false'\n  return undefined\n}\nfunction assign(params, key, value, type = 'string') {\n  const normalized = present(value)\n  if (normalized === undefined) return\n  if (type === 'number') {\n    const numberValue = toInteger(normalized)\n    if (numberValue !== undefined) params[key] = String(numberValue)\n    return\n  }\n  if (type === 'boolean') {\n    const booleanValue = toBooleanString(normalized)\n    if (booleanValue !== undefined) params[key] = booleanValue\n    return\n  }\n  params[key] = String(normalized).trim()\n}\nfunction encodeQuery(params) {\n  const parts = []\n  for (const [key, value] of Object.entries(params)) {\n    if (value === undefined || value === null || value === '') continue\n    parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)))\n  }\n  return parts.join('&')\n}\nfunction buildUrl(baseUrl, endpoint, params) {\n  const query = encodeQuery(params)\n  return query ? baseUrl + endpoint + '?' + query : baseUrl + endpoint\n}\n\nconst config = {\n  \"endpoint\": \"/internal/chatbot/master-data\",\n  \"allowedParams\": [\n    {\n      \"name\": \"search\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"facilityId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"roomTypeId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"roomClassId\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"dataStatus\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"category\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"depositFlag\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"includeRooms\",\n      \"type\": \"boolean\"\n    },\n    {\n      \"name\": \"includePricing\",\n      \"type\": \"boolean\"\n    },\n    {\n      \"name\": \"includePrices\",\n      \"type\": \"boolean\"\n    },\n    {\n      \"name\": \"limit\",\n      \"type\": \"number\"\n    }\n  ],\n  \"defaults\": {\n    \"dataStatus\": 1,\n    \"includeRooms\": false,\n    \"includePricing\": false,\n    \"limit\": 50\n  }\n}\nconst input = readInput()\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst params = {}\nfor (const field of config.allowedParams) assign(params, field.name, input[field.name], field.type)\nfor (const [key, value] of Object.entries(config.defaults ?? {})) if (params[key] === undefined) params[key] = String(value)\nlet endpoint = config.endpoint\nfor (const pathParam of config.pathParams ?? []) {\n  if (params[pathParam.name] !== undefined) {\n    endpoint = pathParam.endpointPrefix + '/' + encodeURIComponent(String(params[pathParam.name]))\n    delete params[pathParam.name]\n  }\n}\nconst apiUrl = buildUrl(apiBaseUrl, endpoint, params)\nreturn [{ json: { rawInput: input, params, queryString: encodeQuery(params), apiUrl, apiBaseUrl, internalToken: 'dev-internal-token' } }]\n"
+      },
+      "id": "68a8aaf5-0e8e-4c44-b399-1e61b48619f4",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "57695680-320c-4d13-a966-1734741a021c",
+      "name": "GET Chatbot Master Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json.data ?? $json\nreturn [{ json: { masterData: result.masterData ?? result, params: $('Prepare Input').item.json.params, queryString: $('Prepare Input').item.json.queryString, sources: [{ type: 'api', name: 'GET /internal/chatbot/master-data' }] } }]"
+      },
+      "id": "ad6f036e-ab0b-4e64-b415-87f7a8ed14c4",
+      "name": "Normalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "GET Chatbot Master Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Chatbot Master Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-v2-get-master-data"
+}

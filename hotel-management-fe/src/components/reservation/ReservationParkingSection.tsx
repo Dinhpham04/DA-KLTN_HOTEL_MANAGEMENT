@@ -8,6 +8,7 @@ interface ReservationParkingSectionProps {
   periodFrom?: string
   periodTo?: string
   reserveId?: string | number
+  autoOpenType?: 'car' | 'bicycle' | null
 }
 
 function createTriggerButton() {
@@ -48,6 +49,7 @@ export default function ReservationParkingSection({
   periodFrom,
   periodTo,
   reserveId,
+  autoOpenType = null,
 }: ReservationParkingSectionProps) {
   const facilityIdNum = facilityId ? Number(facilityId) : undefined
   const reserveIdNum = reserveId ? Number(reserveId) : undefined
@@ -62,6 +64,7 @@ export default function ReservationParkingSection({
             periodFrom={periodFrom}
             periodTo={periodTo}
             reserveId={reserveIdNum}
+            openOnReady={autoOpenType === 'car'}
             trigger={createTriggerButton()}
           />
         </ParkingCell>
@@ -73,6 +76,7 @@ export default function ReservationParkingSection({
             periodFrom={periodFrom}
             periodTo={periodTo}
             reserveId={reserveIdNum}
+            openOnReady={autoOpenType === 'bicycle'}
             trigger={createTriggerButton()}
           />
         </ParkingCell>

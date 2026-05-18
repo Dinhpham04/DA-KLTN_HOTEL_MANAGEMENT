@@ -768,22 +768,18 @@ Output:
 
 ### Tool 8: search_internal_docs
 
-CÃ³ 2 mode.
-
-#### Mode A: Google Drive trá»±c tiáº¿p
+PhiÃªn báº£n hiá»‡n táº¡i dÃ¹ng má»™t handbook cá»‘ Ä‘á»‹nh trÃªn Google Docs Ä‘á»ƒ giá»¯ workflow Ä‘Æ¡n giáº£n khi knowledge base cÃ²n nhá».
 
 Nodes:
-- `Google Drive - Search Files`
-- `Google Drive - Download/Export`
-- `Code - Trim Text`
+- `Google Docs - Get Document`
+- `Code - Search Relevant Sections`
+- `Code - Normalize Docs`
 
 Input:
 
 ```json
 {
-  "query": "quy trÃ¬nh khÃ¡ch Ä‘áº¿n sá»›m",
-  "folderId": "{{$env.GOOGLE_DRIVE_POLICY_FOLDER_ID}}",
-  "limit": 3
+  "queryString": "query=quy%20trinh%20khach%20den%20som&limit=3"
 }
 ```
 
@@ -793,19 +789,25 @@ Output:
 {
   "documents": [
     {
-      "title": "Quy trÃ¬nh lá»… tÃ¢n",
-      "snippet": "KhÃ¡ch Ä‘áº¿n sá»›m trÆ°á»›c 9:00...",
-      "url": "https://drive.google.com/..."
+      "title": "2.3 Check-in sá»›m",
+      "snippet": "TrÆ°á»›c 09:00 phá»¥ thu 100% tiá»n má»™t Ä‘Ãªm...",
+      "content": "Ná»™i dung section phÃ¹ há»£p trong handbook...",
+      "score": 12,
+      "source": "HOTEL_INTERNAL_OPERATIONS_GUIDE.md"
     }
   ],
-  "sources": [{ "type": "drive", "name": "Google Drive policy folder" }]
+  "sources": [{ "type": "drive", "name": "Google Docs: HOTEL_INTERNAL_OPERATIONS_GUIDE" }]
 }
 ```
 
-#### Mode B: Vector Store
+Thiáº¿t láº­p cáº§n thay sau khi import:
 
-Production nÃªn dÃ¹ng:
-- Cron/Drive Trigger Ä‘á»c file.
+1. Táº¡o hoáº·c import handbook thÃ nh má»™t document Google Docs native.
+2. Trong node `Get Handbook From Google Docs`, thay `REPLACE_WITH_GOOGLE_DOC_ID_OR_URL` báº±ng document ID hoáº·c URL tháº­t.
+3. Chá»n credential Google Docs OAuth2 phÃ¹ há»£p cho node.
+
+Khi sá»‘ lÆ°á»£ng tÃ i liá»‡u tÄƒng lÃªn nhiá»u file, khi Ä‘Ã³ má»›i nÃªn chuyá»ƒn sang pipeline index riÃªng:
+- Drive Trigger hoáº·c Cron Ä‘á»c file.
 - Chia chunk.
 - Táº¡o embeddings.
 - LÆ°u Postgres pgvector/Qdrant/Supabase Vector.

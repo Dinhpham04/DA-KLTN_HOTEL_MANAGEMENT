@@ -2,11 +2,13 @@
   "name": "Hotel Assistant Tool - Search Available Rooms",
   "nodes": [
     {
-      "parameters": {},
-      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000601",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "0dc30434-26f5-4224-8ef3-bd38818e953e",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         -720,
         0
@@ -14,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst from = $json.from ?? $json.date\nconst to = $json.to ?? $json.from ?? $json.date\nconst roomTypeCandidate = $json.roomTypeId ?? $json.roomType\nconst parsedRoomTypeId = Number(roomTypeCandidate)\nconst roomTypeId = Number.isInteger(parsedRoomTypeId) ? parsedRoomTypeId : undefined\nreturn [{ json: { ...$json, from, to, periodFrom: from, periodTo: to, roomTypeId, apiBaseUrl, internalToken: 'dev-internal-token', limit: $json.limit ?? 50 } }]"
+        "jsCode": "function parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined\n    } catch {\n      const trimmed = value.trim()\n      if (!trimmed.includes('=')) return undefined\n\n      const source = trimmed.startsWith('?') ? trimmed.slice(1) : trimmed\n      const result = {}\n      for (const pair of source.split('&')) {\n        if (!pair) continue\n        const separatorIndex = pair.indexOf('=')\n        const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n        const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n        const key = decodeURIComponent(rawKey.replace(/\\+/g, ' '))\n        const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' '))\n        if (!key) continue\n\n        if (result[key] === undefined) {\n          result[key] = paramValue\n        } else if (Array.isArray(result[key])) {\n          result[key].push(paramValue)\n        } else {\n          result[key] = [result[key], paramValue]\n        }\n      }\n\n      return Object.keys(result).length > 0 ? result : undefined\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined\n}\n\nfunction readInput() {\n  const raw = parseObject($json) ?? {}\n  const directKeys = Object.keys(raw).filter((key) => !['json', 'body', 'query', 'data', 'input', 'workflowInputs', 'parameters', 'args'].includes(key))\n  if (directKeys.length > 0) return raw\n\n  for (const key of ['json', 'body', 'query', 'data', 'input', 'workflowInputs', 'parameters', 'args']) {\n    const nested = parseObject(raw[key])\n    if (nested && Object.keys(nested).length > 0) return nested\n  }\n\n  return raw\n}\n\nfunction present(value) {\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\n\nfunction numberOrUndefined(value) {\n  const normalized = present(value)\n  if (normalized === undefined) return undefined\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) ? parsed : undefined\n}\nconst input = readInput()\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst from = present(input.from) ?? present(input.date)\nconst to = present(input.to) ?? present(input.from) ?? present(input.date)\nconst roomTypeCandidate = input.roomTypeId ?? input.roomType\nconst roomTypeId = numberOrUndefined(roomTypeCandidate)\nreturn [{ json: { ...input, from, to, periodFrom: from, periodTo: to, roomType: present(input.roomType), roomTypeId, facilityId: numberOrUndefined(input.facilityId), dataStatus: numberOrUndefined(input.dataStatus) ?? 1, apiBaseUrl, internalToken: 'dev-internal-token', limit: numberOrUndefined(input.limit) ?? 50 } }]"
       },
       "id": "2c19d1a7-6f7e-4bb8-9f01-000000000602",
       "name": "Prepare Input",
@@ -50,6 +52,10 @@
             {
               "name": "limit",
               "value": "={{ $json.limit }}"
+            },
+            {
+              "name": "dataStatus",
+              "value": "={{ $json.dataStatus }}"
             }
           ]
         },

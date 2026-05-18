@@ -130,6 +130,18 @@ export class CleaningShiftRepository {
     });
   }
 
+  findActiveStaffCatalog() {
+    return this.prisma.staff.findMany({
+      where: { dataStatus: 1, deletedAt: null },
+      select: {
+        staffId: true,
+        staffName: true,
+        staffNameShort: true,
+      },
+      orderBy: [{ orderNum: 'asc' }, { staffId: 'asc' }],
+    });
+  }
+
   findActiveFacilities(facilityIds?: number[]) {
     return this.prisma.facility.findMany({
       where: {

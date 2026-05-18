@@ -1,0 +1,247 @@
+{
+  "name": "Hotel Assistant Tool V2 - Get Reservation Detail",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "bc7439b5-214c-4932-956f-db8adb1fd179",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseQueryString(value) {\n  if (value === undefined || value === null || value === '') return {}\n  if (typeof value === 'object' && !Array.isArray(value)) return value\n  const text = String(value).trim()\n  if (!text) return {}\n  if (text.startsWith('{')) {\n    try {\n      const parsed = JSON.parse(text)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}\n    } catch {}\n  }\n  const source = text.startsWith('?') ? text.slice(1) : text\n  const result = {}\n  for (const pair of source.split('&')) {\n    if (!pair) continue\n    const separatorIndex = pair.indexOf('=')\n    const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n    const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n    const key = decodeURIComponent(rawKey.replace(/\\+/g, ' ')).trim()\n    const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' ')).trim()\n    if (!key || paramValue === '') continue\n    if (result[key] === undefined) result[key] = paramValue\n    else if (Array.isArray(result[key])) result[key].push(paramValue)\n    else result[key] = [result[key], paramValue]\n  }\n  return result\n}\n\nfunction parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : parseQueryString(value)\n    } catch {\n      return parseQueryString(value)\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}\n}\n\nfunction readInput() {\n  const raw = parseObject($json)\n  const input = { ...raw }\n  for (const key of ['json', 'body', 'data', 'input', 'workflowInputs', 'parameters', 'args']) {\n    Object.assign(input, parseObject(raw[key]))\n  }\n  Object.assign(input, parseQueryString(raw.query))\n  Object.assign(input, parseQueryString(raw.queryString))\n  return input\n}\n\nfunction present(value) {\n  if (Array.isArray(value)) return value.length > 0 ? value : undefined\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\n\nfunction toInteger(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) ? parsed : undefined\n}\n\nfunction toBooleanString(value) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return undefined\n  if (normalized === true || normalized === 1 || normalized === '1' || String(normalized).toLowerCase() === 'true') return 'true'\n  if (normalized === false || normalized === 0 || normalized === '0' || String(normalized).toLowerCase() === 'false') return 'false'\n  return undefined\n}\n\nfunction assign(params, key, value, type = 'string') {\n  const normalized = present(value)\n  if (normalized === undefined) return\n  if (type === 'number') {\n    const numberValue = toInteger(normalized)\n    if (numberValue !== undefined) params[key] = String(numberValue)\n    return\n  }\n  if (type === 'boolean') {\n    const booleanValue = toBooleanString(normalized)\n    if (booleanValue !== undefined) params[key] = booleanValue\n    return\n  }\n  if (Array.isArray(normalized)) params[key] = normalized.map(String).filter(Boolean)\n  else params[key] = String(normalized).trim()\n}\n\nfunction encodeQuery(params) {\n  const parts = []\n  for (const [key, value] of Object.entries(params)) {\n    if (value === undefined || value === null || value === '') continue\n    const values = Array.isArray(value) ? value : [value]\n    for (const item of values) parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)))\n  }\n  return parts.join('&')\n}\n\nfunction buildUrl(baseUrl, endpoint, params) {\n  const query = encodeQuery(params)\n  return query ? baseUrl + endpoint + '?' + query : baseUrl + endpoint\n}\n\nconst config = {\n  \"endpointPrefix\": \"/reservations\",\n  \"pathParam\": \"reserveId\",\n  \"allowedParams\": [\n    {\n      \"name\": \"reserveId\",\n      \"type\": \"number\"\n    }\n  ],\n  \"aliases\": [\n    {\n      \"from\": \"id\",\n      \"to\": \"reserveId\"\n    },\n    {\n      \"from\": \"reserve_id\",\n      \"to\": \"reserveId\"\n    }\n  ],\n  \"requiredParams\": [\n    \"reserveId\"\n  ]\n}\nconst input = readInput()\nconst apiBaseUrl = 'http://host.docker.internal:3000/api/v1'\nconst params = {}\n\nfor (const alias of config.aliases ?? []) {\n  const sourceValue = present(input[alias.from])\n  if (sourceValue !== undefined && present(input[alias.to]) === undefined) input[alias.to] = sourceValue\n}\n\nfor (const field of config.allowedParams ?? []) {\n  assign(params, field.name, input[field.name], field.type ?? 'string')\n}\n\nfor (const [key, value] of Object.entries(config.defaults ?? {})) {\n  if (params[key] === undefined) params[key] = String(value)\n}\n\nfor (const rule of config.copyRules ?? []) {\n  const sourceValue = present(input[rule.from])\n  if (sourceValue !== undefined && params[rule.to] === undefined) assign(params, rule.to, sourceValue, rule.type ?? 'string')\n}\n\nconst missing = []\nfor (const key of config.requiredParams ?? []) {\n  if (present(params[key]) === undefined) missing.push(key)\n}\n\nconst endpoint = config.pathParam\n  ? config.endpointPrefix + '/' + encodeURIComponent(String(params[config.pathParam] ?? ''))\n  : config.endpoint\nconst cleanParams = config.pathParam ? Object.fromEntries(Object.entries(params).filter(([key]) => key !== config.pathParam)) : params\nconst apiUrl = missing.length === 0 ? buildUrl(apiBaseUrl, endpoint, cleanParams) : null\nconst warnings = missing.map((key) => 'Missing required query param: ' + key)\nconst kept = {}\nfor (const key of config.keepFields ?? []) kept[key] = input[key]\nreturn [{ json: { rawInput: input, params, queryString: encodeQuery(params), apiUrl, canCallApi: missing.length === 0, warnings, apiBaseUrl, internalToken: 'dev-internal-token', ...kept } }]\n"
+      },
+      "id": "4a6c9294-1e8f-41fc-9665-e5aa7ab23c0e",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e50efe66-bf46-4cc3-9ce0-d92436f1fdf5",
+      "name": "GET Reservation Detail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Prepare Input').item.json.apiBaseUrl + '/request-details?reserveId=' + encodeURIComponent($('Prepare Input').item.json.params.reserveId) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $('Prepare Input').item.json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8f7ad05e-176c-4913-a900-c2d658a0e111",
+      "name": "GET Request Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Prepare Input').item.json.apiBaseUrl + '/sale-details?reserveId=' + encodeURIComponent($('Prepare Input').item.json.params.reserveId) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-token",
+              "value": "={{ $('Prepare Input').item.json.internalToken }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b992b8db-8cc7-4c2d-8f4e-d22d22c0d0d4",
+      "name": "GET Sale Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function asArray(result) {\n  return Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []\n}\nfunction number(value) {\n  return Number(value ?? 0)\n}\nfunction compactNotes(reservation) {\n  return {\n    note: reservation.note ?? null,\n    memo: reservation.memo ?? null,\n    overdueDebtNote: reservation.overdueDebtNote ?? null,\n    announcement: reservation.announcement ?? null,\n    requestAnnouncement: reservation.requestAnnouncement ?? null,\n    saleAnnouncement: reservation.saleAnnouncement ?? null,\n    noticeComment: reservation.noticeComment ?? null,\n    amendment: reservation.amendment ?? null,\n    cancelReason: reservation.cancelReason ?? null,\n  }\n}\n\nconst reservationResult = $('GET Reservation Detail').first().json\nconst requestResult = $('GET Request Details').first().json\nconst saleResult = $('GET Sale Details').first().json\nconst reservation = reservationResult.data ?? reservationResult\nconst requestDetails = asArray(requestResult)\nconst saleDetails = asArray(saleResult)\nconst totalInvoice = requestDetails.reduce((sum, item) => sum + number(item.totalPrice ?? item.total_price), 0)\nconst totalPaid = saleDetails.reduce((sum, item) => sum + number(item.totalPrice ?? item.total_price), 0)\nconst remaining = totalInvoice - totalPaid\nconst stayStart = reservation.periodFrom ? new Date(reservation.periodFrom) : null\nconst stayEnd = reservation.periodTo ? new Date(reservation.periodTo) : null\nconst stayNights = stayStart && stayEnd\n  ? Math.max(0, Math.round((stayEnd.getTime() - stayStart.getTime()) / 86400000))\n  : null\n\nreturn [{\n  json: {\n    reservation,\n    reservationSummary: {\n      reserveId: reservation.reserveId,\n      guest: {\n        clientId: reservation.clientId ?? null,\n        clientName: reservation.clientName ?? null,\n        clientNameEn: reservation.clientNameEn ?? null,\n        clientTel: reservation.clientTel ?? null,\n      },\n      stay: {\n        facilityId: reservation.facilityId ?? null,\n        facilityName: reservation.facilityName ?? null,\n        facilityNo: reservation.facilityNo ?? null,\n        roomId: reservation.roomId ?? null,\n        roomNumber: reservation.roomNumber ?? null,\n        roomTypeId: reservation.roomTypeId ?? null,\n        roomTypeName: reservation.roomTypeName ?? null,\n        roomClassName: reservation.roomClassName ?? null,\n        stayTypeId: reservation.stayTypeId ?? null,\n        stayTypeName: reservation.stayTypeName ?? null,\n        periodFrom: reservation.periodFrom ?? null,\n        periodTo: reservation.periodTo ?? null,\n        stayNights,\n        checkedInAt: reservation.checkedInAt ?? null,\n        checkoutAt: reservation.checkoutAt ?? null,\n      },\n      status: {\n        reserveStatus: reservation.reserveStatus ?? null,\n        confirmFlag: reservation.confirmFlag ?? null,\n        checkinFlag: reservation.checkinFlag ?? null,\n        draftFlag: reservation.draftFlag ?? null,\n        cancelledAt: reservation.cancelledAt ?? null,\n        deleteStatus: reservation.deleteStatus ?? null,\n        disableReservation: reservation.disableReservation ?? null,\n      },\n      pricing: {\n        bookingUnitPrice: reservation.bookingUnitPrice ?? null,\n        adjustmentUnitPrice: reservation.adjustmentUnitPrice ?? null,\n        deposit: reservation.deposit ?? null,\n        paymentDueDate: reservation.paymentDueDate ?? null,\n      },\n      paymentSummary: {\n        totalInvoice,\n        totalPaid,\n        remaining,\n        status: totalPaid >= totalInvoice ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid',\n        requestLineCount: requestDetails.length,\n        paymentCount: saleDetails.length,\n      },\n      notes: compactNotes(reservation),\n    },\n    sources: [\n      { type: 'api', name: 'GET /reservations/:reserveId' },\n      { type: 'api', name: 'GET /request-details' },\n      { type: 'api', name: 'GET /sale-details' },\n    ],\n  },\n}]"
+      },
+      "id": "61e9cf66-a054-4abd-8d5d-01215555b4d5",
+      "name": "Normalize Reservation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.canCallApi }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "db50d7b5-3c19-4bf3-96bb-35fb693d53c7",
+      "name": "Can Call API?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { \"reservation\": null, \"warnings\": $json.warnings, \"sources\": [], \"params\": $json.params } }]"
+      },
+      "id": "f2c99877-65b5-4426-845a-8a71c843fff0",
+      "name": "Return Missing Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Can Call API?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Reservation Detail": {
+      "main": [
+        [
+          {
+            "node": "GET Request Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Call API?": {
+      "main": [
+        [
+          {
+            "node": "GET Reservation Detail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Missing Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Request Details": {
+      "main": [
+        [
+          {
+            "node": "GET Sale Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Sale Details": {
+      "main": [
+        [
+          {
+            "node": "Normalize Reservation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-get-reservation-detail-v1-v2"
+}

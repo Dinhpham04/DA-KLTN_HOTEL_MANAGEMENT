@@ -106,15 +106,28 @@
     "service_box": "Hộp đồ",
     "status_inUse": "Đang sử dụng",
     "legend": {
-      "unconfirmed": "Đang ở / Chưa xác nhận ngày ra",
-      "confirmed": "Đã xác nhận ngày ra",
-      "corporate": "Khách công ty",
-      "advertising": "Đặt phòng trực tuyến",
-      "draft": "Bản nháp"
+      "draft": "Đặt phòng tạm",
+      "pending": "Chưa xác nhận",
+      "confirmed": "Đã xác nhận, chưa check-in",
+      "checkedIn": "Đã check-in / Đang ở",
+      "checkedOut": "Đã check-out",
+      "paddingBlocked": "Khoảng đệm không cho đặt",
+      "available": "Trống có thể đặt"
     },
     "bookingActions": {
       "create": "Đặt phòng",
       "createDraft": "Đặt tạm"
+    },
+    "reservationActions": {
+      "open": "Mở thao tác đặt phòng",
+      "title": "Thao tác đặt phòng",
+      "description": "Chọn chức năng bạn muốn thực hiện cho đặt phòng này.",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "checkInOut": "Check-in / Check-out",
+      "registerParking": "Đăng ký bãi đỗ xe ô tô",
+      "registerMotorbikeBicycleParking": "Đăng ký bãi đỗ xe mô tô/xe đạp",
+      "editReservation": "Chỉnh sửa đặt chỗ"
     },
     "draftReservation": {
       "title": "Đặt phòng tạm",
@@ -163,11 +176,6 @@
       "currentEmpty": "Trống hôm nay",
       "total": "Tổng",
       "saveSuccess": "Lưu thành công",
-      "saleDateChange": "Đổi ngày bán",
-      "saleDateChanged": "Đã đổi ngày bán",
-      "saleDateNow": "Hiện tại là {{date}}",
-      "saleDateConfirmAdd": "Thao tác này sẽ chuyển toàn bộ ngày bán từ {{from}} sang {{to}}",
-      "saleDateConfirmSub": "Thao tác này sẽ chuyển toàn bộ ngày bán từ {{from}} về {{to}}",
       "execute": "Thực hiện",
       "cancel": "Huỷ"
     }

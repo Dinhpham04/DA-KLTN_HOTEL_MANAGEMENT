@@ -56,7 +56,7 @@
         "promptType": "define",
         "text": "=Tin nh?n c?a nh?n vi?n:\n{{ $json.message }}\n\nPage context:\n{{ JSON.stringify($json.pageContext) }}",
         "options": {
-          "systemMessage": "=Ban la chatbot AI noi bo cho nhan vien khach san. Ban chi ho tro TRA CUU va TOM TAT thong tin nghiep vu.\n\nSystem context hien tai:\n- today: {{ $('Normalize Input').item.json.today }}\n- timezone: {{ $('Normalize Input').item.json.timezone }}\n- facilityId: {{ $('Normalize Input').item.json.facilityId ?? 'khong gioi han' }}\n- pageContext: {{ JSON.stringify($('Normalize Input').item.json.pageContext) }}\n\nBAT BUOC\n- Chi dung tool read-only da noi vao agent. Khong thuc hien, khong noi da thuc hien, khong gia lap POST/PUT/PATCH/DELETE.\n- Neu user yeu cau thao tac ghi du lieu nhu check-in, check-out, huy booking, cap nhat thanh toan, sua phong, doi trang thai phong: tra loi rang ban chi co quyen tra cuu va huong dan nhan vien thao tac truc tiep tren he thong.\n- Khong tu bia so tien, ngay, trang thai, phong, khach, chinh sach. Neu tool khong tra du lieu, noi ro khong tim thay hoac can them thong tin.\n- Moi luot hoi la mot lan tra cuu moi. KHONG dung loi tool hoac du lieu nghiep vu cu trong memory de ket luan. Neu cau hoi hien tai can du lieu he thong, hay goi tool lai.\n- Memory chi dung de hieu tham chieu hoi thoai gan day nhu \"booking do\", \"khach nay\". Khong dung memory lam nguon su that cho booking/phong/thanh toan.\n- Neu pageContext co reserveId va user noi \"don nay\", \"booking nay\", \"khach nay\", \"thanh toan cua don nay\", uu tien reserveId tu pageContext.\n\nTOOL MAP\n1. get_reservation_detail\n- Dung khi da co reserveId chac chan, hoac pageContext.reserveId dang co va cau hoi noi ve don/booking hien tai.\n- Tra ve chi tiet mot dat phong. Khong dung de tim kiem theo ten khach/ma booking.\n\n2. search_reservations\n- Dung de tim booking theo ma booking, ten khach, clientId, roomId, ngay/khoang ngay, hoac trang thai luu tru.\n- Params chuan: bookingCode, guestName, clientId, roomId, date hoac periodFrom/periodTo, leavingType.\n- leavingType chi dung mot trong: before, staying, left. Dung staying khi hoi phong/khach dang o hoac phong co khach.\n- Neu tim ra nhieu booking va user hoi chi tiet/thanh toan nhung chua ro don nao, tom tat ket qua va yeu cau chon booking.\n\n3. get_payment_status\n- Chi dung khi co reserveId. Neu user dua ten khach/ma booking nhung chua co reserveId, goi search_reservations truoc.\n- Tra ve requestDetails, saleDetails, totalInvoice, totalPaid, remaining, status.\n\n4. get_today_checkin_checkout\n- Dung cho danh sach check-in/check-out theo ngay, mac dinh today.\n- Params chuan: date YYYY-MM-DD, mode checkin|checkout|both, facilityId.\n- Neu user hoi check-in hom nay: mode=checkin. Neu hoi check-out hom nay: mode=checkout. Neu hoi ca hai: mode=both.\n\n5. search_rooms\n- Dung de tra cuu thong tin phong hien tai theo so phong, roomTypeId, roomStatus hoac danh sach phong.\n- Khong dung tool nay de kiem tra phong trong theo ngay. Voi phong trong theo ngay phai dung search_available_rooms.\n- Neu hoi phong co khach/dang luu tru, hay dung search_reservations voi leavingType=staying, khong chi dung search_rooms.\n\n6. search_available_rooms\n- Dung de tim phong trong theo ngay hoac khoang ngay. Params chuan: from, to, roomTypeId neu biet, roomType text neu user chi neu ten loai, facilityId.\n- Neu user chi dua mot ngay, dung from=to=ngay do. Neu khong dua ngay, hoi lai ngay/khoang ngay truoc khi goi tool.\n\n7. get_guest_history\n- Dung de xem lich su luu tru theo guestName hoac clientId.\n- Khong dung cho trang thai booking hien tai neu user da co ma booking/reserveId; khi do dung search_reservations/get_reservation_detail.\n\n8. search_internal_docs\n- Dung cho quy trinh nghiep vu, chinh sach khach san, so noi bo, xu ly tinh huong bat thuong, tai lieu noi bo.\n- Hien tool tai lieu co the tra warning neu Google Drive/vector search chua cau hinh. Neu vay, noi ro chua co nguon tai lieu de tra cuu.\n\nDECISION RULES\n- Cau chao/xa giao: tra loi ngan, khong can goi tool.\n- Cau hoi can du lieu booking/phong/thanh toan/khach/tai lieu: chon dung tool va goi tool truoc khi tra loi.\n- Co reserveId hien tai + hoi \"don nay\": goi get_reservation_detail, va goi them get_payment_status neu hoi tien/thanh toan.\n- Hoi phong trong theo ngay: goi search_available_rooms, khong goi search_rooms thay the.\n- Hoi phong nao dang co khach: goi search_reservations voi leavingType=staying.\n- Hoi trang thai phong cu the khong theo ngay: goi search_rooms theo roomNo. Neu can biet dang co khach thi goi them search_reservations voi roomId hoac leavingType=staying neu co roomId.\n\nANSWER RULES\n- Tra loi bang tieng Viet co dau, ngan gon, ro cho le tan/van hanh.\n- Cau tra loi chinh dung Markdown, khong dung HTML.\n- Luon phan anh dung du lieu tool tra ve; khong che giau loi tool. Neu tool loi, noi ro chua tra cuu duoc va goi y kiem tra workflow/API.\n\nOUTPUT FORMAT\nChi tra ve JSON hop le, khong boc markdown, khong them giai thich ngoai JSON:\n{\n  \"answer\": \"cau tra loi markdown bang tieng Viet co dau\",\n  \"cards\": [\n    {\n      \"type\": \"reservation|room|payment|guest|document|summary\",\n      \"title\": \"string\",\n      \"subtitle\": \"string\",\n      \"description\": \"string\",\n      \"fields\": [\n        { \"label\": \"string\", \"value\": \"string\", \"tone\": \"default|success|warning|danger\" }\n      ]\n    }\n  ],\n  \"actions\": [\n    { \"type\": \"link\", \"label\": \"string\", \"href\": \"string\" }\n  ],\n  \"meta\": {\n    \"intent\": \"string\",\n    \"confidence\": 0.0,\n    \"calledTools\": [\"string\"],\n    \"sources\": [\n      { \"type\": \"api|drive|memory\", \"name\": \"string\" }\n    ]\n  }\n}"
+          "systemMessage": "=Ban la chatbot AI noi bo cho nhan vien khach san. Ban chi ho tro TRA CUU va TOM TAT thong tin nghiep vu.\n\nSystem context hien tai:\n- today: {{ $('Normalize Input').item.json.today }}\n- timezone: {{ $('Normalize Input').item.json.timezone }}\n- facilityId: {{ $('Normalize Input').item.json.facilityId ?? 'khong gioi han' }}\n- pageContext: {{ JSON.stringify($('Normalize Input').item.json.pageContext) }}\n\nBAT BUOC\n- Chi dung tool read-only da noi vao agent. Khong thuc hien, khong noi da thuc hien, khong gia lap POST/PUT/PATCH/DELETE.\n- Moi luot hoi la mot lan tra cuu moi. KHONG dung loi tool hoac du lieu nghiep vu cu trong memory de ket luan. Neu cau hoi hien tai can du lieu he thong, hay goi tool lai.\n- Memory chi dung de hieu tham chieu hoi thoai gan day nhu \"booking do\", \"khach nay\". Khong dung memory lam nguon su that cho booking/phong/thanh toan.\n- Khong tu bia so tien, ngay, trang thai, phong, khach, chinh sach. Neu tool khong tra du lieu, noi ro khong tim thay hoac can them thong tin.\n- Neu user yeu cau thao tac ghi du lieu nhu check-in, check-out, huy booking, cap nhat thanh toan, sua phong, doi trang thai phong: tra loi rang ban chi co quyen tra cuu va huong dan nhan vien thao tac truc tiep tren he thong.\n\nQUY TAC THIEU THONG TIN\n- Neu tool can required params ma user chua cung cap va khong suy ra duoc tu today/pageContext/memory gan nhat, KHONG goi tool. Hay hoi lai dung 1 cau ngan de lay thong tin thieu.\n- Khong duoc tu doan reserveId, clientId, roomId, roomTypeId, roomStatus.\n- Co the suy ra date=today khi user noi hom nay/today. Co the suy ra from=to khi user dua mot ngay duy nhat cho phong trong.\n- Neu user hoi \"don nay\", \"booking nay\", \"khach nay\" va pageContext.reserveId ton tai, duoc dung reserveId do.\n- Neu user hoi thanh toan nhung chi co ten khach/ma booking, goi search_reservations truoc. Neu co nhieu ket qua, hoi user chon booking truoc khi goi get_payment_status.\n\nTOOL MAP VA REQUIRED PARAMS\n1. get_reservation_detail\n- Required: reserveId, hoac pageContext.reserveId khi user noi ve booking hien tai.\n- Dung de lay chi tiet mot dat phong. Khong dung de tim kiem free text.\n- Missing info: neu khong co reserveId/booking hien tai, hoi ma booking/ten khach hoac goi search_reservations neu user da dua thong tin tim kiem.\n\n2. search_reservations\n- Required: it nhat mot trong bookingCode, clientName, occupierName, clientId, roomId, roomNo/facilityOrRoom, date/periodFrom/periodTo, leavingType.\n- Dung de tim booking, tim khach dang o, tim booking theo phong/ngay, tim booking theo ten khach/ma booking.\n- Khong suy luan thua filter: moi param gui vao API la dieu kien AND. Chi dien field user noi ro.\n- Neu user noi \"khach hang/client/nguoi dat\" thi dung clientName, KHONG dien occupierName. Neu user noi \"nguoi o/khach luu tru\" thi dung occupierName, KHONG dien clientName.\n- Neu user hoi phong X co ai dang o khong, goi search_reservations voi facilityOrRoom/roomNo=X, facilityId neu user noi co so, leavingType=staying, dataStatus=1.\n- leavingType chi duoc la before, staying, left.\n\n3. get_payment_status\n- Required: reserveId.\n- Dung cho tien da thu, con lai, cong no, trang thai thanh toan cua mot booking.\n- Missing info: neu chua co reserveId thi tim booking truoc; neu van khong ro mot booking duy nhat thi hoi user chon booking.\n\n4. get_today_checkin_checkout\n- Required: date va mode. Neu user noi hom nay thi date=today. Neu khong co date thi hoi lai ngay.\n- mode: checkin, checkout, both.\n- Dung cho danh sach check-in/check-out, arrivals/departures theo ngay.\n\n5. search_rooms\n- Required: roomNo/search/roomTypeId/roomType/roomStatus, hoac user hoi danh sach phong tong quan.\n- Dung cho thong tin phong hien tai, so phong, loai phong, trang thai master/cleaning hien tai.\n- KHONG dung de tim phong trong theo ngay. Tim phong trong theo ngay phai dung search_available_rooms.\n- Neu user hoi phong dang co khach/dang luu tru, dung search_reservations voi facilityOrRoom/roomNo neu co va leavingType=staying.\n\n6. search_available_rooms\n- Required: from va to. Neu user dua mot ngay duy nhat thi from=to=ngay do. Neu khong co ngay/khoang ngay thi hoi lai ngay truoc khi goi tool.\n- Optional: roomType, roomTypeId, facilityId.\n- Dung cho phong trong, con phong, available room theo ngay/khoang ngay.\n\n7. get_guest_history\n- Required: guestName hoac clientId.\n- Dung cho lich su luu tru, khach quay lai, so lan o, thong tin lich su cua khach.\n- Missing info: hoi ten khach hoac clientId.\n\n8. search_internal_docs\n- Required: query noi ve quy trinh/chinh sach/so noi bo/tinh huong bat thuong.\n- Dung cho tai lieu noi bo, quy trinh nghiep vu, chinh sach khach san, so noi bo, xu ly su co.\n\nDECISION EXAMPLES\n- User: \"xin chao\" -> no tool, answer greeting.\n- User: \"check-in hom nay\" -> get_today_checkin_checkout(date=today, mode=checkin).\n- User: \"check-out ngay 20/5\" -> get_today_checkin_checkout(date=2026-05-20, mode=checkout).\n- User: \"hom nay co bao nhieu khach den va di\" -> get_today_checkin_checkout(date=today, mode=both).\n- User: \"tim booking cua Nguyen Van A\" -> search_reservations(clientName=\"Nguyen Van A\") neu user khong noi la nguoi o.\n- User: \"khach hang Pham Duc Nhat da dat nhung phong nao\" -> search_reservations(clientName=\"Pham Duc Nhat\") only, KHONG dien occupierName.\n- User: \"nguoi o Pham Duc Nhat dang o phong nao\" -> search_reservations(occupierName=\"Pham Duc Nhat\") only, KHONG dien clientName.\n- User: \"booking BK-123 thanh toan chua\" -> search_reservations(bookingCode=\"BK-123\"), then if exactly one reservation use get_payment_status(reserveId).\n- User: \"thanh toan don nay\" with pageContext.reserveId -> get_payment_status(reserveId=pageContext.reserveId).\n- User: \"tom tat don nay\" with pageContext.reserveId -> get_reservation_detail(reserveId=pageContext.reserveId).\n- User: \"phong trong tu 20/5 den 30/5\" -> search_available_rooms(from=2026-05-20, to=2026-05-30).\n- User: \"phong Deluxe con trong ngay 20/5 khong\" -> search_available_rooms(roomType=\"Deluxe\", from=2026-05-20, to=2026-05-20).\n- User: \"phong trong khong\" without date -> ask: \"Ban muon kiem tra phong trong ngay nao hoac khoang ngay nao?\"\n- User: \"phong 502 trang thai gi\" -> search_rooms(roomNo=\"502\").\n- User: \"phong nao dang co khach\" -> search_reservations(leavingType=staying, dataStatus=1).\n- User: \"phong 101 co so 1 co ai dang o khong\" -> search_reservations(facilityOrRoom=\"101\", roomNo=\"101\", facilityId=1, leavingType=staying, dataStatus=1).\n- User: \"lich su luu tru cua Nguyen Van A\" -> get_guest_history(guestName=\"Nguyen Van A\").\n- User: \"quy trinh khach den som\" -> search_internal_docs(query=\"quy trinh khach den som\").\n\nANSWER RULES\n- Tra loi bang tieng Viet co dau, ngan gon, ro cho le tan/van hanh.\n- Cau tra loi chinh dung Markdown, khong dung HTML.\n- Neu can hoi lai param thieu, output JSON voi answer la cau hoi can bo sung, cards/actions rong, meta.intent=\"need_more_info\".\n- Luon phan anh dung du lieu tool tra ve; khong che giau loi tool. Neu tool loi, noi ro chua tra cuu duoc va goi y kiem tra workflow/API.\n\nOUTPUT FORMAT\nChi tra ve JSON hop le, khong boc markdown, khong them giai thich ngoai JSON:\n{\n  \"answer\": \"cau tra loi markdown bang tieng Viet co dau\",\n  \"cards\": [\n    {\n      \"type\": \"reservation|room|payment|guest|document|summary\",\n      \"title\": \"string\",\n      \"subtitle\": \"string\",\n      \"description\": \"string\",\n      \"fields\": [\n        { \"label\": \"string\", \"value\": \"string\", \"tone\": \"default|success|warning|danger\" }\n      ]\n    }\n  ],\n  \"actions\": [\n    { \"type\": \"link\", \"label\": \"string\", \"href\": \"string\" }\n  ],\n  \"meta\": {\n    \"intent\": \"string\",\n    \"confidence\": 0.0,\n    \"calledTools\": [\"string\"],\n    \"sources\": [\n      { \"type\": \"api|drive|memory\", \"name\": \"string\" }\n    ]\n  }\n}"
         }
       },
       "id": "single-ai-agent",
@@ -119,7 +119,7 @@
     {
       "parameters": {
         "name": "get_reservation_detail",
-        "description": "Read-only. Get exact reservation detail by reserveId. Use only when reserveId is known, or pageContext.reserveId exists and user refers to this booking/order/guest. Input: reserveId(number), facilityId(optional). Never use for free-text search.",
+        "description": "Read-only. Get exact reservation detail by reserveId.\nUse when reserveId is known or pageContext.reserveId exists and user says this booking/order/guest.\nRequired params: reserveId. Optional: facilityId.\nDo not use for free-text search by guest name or booking code; use search_reservations first.\nExamples: \"tom tat don nay\" with pageContext.reserveId -> reserveId=pageContext.reserveId; \"chi tiet booking 123\" -> reserveId=123.\nIf reserveId is missing, ask for booking/reservation info or call search_reservations if search info exists.",
         "workflowId": {
           "__rl": true,
           "value": "oycmrNQX3ld6azeC",
@@ -131,10 +131,29 @@
           "mappingMode": "defineBelow",
           "value": {
             "reserveId": "={{ $fromAI('reserveId', 'Reservation ID. Use pageContext reserveId when the user says this booking/order.', 'number') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}"
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "reserveId",
+              "displayName": "reserveId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -151,7 +170,7 @@
     {
       "parameters": {
         "name": "get_payment_status",
-        "description": "Read-only. Calculate billing/payment status for one reservation. Requires reserveId. Use for paid amount, debt, remaining amount, request details, sale details. If reserveId is unknown, call search_reservations first.",
+        "description": "Read-only. Calculate payment/billing status for one reservation.\nUse for paid amount, remaining amount, debt, invoice/request details, sale/payment details.\nRequired params: reserveId. Optional: facilityId.\nIf reserveId is unknown but bookingCode/guestName is provided, call search_reservations first. If multiple reservations are returned, ask user to choose one before calling this tool.\nExamples: \"thanh toan don nay\" with pageContext.reserveId -> reserveId=pageContext.reserveId; \"booking BK-123 con no khong\" -> search_reservations(bookingCode=BK-123) then get_payment_status(reserveId).",
         "workflowId": {
           "__rl": true,
           "value": "5cFYtrMuFdzEILod",
@@ -163,10 +182,29 @@
           "mappingMode": "defineBelow",
           "value": {
             "reserveId": "={{ $fromAI('reserveId', 'Reservation ID to calculate payment status for.', 'number') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}"
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "reserveId",
+              "displayName": "reserveId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -183,7 +221,7 @@
     {
       "parameters": {
         "name": "search_reservations",
-        "description": "Read-only. Search/list reservations by bookingCode, guestName, clientId, roomId, date/range, or leavingType. Use for finding bookings, guests currently staying, bookings before/after/staying, check a room occupancy via reservations. Does not modify data.",
+        "description": "Read-only. Search/list reservations.\nUse for finding bookings by bookingCode, clientName, occupierName, clientId, roomId, roomNo/facilityOrRoom, date/range, or leavingType.\nRequired params: at least one of bookingCode, clientName, occupierName, clientId, roomId, roomNo/facilityOrRoom, date, periodFrom/periodTo, leavingType.\nAllowed leavingType values: before, staying, left. Use staying for in-house/currently occupying/room has guest.\nImportant: do not over-infer filters. Only send fields explicitly implied by the user. Extra query params are AND conditions and can change results.\nUse clientName when user says khach hang/client/company/customer who booked. Use occupierName only when user says nguoi o/khach luu tru/occupier/stayer. Do not fill both from one name unless user explicitly asks both.\nUse facilityId when the user mentions co so/facility, e.g. co so 1 -> facilityId=1.\nExamples: \"khach hang Pham Duc Nhat da dat nhung phong nao\" -> clientName=Pham Duc Nhat only; do not set occupierName. \"nguoi o Pham Duc Nhat dang o phong nao\" -> occupierName=Pham Duc Nhat only. \"tim booking BK-123\" -> bookingCode=BK-123. \"phong 101 co so 1 co ai dang o khong\" -> facilityOrRoom=101, roomNo=101, facilityId=1, leavingType=staying, dataStatus=1.\nIf user asks generally \"tim booking\" without criteria, ask for guest name, booking code, date, or room.",
         "workflowId": {
           "__rl": true,
           "value": "7sZ5jxi5rzjkCTZQ",
@@ -195,18 +233,149 @@
           "mappingMode": "defineBelow",
           "value": {
             "bookingCode": "={{ $fromAI('bookingCode', 'Booking code or reservation code if present. Put exact code here, not guest name.', 'string') }}",
-            "guestName": "={{ $fromAI('guestName', 'Guest/client/occupier name if present.', 'string') }}",
             "clientId": "={{ $fromAI('clientId', 'Client ID if known.', 'number') }}",
             "roomId": "={{ $fromAI('roomId', 'Room ID if known.', 'number') }}",
             "leavingType": "={{ $fromAI('leavingType', 'Use before, staying, or left only. staying means currently occupying/in-house.', 'string') }}",
             "date": "={{ $fromAI('date', 'Single reservation date in YYYY-MM-DD if present.', 'string') }}",
             "periodFrom": "={{ $fromAI('periodFrom', 'Start date in YYYY-MM-DD for reservation range if present.', 'string') }}",
             "periodTo": "={{ $fromAI('periodTo', 'End date in YYYY-MM-DD for reservation range if present.', 'string') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
-            "limit": 10
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}",
+            "limit": 10,
+            "roomNo": "={{ $fromAI('roomNo', 'Room number if user mentions a room number, e.g. 101.', 'string') }}",
+            "facilityOrRoom": "={{ $fromAI('facilityOrRoom', 'Room number or facility-room text for reservation search, e.g. 101 or F1-101.', 'string') }}",
+            "dataStatus": 1,
+            "clientName": "={{ $fromAI('clientName', 'Client/customer/company name if user means the booking customer/khach hang/nguoi dat. Do not copy to occupierName.', 'string') }}",
+            "occupierName": "={{ $fromAI('occupierName', 'Occupier/stayer name only if user means nguoi o/khach luu tru. Do not copy from clientName.', 'string') }}"
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "bookingCode",
+              "displayName": "bookingCode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "clientName",
+              "displayName": "clientName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "occupierName",
+              "displayName": "occupierName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "clientId",
+              "displayName": "clientId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "roomId",
+              "displayName": "roomId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "roomNo",
+              "displayName": "roomNo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "facilityOrRoom",
+              "displayName": "facilityOrRoom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "leavingType",
+              "displayName": "leavingType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "periodFrom",
+              "displayName": "periodFrom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "periodTo",
+              "displayName": "periodTo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dataStatus",
+              "displayName": "dataStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -223,7 +392,7 @@
     {
       "parameters": {
         "name": "get_today_checkin_checkout",
-        "description": "Read-only. Get daily check-in/check-out list for a specific date. Use for check-in today, check-out today, arrivals/departures. Inputs: date YYYY-MM-DD, mode checkin|checkout|both, facilityId.",
+        "description": "Read-only. Get daily check-in/check-out list for a specific date.\nUse for check-in list, check-out list, arrivals, departures, guests arriving/leaving by date.\nRequired params: date YYYY-MM-DD, mode checkin|checkout|both. Optional: facilityId.\nUse today from Normalize Input when user says hom nay/today.\nExamples: \"check-in hom nay\" -> date=today, mode=checkin; \"check-out ngay 20/5\" -> date=2026-05-20, mode=checkout; \"khach den va di hom nay\" -> date=today, mode=both.\nIf date is missing and user does not imply today, ask which date.",
         "workflowId": {
           "__rl": true,
           "value": "JHRubeaJLxrkNiLq",
@@ -236,10 +405,38 @@
           "value": {
             "date": "={{ $fromAI('date', 'Date in YYYY-MM-DD. Use today if user says hom nay/today.', 'string') || $('Normalize Input').item.json.today }}",
             "mode": "={{ $fromAI('mode', 'Use checkin, checkout, or both.', 'string') || 'both' }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}"
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -256,7 +453,7 @@
     {
       "parameters": {
         "name": "search_rooms",
-        "description": "Read-only. Search current room master/status data by room number/search text, roomTypeId, or numeric roomStatus. Use for room detail/status now. Do NOT use for availability by date; use search_available_rooms. For occupied rooms, prefer search_reservations with leavingType=staying.",
+        "description": "Read-only. Search current room master/status data.\nUse for room detail/status now by room number, search text, roomType text, roomTypeId, or numeric roomStatus.\nRequired params: roomNo/search/roomType/roomTypeId/roomStatus, unless user asks for a general room list.\nDo not use for room availability by date; use search_available_rooms. Do not use by itself to answer whether a room currently has a guest; use search_reservations(leavingType=staying, facilityOrRoom/roomNo).\nUse facilityId when the user mentions co so/facility, e.g. co so 1 -> facilityId=1.\nExamples: \"phong 502 trang thai gi\" -> roomNo=502; \"danh sach phong Deluxe\" -> roomType=Deluxe; \"phong 101 co so 1 co ai dang o khong\" -> do NOT use this tool, use search_reservations(facilityOrRoom=101, facilityId=1, leavingType=staying).\nIf user asks room status but does not provide room number/filter, ask for room number or filter.",
         "workflowId": {
           "__rl": true,
           "value": "F1oUb16XlYZX6szb",
@@ -272,11 +469,85 @@
             "roomType": "={{ $fromAI('roomType', 'Room type name text if present, e.g. Deluxe. Used only for local filtering if backend cannot map it.', 'string') }}",
             "roomTypeId": "={{ $fromAI('roomTypeId', 'Numeric room type ID if known. Do not invent.', 'number') }}",
             "roomStatus": "={{ $fromAI('roomStatus', 'Numeric room status code if known. Do not use words like occupied here.', 'number') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
-            "limit": 50
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}",
+            "limit": 50,
+            "dataStatus": 1
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "search",
+              "displayName": "search",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "roomNo",
+              "displayName": "roomNo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "roomType",
+              "displayName": "roomType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "roomTypeId",
+              "displayName": "roomTypeId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "roomStatus",
+              "displayName": "roomStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dataStatus",
+              "displayName": "dataStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -293,7 +564,7 @@
     {
       "parameters": {
         "name": "search_available_rooms",
-        "description": "Read-only. Search rooms available for a date or date range. Use for phong trong/con phong/available rooms by date. Requires from/to date. Accepts roomTypeId if known; roomType text can be passed but should not be invented.",
+        "description": "Read-only. Search rooms available for a date or date range.\nUse for phong trong, con phong, available rooms by date/range and optional room type.\nRequired params: from YYYY-MM-DD and to YYYY-MM-DD. Optional: roomType text, roomTypeId, facilityId.\nIf user gives one date, set from=to=that date. If user omits date/range, ask for date before calling.\nExamples: \"phong trong tu 20/5 den 30/5\" -> from=2026-05-20, to=2026-05-30; \"phong Deluxe trong ngay 20/5\" -> roomType=Deluxe, from=2026-05-20, to=2026-05-20.",
         "workflowId": {
           "__rl": true,
           "value": "qUBhPmXIIqf1dzNI",
@@ -308,11 +579,76 @@
             "roomTypeId": "={{ $fromAI('roomTypeId', 'Numeric room type ID if known. Do not invent.', 'number') }}",
             "from": "={{ $fromAI('from', 'Start date in YYYY-MM-DD. Required for availability.', 'string') }}",
             "to": "={{ $fromAI('to', 'End date in YYYY-MM-DD. If user gives one date, use same date as from.', 'string') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}",
-            "limit": 50
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}",
+            "limit": 50,
+            "dataStatus": 1
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "roomType",
+              "displayName": "roomType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "roomTypeId",
+              "displayName": "roomTypeId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "from",
+              "displayName": "from",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "to",
+              "displayName": "to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dataStatus",
+              "displayName": "dataStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -329,7 +665,7 @@
     {
       "parameters": {
         "name": "get_guest_history",
-        "description": "Read-only. Get guest stay history by guestName or clientId. Use for lich su luu tru/history/repeat guest. Not for current booking detail when reserveId/bookingCode is known.",
+        "description": "Read-only. Get guest stay history.\nUse for lich su luu tru, repeat guest, previous stays, stay count, guest preferences/history.\nRequired params: guestName or clientId. Optional: facilityId.\nExamples: \"lich su luu tru cua Nguyen Van A\" -> guestName=Nguyen Van A; \"khach clientId 45 da o may lan\" -> clientId=45.\nIf guestName/clientId is missing, ask for guest name or client ID.",
         "workflowId": {
           "__rl": true,
           "value": "e2PlJs2MiL08fyTo",
@@ -342,10 +678,38 @@
           "value": {
             "guestName": "={{ $fromAI('guestName', 'Guest name if present.', 'string') }}",
             "clientId": "={{ $fromAI('clientId', 'Client ID if known.', 'number') }}",
-            "facilityId": "={{ $('Normalize Input').item.json.facilityId }}"
+            "facilityId": "={{ $fromAI('facilityId', 'Facility ID/co so ID if user mentioned it. If not mentioned, use current page facilityId.', 'number') || $('Normalize Input').item.json.facilityId }}"
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "guestName",
+              "displayName": "guestName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "clientId",
+              "displayName": "clientId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "facilityId",
+              "displayName": "facilityId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }
@@ -362,7 +726,7 @@
     {
       "parameters": {
         "name": "search_internal_docs",
-        "description": "Read-only. Search internal hotel documents: procedures, policies, department extensions, abnormal situation handling. Use only for policy/process/internal-doc questions. This tool may return a warning if document search is not configured.",
+        "description": "Read-only. Search internal hotel documents.\nUse for procedures, policies, department phone extensions, abnormal situation handling, internal guides.\nRequired params: query. Optional: folderId, limit.\nExamples: \"quy trinh khach den som\" -> query=quy trinh khach den som; \"so noi bo bo phan buong phong\" -> query=so noi bo bo phan buong phong; \"xu ly khach phan nan tieng on\" -> query=xu ly khach phan nan tieng on.\nIf query is too vague, ask what policy/procedure/department the user wants.",
         "workflowId": {
           "__rl": true,
           "value": "vz3USKBmFRNruU9D",
@@ -378,7 +742,35 @@
             "limit": 5
           },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "folderId",
+              "displayName": "folderId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": true,
           "convertFieldsToString": false
         }

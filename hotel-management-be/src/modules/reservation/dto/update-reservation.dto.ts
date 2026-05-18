@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsString,
   MaxLength,
+  Max,
   Min,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -52,6 +53,15 @@ export class UpdateReservationDto {
   @IsInt()
   @Min(0)
   readonly noreserveCountAfter?: number;
+
+  @ApiPropertyOptional({
+    description: 'Delete status: null=active, 1=deleted, 2=cancelled, 3=no-show',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt()
+  @IsIn([1, 2, 3])
+  readonly deleteStatus?: number | null;
 
   @ApiPropertyOptional({ description: 'Reserve type: 1=Normal, 2=English' })
   @IsOptional()
@@ -298,4 +308,11 @@ export class UpdateReservationDto {
   @IsOptional()
   @IsDateString()
   readonly paymentDueDate?: string;
+
+  @ApiPropertyOptional({ description: 'Time extension in hours', minimum: 0, maximum: 11 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(11)
+  readonly extensionTime?: number;
 }

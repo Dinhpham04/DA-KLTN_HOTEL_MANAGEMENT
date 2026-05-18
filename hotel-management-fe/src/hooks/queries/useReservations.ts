@@ -129,6 +129,7 @@ export function useCheckIn() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESERVATION_KEYS.all })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['whiteboard'] })
       toast.success('Check-in thành công')
     },
     onError: () => {
@@ -144,6 +145,7 @@ export function useCheckOut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESERVATION_KEYS.all })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['whiteboard'] })
       toast.success('Check-out thành công')
     },
     onError: () => {

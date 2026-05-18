@@ -156,7 +156,7 @@ interface ReservationDetail extends Reservation {
   areaName?: string
   movedFacilityName?: string
   movedRoomNumber?: string
-  extensionTime?: number
+  extensionTime: number | null
   keyboxName?: string
   keyboxPassword: string | null
   directcheckinNote: string | null

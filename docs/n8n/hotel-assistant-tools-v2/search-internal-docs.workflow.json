@@ -1,0 +1,133 @@
+{
+  "name": "Hotel Assistant Tool V2 - Search Internal Docs",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "fa7f2c57-2f00-4dd8-be9f-0272b88c2894",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseQueryString(value) {\n  if (value === undefined || value === null || value === '') return {}\n  if (typeof value === 'object' && !Array.isArray(value)) return value\n  const text = String(value).trim()\n  if (!text) return {}\n  if (text.startsWith('{')) {\n    try {\n      const parsed = JSON.parse(text)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}\n    } catch {}\n  }\n  const source = text.startsWith('?') ? text.slice(1) : text\n  const result = {}\n  for (const pair of source.split('&')) {\n    if (!pair) continue\n    const separatorIndex = pair.indexOf('=')\n    const rawKey = separatorIndex >= 0 ? pair.slice(0, separatorIndex) : pair\n    const rawValue = separatorIndex >= 0 ? pair.slice(separatorIndex + 1) : ''\n    const key = decodeURIComponent(rawKey.replace(/\\+/g, ' ')).trim()\n    const paramValue = decodeURIComponent(rawValue.replace(/\\+/g, ' ')).trim()\n    if (!key || paramValue === '') continue\n    if (result[key] === undefined) result[key] = paramValue\n    else if (Array.isArray(result[key])) result[key].push(paramValue)\n    else result[key] = [result[key], paramValue]\n  }\n  return result\n}\n\nfunction parseObject(value) {\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value)\n      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : parseQueryString(value)\n    } catch {\n      return parseQueryString(value)\n    }\n  }\n  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}\n}\n\nfunction readInput() {\n  const raw = parseObject($json)\n  const input = { ...raw }\n  for (const key of ['json', 'body', 'data', 'input', 'workflowInputs', 'parameters', 'args']) {\n    Object.assign(input, parseObject(raw[key]))\n  }\n  Object.assign(input, parseQueryString(raw.query))\n  Object.assign(input, parseQueryString(raw.queryString))\n  return input\n}\n\nfunction present(value) {\n  if (Array.isArray(value)) return value.length > 0 ? value : undefined\n  return value !== undefined && value !== null && value !== '' ? value : undefined\n}\n\nfunction toPositiveInteger(value, fallback) {\n  const normalized = present(value)\n  if (normalized === undefined || Array.isArray(normalized)) return fallback\n  const parsed = Number(normalized)\n  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback\n}\n\nconst input = readInput()\nconst query = String(present(input.query) ?? '').trim()\nconst limit = Math.min(toPositiveInteger(input.limit, 3), 5)\nreturn [{ json: { query, limit } }]"
+      },
+      "id": "6c630957-9a5c-417a-b96c-fb0e25c62361",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "get",
+        "documentURL": "REPLACE_WITH_GOOGLE_DOC_ID_OR_URL",
+        "simple": true
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000805",
+      "name": "Get Handbook From Google Docs",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        0
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "REPLACE_AFTER_IMPORT",
+          "name": "REPLACE_AFTER_IMPORT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Input').item.json\nconst handbookText = String($json.content ?? '').trim()\nif (!handbookText) {\n  return [{ json: { documents: [], warnings: ['Khong doc duoc noi dung tu Google Docs.'], sources: [{ type: 'drive', name: 'Google Docs: HOTEL_INTERNAL_OPERATIONS_GUIDE' }] } }]\n}\n\nfunction normalize(value) {\n  return String(value ?? '')\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n    .replace(/đ/g, 'd')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim()\n}\n\nfunction tokenize(value) {\n  return normalize(value)\n    .split(' ')\n    .filter((token) => token.length >= 2)\n}\n\nfunction isHeading(line) {\n  const trimmed = line.trim()\n  return /^(?:#{1,6}\\s*)?(?:\\d+(?:\\.\\d+)*\\.\\s+.+|Thông tin tài liệu|Phạm vi sử dụng)$/u.test(trimmed)\n}\n\nfunction titleFromHeading(line) {\n  return line.trim().replace(/^#{1,6}\\s*/, '')\n}\n\nfunction splitSections(text) {\n  const lines = text.split(/\\r?\\n/)\n  const sections = []\n  let currentTitle = 'Tài liệu tổng quan'\n  let currentLines = []\n\n  function flush() {\n    const content = currentLines.join('\\n').trim()\n    if (content) sections.push({ title: currentTitle, content })\n  }\n\n  for (const line of lines) {\n    if (isHeading(line)) {\n      flush()\n      currentTitle = titleFromHeading(line)\n      currentLines = [line]\n    } else {\n      currentLines.push(line)\n    }\n  }\n\n  flush()\n  return sections\n}\n\nfunction scoreSection(section, queryTokens) {\n  const normalizedTitle = normalize(section.title)\n  const normalizedContent = normalize(section.content)\n  let score = 0\n  for (const token of queryTokens) {\n    if (normalizedTitle.includes(token)) score += 4\n    const matches = normalizedContent.match(new RegExp('(^|\\\\s)' + token + '(?=\\\\s|$)', 'g'))\n    if (matches) score += matches.length\n  }\n  return score\n}\n\nfunction makeSnippet(content, queryTokens) {\n  const plain = content\n    .replace(/^#{1,6}\\s+/gm, '')\n    .replace(/\\|/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim()\n  const normalizedPlain = normalize(plain)\n  let start = 0\n  for (const token of queryTokens) {\n    const index = normalizedPlain.indexOf(token)\n    if (index >= 0) {\n      start = Math.max(0, index - 90)\n      break\n    }\n  }\n  return plain.slice(start, start + 320)\n}\n\nconst query = String(prepared.query ?? '').trim()\nconst limit = Number(prepared.limit ?? 3)\nconst sections = splitSections(handbookText)\nconst queryTokens = tokenize(query)\n\nconst ranked = sections\n  .map((section) => ({ ...section, score: scoreSection(section, queryTokens) }))\n  .filter((section) => queryTokens.length === 0 || section.score > 0)\n  .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'vi'))\n  .slice(0, limit)\n\nconst documents = ranked.map((section) => ({\n  title: section.title,\n  snippet: makeSnippet(section.content, queryTokens),\n  content: section.content.slice(0, 1800),\n  score: section.score,\n  source: 'Google Docs: HOTEL_INTERNAL_OPERATIONS_GUIDE'\n}))\n\nreturn [{\n  json: {\n    documents,\n    warnings: documents.length === 0 ? ['Khong tim thay muc tai lieu phu hop voi truy van.'] : [],\n    sources: [{ type: 'drive', name: 'Google Docs: HOTEL_INTERNAL_OPERATIONS_GUIDE' }]\n  }\n}]"
+      },
+      "id": "2c19d1a7-6f7e-4bb8-9f01-000000000806",
+      "name": "Search Relevant Sections",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json\nconst documents = Array.isArray(result.documents) ? result.documents : []\nreturn [{ json: { documents, warnings: result.warnings ?? [], sources: result.sources ?? [{ type: 'drive', name: 'Google Docs: HOTEL_INTERNAL_OPERATIONS_GUIDE' }] } }]"
+      },
+      "id": "78cc2987-2501-4ccf-b344-8e783b193c8b",
+      "name": "Normalize Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Get Handbook From Google Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Handbook From Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Search Relevant Sections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Relevant Sections": {
+      "main": [
+        [
+          {
+            "node": "Normalize Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "hotel-assistant-tool-search-internal-docs-v2-google-docs"
+}

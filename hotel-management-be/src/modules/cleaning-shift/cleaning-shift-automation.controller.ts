@@ -25,6 +25,12 @@ export class CleaningShiftAutomationController {
     return this.service.getAutomationSummary(query);
   }
 
+  @Get('daily-sheet-data')
+  @ApiOperation({ summary: 'Get sheet-ready cleaning rows and active staff for daily automation' })
+  dailySheetData(@Query() query: CleaningAutomationFilterDto) {
+    return this.service.getDailySheetData(query);
+  }
+
   @Post('remind-unstarted')
   @ApiOperation({ summary: 'List not-started cleaning jobs for n8n reminders' })
   remindUnstarted(@Body() dto: CleaningAutomationFilterDto) {

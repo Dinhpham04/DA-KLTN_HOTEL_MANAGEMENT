@@ -13,6 +13,7 @@ export function useCreateSaleDetail({ onSuccess, onError }: Params = {}) {
     mutationFn: (data: CreateSaleDetailBody) => saleDetailApi.create(data),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['sale-details', vars.reserveId] })
+      qc.invalidateQueries({ queryKey: ['request-details', vars.reserveId] })
       onSuccess?.()
     },
     onError,
@@ -26,6 +27,7 @@ export function useUpdateSaleDetail(reserveId: number, { onSuccess, onError }: P
       saleDetailApi.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sale-details', reserveId] })
+      qc.invalidateQueries({ queryKey: ['request-details', reserveId] })
       onSuccess?.()
     },
     onError,
@@ -38,6 +40,7 @@ export function useDeleteSaleDetail(reserveId: number, { onSuccess, onError }: P
     mutationFn: (id: number) => saleDetailApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sale-details', reserveId] })
+      qc.invalidateQueries({ queryKey: ['request-details', reserveId] })
       onSuccess?.()
     },
     onError,

@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n  }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\n\nconst cleaningDate = formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh');\n\nreturn {\n  json: {\n    ...{\n  backendBaseUrl: \"http://host.docker.internal:3000/api/v1\",\n  internalToken: \"dev-internal-token\",\n  source: \"n8n-daily-generate\",\n  force: false,\n  cleaningReasons: [\n    \"COMMON_AREA_DAILY\",\n    \"CHECKOUT_ROOM\",\n    \"PRE_CHECKIN_ROOM\",\n    \"STAYOVER_ROOM\"\n  ]\n},\n    cleaningDate,\n  },\n};"
+        "jsCode": "function formatDateInTimeZone(date, timeZone) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n  }).formatToParts(date);\n  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${map.year}-${map.month}-${map.day}`;\n}\n\nconst cleaningDate = formatDateInTimeZone(new Date(), 'Asia/Ho_Chi_Minh');\n\nreturn {\n  json: {\n    backendBaseUrl: 'http://host.docker.internal:3000/api/v1',\n    internalToken: 'dev-internal-token',\n    source: 'n8n-daily-generate',\n    force: false,\n    cleaningReasons: [\n      'COMMON_AREA_DAILY',\n      'CHECKOUT_ROOM',\n      'PRE_CHECKIN_ROOM',\n      'STAYOVER_ROOM',\n    ],\n    googleSpreadsheetId: 'PASTE_GOOGLE_SPREADSHEET_ID_HERE',\n    todaySheetName: 'H\\u00f4m nay',\n    catalogSheetName: 'Danh m\\u1ee5c',\n    cleaningDate,\n  },\n};"
       },
       "id": "daily-generate-config",
       "name": "Build Generate Payload",
@@ -37,13 +37,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.backendBaseUrl + '/internal/cleaning-shifts/generate' }}",
+        "url": "={{ $('Build Generate Payload').first().json.backendBaseUrl + '/internal/cleaning-shifts/generate' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ 'Bearer ' + $json.internalToken }}"
+              "value": "={{ 'Bearer ' + $('Build Generate Payload').first().json.internalToken }}"
             },
             {
               "name": "Content-Type",
@@ -61,48 +61,489 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ cleaningDate: $json.cleaningDate, source: $json.source, force: $json.force, cleaningReasons: $json.cleaningReasons }) }}"
+        "jsonBody": "={{ JSON.stringify({ cleaningDate: $('Build Generate Payload').first().json.cleaningDate, source: $('Build Generate Payload').first().json.source, force: $('Build Generate Payload').first().json.force, cleaningReasons: $('Build Generate Payload').first().json.cleaningReasons }) }}"
       },
       "id": "daily-generate-http",
       "name": "Generate Cleaning Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        720,
+        1680,
         300
       ]
     },
     {
       "parameters": {
-        "jsCode": "const response = $json.data ?? $json;\nconst title = response.success === true ? 'Cleaning jobs generated' : 'Cleaning job generation failed';\nconst text = `Date: ${response.cleaningDate}\\nCreated: ${response.created ?? 0}\\nSkipped: ${response.skipped ?? 0}\\nCommon area: ${response.commonAreaCreated ?? 0}\\nCheckout rooms: ${response.checkoutRoomCreated ?? 0}\\nPre-checkin rooms: ${response.preCheckinRoomCreated ?? 0}\\nDaily room cleaning: ${response.stayoverRoomCreated ?? 0}\\nFacilities: ${response.facilities ?? 0}`;\nconst slackWebhookUrl = 'PASTE_SLACK_WEBHOOK_URL_HERE';\n\nreturn { json: { title, text, slackWebhookUrl, slackPayload: { text: `*${title}*\\n${text}` }, response } };"
+        "authentication": "oAuth2",
+        "resource": "sheet",
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.googleSpreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.todaySheetName }}",
+          "mode": "name"
+        },
+        "clear": "wholeSheet",
+        "keepFirstRow": true
+      },
+      "id": "daily-generate-clear-today-sheet",
+      "name": "Clear Today Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.googleSpreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.todaySheetName }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "daily-generate-write-today-sheet",
+      "name": "Append Today Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "sheet",
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.googleSpreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.catalogSheetName }}",
+          "mode": "name"
+        },
+        "clear": "wholeSheet",
+        "keepFirstRow": true
+      },
+      "id": "daily-generate-clear-catalog-sheet",
+      "name": "Clear Staff Catalog Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.googleSpreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Build Generate Payload').first().json.catalogSheetName }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "daily-generate-write-catalog-sheet",
+      "name": "Append Staff Catalog Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2400,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const generation = $('Generate Cleaning Jobs').first().json.data ?? $('Generate Cleaning Jobs').first().json;\nconst sheetData = $('Get Daily Sheet Data').first().json.data ?? $('Get Daily Sheet Data').first().json;\nconst config = $('Build Generate Payload').first().json;\nconst sheetUrl = 'https://docs.google.com/spreadsheets/d/' + config.googleSpreadsheetId + '/edit';\nconst success = generation.success === true;\nconst title = success\n  ? 'Danh s\\u00e1ch v\\u1ec7 sinh h\\u00f4m nay \\u0111\\u00e3 s\\u1eb5n s\\u00e0ng'\n  : 'T\\u1ea1o danh s\\u00e1ch v\\u1ec7 sinh th\\u1ea5t b\\u1ea1i';\nconst cleaningDate = String(generation.cleaningDate ?? config.cleaningDate ?? '-').slice(0, 10);\nconst created = generation.created ?? 0;\nconst skipped = generation.skipped ?? 0;\nconst totalRows = sheetData.taskCount ?? 0;\nconst activeStaff = sheetData.staffCount ?? 0;\nconst esc = (value) => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst text = [\n  title,\n  'Ng\\u00e0y: ' + cleaningDate,\n  'Task m\\u1edbi: ' + created,\n  'Task \\u0111\\u00e3 t\\u1ed3n t\\u1ea1i: ' + skipped,\n  'D\\u00f2ng tr\\u00ean sheet: ' + totalRows,\n  'Nh\\u00e2n vi\\u00ean kh\\u1ea3 d\\u1ee5ng: ' + activeStaff,\n  'Google Sheet: ' + sheetUrl,\n].join('\\n');\n\nconst blocks = [\n  {\n    type: 'header',\n    text: {\n      type: 'plain_text',\n      text: (success ? '\\u{1F9F9} ' : '\\u26A0\\uFE0F ') + title,\n      emoji: true,\n    },\n  },\n  {\n    type: 'section',\n    fields: [\n      { type: 'mrkdwn', text: '*Ng\\u00e0y v\\u1ec7 sinh*\\n' + esc(cleaningDate) },\n      { type: 'mrkdwn', text: '*D\\u00f2ng tr\\u00ean sheet*\\n' + esc(totalRows) },\n      { type: 'mrkdwn', text: '*Task m\\u1edbi*\\n' + esc(created) },\n      { type: 'mrkdwn', text: '*Task \\u0111\\u00e3 t\\u1ed3n t\\u1ea1i*\\n' + esc(skipped) },\n      { type: 'mrkdwn', text: '*Nh\\u00e2n vi\\u00ean kh\\u1ea3 d\\u1ee5ng*\\n' + esc(activeStaff) },\n      { type: 'mrkdwn', text: '*C\\u01a1 s\\u1edf*\\n' + esc(generation.facilities ?? 0) },\n    ],\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: [\n        '*Chi ti\\u1ebft c\\u00f4ng vi\\u1ec7c*',\n        '\\u2022 Khu v\\u1ef1c chung: ' + esc(generation.commonAreaCreated ?? 0),\n        '\\u2022 Ph\\u00f2ng checkout: ' + esc(generation.checkoutRoomCreated ?? 0),\n        '\\u2022 Ph\\u00f2ng tr\\u01b0\\u1edbc check-in: ' + esc(generation.preCheckinRoomCreated ?? 0),\n        '\\u2022 Ph\\u00f2ng l\\u01b0u tr\\u00fa: ' + esc(generation.stayoverRoomCreated ?? 0),\n      ].join('\\n'),\n    },\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: '<' + sheetUrl + '|M\\u1edf Google Sheet ph\\u00e2n c\\u00f4ng v\\u1ec7 sinh>',\n    },\n  },\n  {\n    type: 'context',\n    elements: [\n      {\n        type: 'mrkdwn',\n        text: 'Workflow t\\u1ef1 \\u0111\\u1ed9ng l\\u00fac 00:05 \\u2022 Sheet \\u0111\\u00e3 \\u0111\\u01b0\\u1ee3c c\\u1eadp nh\\u1eadt \\u0111\\u1ec3 ph\\u00e2n c\\u00f4ng \\u0111\\u1ea7u ng\\u00e0y',\n      },\n    ],\n  },\n];\n\nreturn {\n  json: {\n    title,\n    text,\n    slackPayload: { text, blocks },\n    response: generation,\n    sheetUrl,\n  },\n};"
       },
       "id": "daily-generate-message",
       "name": "Build Notification Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
+        2880,
         300
       ]
     },
     {
       "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "buong-phong",
+          "mode": "name"
+        },
+        "messageType": "block",
+        "text": "={{$json.slackPayload.text}}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        },
+        "blocksUi": "={{JSON.stringify({ blocks: $json.slackPayload.blocks })}}"
+      },
+      "id": "daily-generate-slack",
+      "name": "Slack - Housekeeping",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        300
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Hotel Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      },
+      "id": "daily-generate-merge-sheet-branches",
+      "name": "Merge Sheet Publish Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Build Generate Payload').first().json.backendBaseUrl + '/internal/cleaning-shifts/daily-sheet-data' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "cleaningDate",
+              "value": "={{ $('Build Generate Payload').first().json.cleaningDate }}"
+            },
+            {
+              "name": "cleaningReasons",
+              "value": "={{ $('Build Generate Payload').first().json.cleaningReasons.join(',') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Build Generate Payload').first().json.internalToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-sheet-data",
+      "name": "Get Daily Sheet Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Build Generate Payload').first().json.googleSpreadsheetId + '?fields=sheets.properties(sheetId,title)' }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-get-sheet-metadata",
+      "name": "Get Spreadsheet Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Build Generate Payload').first().json;\nconst sheets = $json.sheets ?? [];\nconst existingTitles = new Set(sheets.map((sheet) => sheet.properties?.title).filter(Boolean));\nconst requiredTitles = [config.todaySheetName, config.catalogSheetName];\nconst missingTitles = requiredTitles.filter((title) => !existingTitles.has(title));\nconst headersBySheet = {\n  [config.todaySheetName]: [\n    'task_id',\n    'ng\\u00e0y v\\u1ec7 sinh',\n    'c\\u01a1 s\\u1edf',\n    'ph\\u00f2ng / khu v\\u1ef1c',\n    'lo\\u1ea1i ph\\u00f2ng',\n    'lo\\u1ea1i c\\u00f4ng vi\\u1ec7c',\n    'm\\u1ed1c c\\u1ea7n xong',\n    'nh\\u00e2n vi\\u00ean ch\\u00ednh',\n    'nh\\u00e2n vi\\u00ean h\\u1ed7 tr\\u1ee3',\n    'tr\\u1ea1ng th\\u00e1i',\n    'gi\\u1edd b\\u1eaft \\u0111\\u1ea7u',\n    'gi\\u1edd k\\u1ebft th\\u00fac',\n    'ng\\u01b0\\u1eddi gi\\u00e1m s\\u00e1t',\n    'k\\u1ebft qu\\u1ea3 ki\\u1ec3m tra',\n    'ghi ch\\u00fa hi\\u1ec7n tr\\u01b0\\u1eddng',\n    'ghi ch\\u00fa h\\u1ec7 th\\u1ed1ng',\n  ],\n  [config.catalogSheetName]: ['staff_id', 'nh\\u00e2n vi\\u00ean', 't\\u00ean ng\\u1eafn'],\n};\n\nreturn {\n  json: {\n    missingTitles,\n    hasMissingSheets: missingTitles.length > 0,\n    requests: missingTitles.map((title) => ({ addSheet: { properties: { title } } })),\n    headerData: missingTitles.map((title) => ({\n      range: '\\'' + title + '\\'!A1',\n      values: [headersBySheet[title]],\n    })),\n  },\n};"
+      },
+      "id": "daily-generate-build-sheet-init-plan",
+      "name": "Build Sheet Initialization Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasMissingSheets}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "daily-generate-if-missing-sheets",
+      "name": "Missing Sheets?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
         "method": "POST",
-        "url": "={{ $json.slackWebhookUrl }}",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Build Generate Payload').first().json.googleSpreadsheetId + ':batchUpdate' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
+        "jsonBody": "={{ JSON.stringify({ requests: $json.requests }) }}",
         "options": {
           "timeout": 30000
         }
       },
-      "id": "daily-generate-slack",
-      "name": "Send Slack Notification",
+      "id": "daily-generate-create-missing-sheets",
+      "name": "Create Missing Sheets",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
-        300
+        1440,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst rows = response.taskRows ?? [];\nreturn { json: { rows, hasRows: rows.length > 0 } };"
+      },
+      "id": "daily-generate-build-today-batch",
+      "name": "Build Today Sheet Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Build Today Sheet Batch').first().json.hasRows }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "daily-generate-if-today-rows",
+      "name": "Today Has Rows?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Build Today Sheet Batch').first().json.rows ?? [];\nreturn rows.map((row) => ({ json: row }));"
+      },
+      "id": "daily-generate-expand-today-rows",
+      "name": "Expand Today Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.data ?? $json;\nconst rows = response.staffRows ?? [];\nreturn { json: { rows, hasRows: rows.length > 0 } };"
+      },
+      "id": "daily-generate-build-catalog-batch",
+      "name": "Build Staff Catalog Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Build Staff Catalog Batch').first().json.hasRows }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "daily-generate-if-catalog-rows",
+      "name": "Catalog Has Rows?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Build Staff Catalog Batch').first().json.rows ?? [];\nreturn rows.map((row) => ({ json: row }));"
+      },
+      "id": "daily-generate-expand-catalog-rows",
+      "name": "Expand Staff Catalog Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "method": "POST",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Build Generate Payload').first().json.googleSpreadsheetId + '/values:batchUpdate' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ valueInputOption: 'USER_ENTERED', data: $('Build Sheet Initialization Plan').first().json.headerData }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-write-new-sheet-headers",
+      "name": "Write New Sheet Headers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Build Generate Payload').first().json.googleSpreadsheetId + '?fields=sheets(properties(sheetId,title),conditionalFormats,tables)' }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-get-sheet-metadata-after-init",
+      "name": "Get Spreadsheet Metadata After Init",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Build Generate Payload').first().json;\nconst sheets = $json.sheets ?? [];\nconst todaySheet = sheets.find((sheet) => sheet.properties?.title === config.todaySheetName);\nconst catalogSheet = sheets.find((sheet) => sheet.properties?.title === config.catalogSheetName);\nconst todaySheetId = todaySheet?.properties?.sheetId;\nconst catalogSheetId = catalogSheet?.properties?.sheetId;\n\nif (todaySheetId === undefined || catalogSheetId === undefined) {\n  throw new Error('Kh\\u00f4ng t\\u00ecm th\\u1ea5y sheet c\\u1ea7n thi\\u1ebft sau b\\u01b0\\u1edbc kh\\u1edfi t\\u1ea1o');\n}\n\nconst staffRange = '=\\'' + config.catalogSheetName + '\\'!$B$2:$B';\nconst makeRange = (sheetId, startColumnIndex, endColumnIndex, startRowIndex = 1, endRowIndex) => ({\n  sheetId,\n  startRowIndex,\n  ...(endRowIndex === undefined ? {} : { endRowIndex }),\n  startColumnIndex,\n  endColumnIndex,\n});\nconst dropdownRule = (condition, inputMessage) => ({\n  condition,\n  inputMessage,\n  strict: false,\n  showCustomUi: true,\n});\nconst headerFormat = {\n  backgroundColor: { red: 0.11, green: 0.24, blue: 0.36 },\n  horizontalAlignment: 'CENTER',\n  verticalAlignment: 'MIDDLE',\n  wrapStrategy: 'WRAP',\n  textFormat: {\n    foregroundColor: { red: 1, green: 1, blue: 1 },\n    bold: true,\n  },\n};\nconst staffValidation = dropdownRule(\n  { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: staffRange }] },\n  'Ch\\u1ecdn nh\\u00e2n vi\\u00ean t\\u1eeb danh m\\u1ee5c hi\\u1ec7n c\\u00f3',\n);\nconst statusValidation = dropdownRule(\n  {\n    type: 'ONE_OF_LIST',\n    values: [\n      'Ch\\u01b0a b\\u1eaft \\u0111\\u1ea7u',\n      '\\u0110ang d\\u1ecdn',\n      'T\\u1ea1m d\\u1eebng',\n      '\\u0110\\u00e3 xong',\n      '\\u0110\\u00e3 ki\\u1ec3m tra',\n      'M\\u1edf l\\u1ea1i',\n      '\\u0110\\u00e3 h\\u1ee7y',\n    ].map((value) => ({ userEnteredValue: value })),\n  },\n  'Ch\\u1ecdn tr\\u1ea1ng th\\u00e1i task',\n);\nconst inspectionValidation = dropdownRule(\n  {\n    type: 'ONE_OF_LIST',\n    values: ['\\u0110\\u1ea1t', 'C\\u1ea7n l\\u00e0m l\\u1ea1i'].map((value) => ({ userEnteredValue: value })),\n  },\n  'Ch\\u1ecdn k\\u1ebft qu\\u1ea3 ki\\u1ec3m tra',\n);\nconst widths = [\n  [0, 1, 80],\n  [1, 2, 115],\n  [2, 3, 180],\n  [3, 4, 150],\n  [4, 5, 130],\n  [5, 6, 190],\n  [6, 7, 165],\n  [7, 9, 185],\n  [9, 10, 145],\n  [10, 12, 110],\n  [12, 13, 185],\n  [13, 14, 155],\n  [14, 15, 240],\n  [15, 16, 260],\n];\nconst catalogWidths = [\n  [0, 1, 90],\n  [1, 2, 220],\n  [2, 3, 150],\n];\nconst existingStatusFormulas = new Set(\n  (todaySheet.conditionalFormats ?? [])\n    .map((rule) => rule.booleanRule?.condition)\n    .filter((condition) => condition?.type === 'CUSTOM_FORMULA')\n    .flatMap((condition) => condition.values ?? [])\n    .map((value) => value.userEnteredValue)\n    .filter(Boolean),\n);\nconst statusRules = [\n  {\n    formula: '=$J2=\"Ch\\u01b0a b\\u1eaft \\u0111\\u1ea7u\"',\n    backgroundColor: { red: 0.92, green: 0.94, blue: 0.96 },\n  },\n  {\n    formula: '=$J2=\"\\u0110ang d\\u1ecdn\"',\n    backgroundColor: { red: 1, green: 0.95, blue: 0.72 },\n  },\n  {\n    formula: '=$J2=\"T\\u1ea1m d\\u1eebng\"',\n    backgroundColor: { red: 1, green: 0.88, blue: 0.72 },\n  },\n  {\n    formula: '=$J2=\"\\u0110\\u00e3 xong\"',\n    backgroundColor: { red: 0.82, green: 0.93, blue: 0.84 },\n  },\n  {\n    formula: '=$J2=\"\\u0110\\u00e3 ki\\u1ec3m tra\"',\n    backgroundColor: { red: 0.8, green: 0.88, blue: 1 },\n  },\n  {\n    formula: '=$J2=\"M\\u1edf l\\u1ea1i\"',\n    backgroundColor: { red: 1, green: 0.82, blue: 0.82 },\n  },\n  {\n    formula: '=$J2=\"\\u0110\\u00e3 h\\u1ee7y\"',\n    backgroundColor: { red: 0.88, green: 0.88, blue: 0.88 },\n  },\n];\n\nconst typedColumns = new Set(\n  (todaySheet.tables ?? []).flatMap((table) => {\n    const startColumnIndex = table.range?.startColumnIndex ?? 0;\n    return (table.columnProperties ?? [])\n      .filter((column) => column.columnType && column.columnType !== 'COLUMN_TYPE_UNSPECIFIED')\n      .map((column) => startColumnIndex + column.columnIndex);\n  }),\n);\nconst isTypedRange = (startColumnIndex, endColumnIndex) => {\n  for (let columnIndex = startColumnIndex; columnIndex < endColumnIndex; columnIndex += 1) {\n    if (typedColumns.has(columnIndex)) return true;\n  }\n  return false;\n};\nconst validationRequests = [\n  [7, 8, staffValidation],\n  [8, 9, staffValidation],\n  [9, 10, statusValidation],\n  [12, 13, staffValidation],\n  [13, 14, inspectionValidation],\n]\n  .filter(([startColumnIndex, endColumnIndex]) => !isTypedRange(startColumnIndex, endColumnIndex))\n  .map(([startColumnIndex, endColumnIndex, rule]) => ({\n    setDataValidation: {\n      range: makeRange(todaySheetId, startColumnIndex, endColumnIndex),\n      rule,\n    },\n  }));\n\nconst requests = [\n  ...validationRequests,\n  ...(!isTypedRange(10, 12)\n    ? [\n        {\n          repeatCell: {\n            range: makeRange(todaySheetId, 10, 12),\n            cell: { userEnteredFormat: { numberFormat: { type: 'TIME', pattern: 'hh:mm' } } },\n            fields: 'userEnteredFormat.numberFormat',\n          },\n        },\n      ]\n    : []),\n  {\n    repeatCell: {\n      range: { sheetId: todaySheetId, startRowIndex: 0, endRowIndex: 1 },\n      cell: { userEnteredFormat: headerFormat },\n      fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)',\n    },\n  },\n  {\n    repeatCell: {\n      range: { sheetId: catalogSheetId, startRowIndex: 0, endRowIndex: 1 },\n      cell: { userEnteredFormat: headerFormat },\n      fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)',\n    },\n  },\n  {\n    updateSheetProperties: {\n      properties: { sheetId: todaySheetId, gridProperties: { frozenRowCount: 1 } },\n      fields: 'gridProperties.frozenRowCount',\n    },\n  },\n  {\n    updateSheetProperties: {\n      properties: { sheetId: catalogSheetId, gridProperties: { frozenRowCount: 1 } },\n      fields: 'gridProperties.frozenRowCount',\n    },\n  },\n  ...(todaySheet.tables?.length\n    ? []\n    : [\n        {\n          setBasicFilter: {\n            filter: {\n              range: { sheetId: todaySheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 16 },\n            },\n          },\n        },\n      ]),\n  ...(catalogSheet.tables?.length\n    ? []\n    : [\n        {\n          setBasicFilter: {\n            filter: {\n              range: { sheetId: catalogSheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 3 },\n            },\n          },\n        },\n      ]),\n  {\n    repeatCell: {\n      range: makeRange(todaySheetId, 14, 16),\n      cell: { userEnteredFormat: { wrapStrategy: 'WRAP', verticalAlignment: 'TOP' } },\n      fields: 'userEnteredFormat(wrapStrategy,verticalAlignment)',\n    },\n  },\n  ...widths.map(([startIndex, endIndex, pixelSize]) => ({\n    updateDimensionProperties: {\n      range: { sheetId: todaySheetId, dimension: 'COLUMNS', startIndex, endIndex },\n      properties: { pixelSize },\n      fields: 'pixelSize',\n    },\n  })),\n  ...catalogWidths.map(([startIndex, endIndex, pixelSize]) => ({\n    updateDimensionProperties: {\n      range: { sheetId: catalogSheetId, dimension: 'COLUMNS', startIndex, endIndex },\n      properties: { pixelSize },\n      fields: 'pixelSize',\n    },\n  })),\n  ...statusRules\n    .filter((rule) => !existingStatusFormulas.has(rule.formula))\n    .map((rule) => ({\n      addConditionalFormatRule: {\n        rule: {\n          ranges: [makeRange(todaySheetId, 9, 10)],\n          booleanRule: {\n            condition: {\n              type: 'CUSTOM_FORMULA',\n              values: [{ userEnteredValue: rule.formula }],\n            },\n            format: {\n              backgroundColor: rule.backgroundColor,\n              textFormat: { bold: true },\n            },\n          },\n        },\n        index: 0,\n      },\n    })),\n];\n\nreturn { json: { requests } };"
+      },
+      "id": "daily-generate-build-sheet-validation-requests",
+      "name": "Build Sheet Setup Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "method": "POST",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Build Generate Payload').first().json.googleSpreadsheetId + ':batchUpdate' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: $json.requests }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "daily-generate-apply-sheet-validations",
+      "name": "Apply Sheet Setup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        40
       ]
     }
   ],
@@ -122,7 +563,58 @@
       "main": [
         [
           {
-            "node": "Generate Cleaning Jobs",
+            "node": "Get Spreadsheet Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Spreadsheet Metadata": {
+      "main": [
+        [
+          {
+            "node": "Build Sheet Initialization Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sheet Initialization Plan": {
+      "main": [
+        [
+          {
+            "node": "Missing Sheets?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing Sheets?": {
+      "main": [
+        [
+          {
+            "node": "Create Missing Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Spreadsheet Metadata After Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Missing Sheets": {
+      "main": [
+        [
+          {
+            "node": "Write New Sheet Headers",
             "type": "main",
             "index": 0
           }
@@ -130,6 +622,157 @@
       ]
     },
     "Generate Cleaning Jobs": {
+      "main": [
+        [
+          {
+            "node": "Get Daily Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Daily Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Build Today Sheet Batch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Staff Catalog Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Today Sheet Batch": {
+      "main": [
+        [
+          {
+            "node": "Clear Today Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Today Sheet": {
+      "main": [
+        [
+          {
+            "node": "Today Has Rows?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Today Has Rows?": {
+      "main": [
+        [
+          {
+            "node": "Expand Today Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Sheet Publish Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Today Rows": {
+      "main": [
+        [
+          {
+            "node": "Append Today Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Today Rows": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Publish Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Staff Catalog Batch": {
+      "main": [
+        [
+          {
+            "node": "Clear Staff Catalog Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Staff Catalog Sheet": {
+      "main": [
+        [
+          {
+            "node": "Catalog Has Rows?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog Has Rows?": {
+      "main": [
+        [
+          {
+            "node": "Expand Staff Catalog Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Sheet Publish Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Expand Staff Catalog Rows": {
+      "main": [
+        [
+          {
+            "node": "Append Staff Catalog Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Staff Catalog Rows": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Publish Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Sheet Publish Branches": {
       "main": [
         [
           {
@@ -144,7 +787,51 @@
       "main": [
         [
           {
-            "node": "Send Slack Notification",
+            "node": "Slack - Housekeeping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write New Sheet Headers": {
+      "main": [
+        [
+          {
+            "node": "Get Spreadsheet Metadata After Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Spreadsheet Metadata After Init": {
+      "main": [
+        [
+          {
+            "node": "Build Sheet Setup Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sheet Setup Requests": {
+      "main": [
+        [
+          {
+            "node": "Apply Sheet Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Sheet Setup": {
+      "main": [
+        [
+          {
+            "node": "Generate Cleaning Jobs",
             "type": "main",
             "index": 0
           }
@@ -161,5 +848,5 @@
   "tags": [],
   "triggerCount": 1,
   "active": false,
-  "versionId": "cleaning-daily-generate-v2"
+  "versionId": "cleaning-daily-generate-v13"
 }

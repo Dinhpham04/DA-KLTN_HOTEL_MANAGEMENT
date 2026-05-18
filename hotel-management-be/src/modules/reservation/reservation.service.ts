@@ -319,7 +319,9 @@ export class ReservationService {
     const periodFrom = dto.periodFrom ? new Date(dto.periodFrom) : existing.periodFrom;
     const periodTo = dto.periodTo ? new Date(dto.periodTo) : existing.periodTo;
 
-    if (roomId && periodFrom && periodTo) {
+    const isChangingToDeletedState = dto.deleteStatus !== undefined && dto.deleteStatus !== null;
+
+    if (!isChangingToDeletedState && roomId && periodFrom && periodTo) {
       const roomChanged = dto.roomId !== undefined && dto.roomId !== existing.roomId;
       const periodChanged = dto.periodFrom !== undefined || dto.periodTo !== undefined;
 
@@ -342,6 +344,7 @@ export class ReservationService {
       ...(dto.noreserveCountAfter !== undefined && {
         noreserveCountAfter: dto.noreserveCountAfter,
       }),
+      ...(dto.deleteStatus !== undefined && { deleteStatus: dto.deleteStatus }),
       ...(dto.bookingUnitPrice !== undefined && { bookingUnitPrice: dto.bookingUnitPrice }),
       ...(dto.adjustmentUnitPrice !== undefined && { adjustmentUnitPrice: dto.adjustmentUnitPrice }),
       ...(dto.deposit !== undefined && { deposit: dto.deposit }),
@@ -382,6 +385,7 @@ export class ReservationService {
       ...(dto.noticeComment !== undefined && { noticeComment: dto.noticeComment }),
       ...(dto.earlyExitDatetime !== undefined && { earlyExitDatetime: new Date(dto.earlyExitDatetime) }),
       ...(dto.paymentDueDate !== undefined && { paymentDueDate: new Date(dto.paymentDueDate) }),
+      ...(dto.extensionTime !== undefined && { extensionTime: dto.extensionTime }),
       ...(dto.clientId !== undefined && {
         client: { connect: { clientId: dto.clientId } },
       }),
